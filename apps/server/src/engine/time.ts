@@ -23,6 +23,31 @@ export function getIntervalDuration(interval: string): number {
 }
 
 /**
+ * 下一根 K 线预计收盘时间。
+ *
+ * 1M 是自然月，不能用固定的 30 天近似；
+ * 按 UTC 月末计算，避免月初反复请求。
+ */
+export function getNextCloseTime(
+  lastCloseTime: number,
+  interval: string
+): number {
+  if (interval === "1M") {
+    const date = new Date(lastCloseTime);
+
+    return (
+      Date.UTC(
+        date.getUTCFullYear(),
+        date.getUTCMonth() + 2,
+        1
+      ) - 1
+    );
+  }
+
+  return lastCloseTime + getIntervalDuration(interval);
+}
+
+/**
  * 信号是否足够新。
  *
  * 早于 now - 2 个周期的信号只落库，不推送，

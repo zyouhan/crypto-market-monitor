@@ -140,6 +140,20 @@ npm run replay --workspace=crypto-market-monitor-server -- --symbol ETHUSDT --in
 npx tsx src/scripts/replay.ts --json fixtures/klines.json
 ```
 
+## 轮询与扩容
+
+- `POLL_INTERVAL_MS` 只是 worker 的**扫描节拍**，不是每个标的的请求间隔。
+- 每个标的只在「上一根已处理 K 线收盘时间 + 该标的周期」之后才会请求 Binance：
+  - 1m 标的约 1 次/分钟；
+  - 5m 标的约 1 次/5 分钟；
+  - 15m/1h 标的按各自周期，不会跟着 1m 空转；
+  - 1M 标的按 UTC 自然月计算下一根收盘时间，不用 30 天近似。
+- `MAX_CONCURRENT_SYMBOLS`（默认 3，最大 10）控制同时拉取的标的数，避免标的多时一轮被串行网络延迟拖长。
+- 失败退避：单个标的请求失败后按 30s → 60s → 120s → 240s 退避，最长 5 分钟，成功后恢复。
+- 前端看板每 15 秒拉取一次；标签页隐藏时暂停轮询，回到前台立即刷新。
+- 粗略容量：Binance `/fapi/v1/klines`（limit=300）单次权重约 2，限流约 2400 权重/分钟；100 个 1m 标的约 200 权重/分钟，远低于限制，真正的瓶颈通常是代理延迟与一轮耗时，所以用并发控制而不是一味拉长间隔。
+- 如果想进一步减少 1m 标的请求量，把 `POLL_INTERVAL_MS` 调到 120000/180000 即可（代价是信号最多延迟 2-3 分钟）。
+
 ## 后续扩展（MACD 等）
 
 1. `indicators/macd.ts`：纯计算。

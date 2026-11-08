@@ -14,6 +14,8 @@ import type {
 import {
   db,
   deleteSymbol,
+  getAllStates,
+  getAllStrategies,
   getStatesBySymbol,
   getStrategiesBySymbol,
   getSymbolById,
@@ -187,22 +189,32 @@ function buildStateView(record: StrategyStateRecord) {
   };
 }
 
-function buildSymbolView(symbol: SymbolRecord) {
-  const strategies = getStrategiesBySymbol(symbol.id).map(
-    buildStrategyView
-  );
+function buildSymbolView(
+  symbol: SymbolRecord,
+  strategies: StrategyRecord[],
+  states: StrategyStateRecord[]
+) {
+  const strategyViews = strategies.map(buildStrategyView);
 
-  const states: Record<string, unknown> = {};
+  const stateViews: Record<string, unknown> = {};
 
-  for (const record of getStatesBySymbol(symbol.id)) {
-    states[record.kind] = buildStateView(record);
+  for (const record of states) {
+    stateViews[record.kind] = buildStateView(record);
   }
 
   return {
     ...symbol,
-    strategies,
-    states
+    strategies: strategyViews,
+    states: stateViews
   };
+}
+
+function buildSymbolViewFromDatabase(symbol: SymbolRecord) {
+  return buildSymbolView(
+    symbol,
+    getStrategiesBySymbol(symbol.id),
+    getStatesBySymbol(symbol.id)
+  );
 }
 
 function respondError(res: Response, error: unknown): void {
@@ -225,10 +237,52 @@ function respondError(res: Response, error: unknown): void {
 
 /**
  * 获取监控标的列表
+ *
+ * 策略与状态各用一次查询后在内存分组，避免标的增多时 N+1 查询。
  */
 symbolsRouter.get("/", (_req, res) => {
+  const symbols = getSymbols();
+
+  const strategiesBySymbol = new Map<
+    number,
+    StrategyRecord[]
+  >();
+
+  for (const strategy of getAllStrategies()) {
+    const list = strategiesBySymbol.get(strategy.symbol_id);
+
+    if (list) {
+      list.push(strategy);
+    } else {
+      strategiesBySymbol.set(strategy.symbol_id, [strategy]);
+    }
+  }
+
+  const statesBySymbol = new Map<
+    number,
+    StrategyStateRecord[]
+  >();
+
+  for (const state of getAllStates()) {
+    const list = statesBySymbol.get(state.symbol_id);
+
+    if (list) {
+      list.push(state);
+    } else {
+      statesBySymbol.set(state.symbol_id, [state]);
+    }
+  }
+
   res.json(
-    success(getSymbols().map((symbol) => buildSymbolView(symbol)))
+    success(
+      symbols.map((symbol) =>
+        buildSymbolView(
+          symbol,
+          strategiesBySymbol.get(symbol.id) ?? [],
+          statesBySymbol.get(symbol.id) ?? []
+        )
+      )
+    )
   );
 });
 
@@ -345,7 +399,14 @@ symbolsRouter.post("/", (req, res) => {
       return;
     }
 
-    res.status(201).json(success(buildSymbolView(created), "添加成功"));
+    res
+      .status(201)
+      .json(
+        success(
+          buildSymbolViewFromDatabase(created),
+          "添加成功"
+        )
+      );
   } catch (error) {
     respondError(res, error);
   }
@@ -503,7 +564,9 @@ symbolsRouter.put("/:id", (req, res) => {
 
     res.json(
       success(
-        updated ? buildSymbolView(updated) : null,
+        updated
+          ? buildSymbolViewFromDatabase(updated)
+          : null,
         "配置已更新"
       )
     );

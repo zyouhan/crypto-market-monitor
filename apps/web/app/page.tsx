@@ -161,13 +161,32 @@ export default function HomePage() {
 
     void refresh();
 
+    // 页面隐藏时暂停轮询，回到前台立即刷新一次
     const timer = window.setInterval(() => {
-      void refresh();
-    }, 8000);
+      if (document.visibilityState === "visible") {
+        void refresh();
+      }
+    }, 15000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void refresh();
+      }
+    };
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange
+    );
 
     return () => {
       active = false;
       window.clearInterval(timer);
+
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+      );
     };
   }, [authenticated, loadDashboard]);
 
