@@ -1,0 +1,31 @@
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    env_file:
+      - .env
+    environment:
+      DATABASE_PATH: /app/data/crypto-market-monitor.db
+      COOKIE_SECURE: "true"
+    volumes:
+      - monitor-data:/app/data
+    expose:
+      - "4000"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    environment:
+      API_INTERNAL_URL: http://server:4000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+volumes:
+  monitor-data:
