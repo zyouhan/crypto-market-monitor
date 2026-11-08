@@ -1,14 +1,8 @@
+
 import type { Kline } from "./binance";
 import type { CrossType } from "./db";
 
-export interface EmaPoint {
-  time: number;
-  close: number;
-  fastEma: number;
-  slowEma: number;
-}
-
-export interface CrossEvent {
+export interface CrossSignal {
   type: CrossType;
   price: number;
   time: number;
@@ -16,46 +10,66 @@ export interface CrossEvent {
   slowEma: number;
 }
 
-export interface StrategyResult {
-  points: EmaPoint[];
-  crosses: CrossEvent[];
+export interface EmaPoint {
+  time: number;
+  close: number;
+  fastEma: number | null;
+  slowEma: number | null;
+}
+
+function validatePeriods(
+  fastPeriod: number,
+  slowPeriod: number
+): void {
+  if (
+    !Number.isInteger(fastPeriod) ||
+    !Number.isInteger(slowPeriod) ||
+    fastPeriod < 2 ||
+    slowPeriod < 2
+  ) {
+    throw new Error("EMA periods must be integers greater than or equal to 2");
+  }
+
+  if (fastPeriod >= slowPeriod) {
+    throw new Error("Fast EMA period must be smaller than slow EMA period");
+  }
 }
 
 /**
- * 计算 EMA 序列。
+ * 计算 EMA。
  *
- * EMA 初始值使用前 period 根数据的 SMA。
- * 返回数组与原始 prices 保持相同长度。
+ * 初始值使用前 period 个价格的 SMA，
+ * 后续使用标准 EMA 递推公式：
+ *
+ * EMA = Price * alpha + PreviousEMA * (1 - alpha)
+ * alpha = 2 / (period + 1)
+ *
+ * 返回数组与输入价格数组长度一致。
  * 前 period - 1 个位置为 null。
  */
 export function calculateEMA(
   prices: number[],
   period: number
 ): Array<number | null> {
-  if (!Number.isInteger(period) || period < 1) {
-    throw new Error(`Invalid EMA period: ${period}`);
+  if (!Number.isInteger(period) || period < 2) {
+    throw new Error("EMA period must be an integer greater than or equal to 2");
   }
 
-  if (prices.length === 0) {
-    return [];
-  }
-
-  if (prices.some((price) => !Number.isFinite(price))) {
-    throw new Error("EMA prices contain invalid values");
-  }
-
-  const result: Array<number | null> = Array(
-    prices.length
-  ).fill(null);
+  const result: Array<number | null> = Array(prices.length).fill(null);
 
   if (prices.length < period) {
     return result;
   }
 
-  // EMA 平滑系数
-  const multiplier = 2 / (period + 1);
+  for (const price of prices) {
+    if (!Number.isFinite(price)) {
+      throw new Error("EMA input contains invalid price");
+    }
+  }
 
-  // 使用前 period 根 K 线的 SMA 作为初始 EMA
+  const alpha = 2 / (period + 1);
+
+  // 使用前 period 个价格计算 SMA，作为 EMA 初始值
   const initialSum = prices
     .slice(0, period)
     .reduce((sum, price) => sum + price, 0);
@@ -64,13 +78,13 @@ export function calculateEMA(
 
   result[period - 1] = previousEma;
 
-  // 后续使用 EMA 递推公式
+  // 从第 period 根 K 线开始递推
   for (let i = period; i < prices.length; i++) {
     const currentPrice = prices[i];
 
     const currentEma =
-      (currentPrice - previousEma) * multiplier +
-      previousEma;
+      currentPrice * alpha +
+      previousEma * (1 - alpha);
 
     result[i] = currentEma;
     previousEma = currentEma;
@@ -80,176 +94,143 @@ export function calculateEMA(
 }
 
 /**
- * 计算指定快慢 EMA 参数下的交叉事件。
+ * 计算快慢 EMA，并识别所有历史交叉。
  *
- * 金叉：
- * 前一根 K 线 fast EMA <= slow EMA
- * 当前 K 线 fast EMA > slow EMA
- *
- * 死叉：
- * 前一根 K 线 fast EMA >= slow EMA
- * 当前 K 线 fast EMA < slow EMA
+ * 注意：
+ * 1. 输入必须是已收盘 K 线。
+ * 2. 两条 EMA 按相同 K 线索引对齐。
+ * 3. 只在前后两根 K 线之间发生方向变化时识别交叉。
+ * 4. 交叉价格使用当前 K 线收盘价。
+ * 5. 交叉时间使用当前 K 线 closeTime。
  */
-export function calculateStrategy(
+export function findCrosses(
   klines: Kline[],
   fastPeriod: number,
   slowPeriod: number
-): StrategyResult {
-  if (
-    !Number.isInteger(fastPeriod) ||
-    !Number.isInteger(slowPeriod) ||
-    fastPeriod < 1 ||
-    slowPeriod < 1
-  ) {
-    throw new Error("EMA periods must be positive integers");
+): CrossSignal[] {
+  validatePeriods(fastPeriod, slowPeriod);
+
+  if (klines.length < slowPeriod + 1) {
+    return [];
   }
 
-  if (fastPeriod >= slowPeriod) {
-    throw new Error(
-      "Fast EMA period must be smaller than slow EMA period"
-    );
-  }
-
-  if (klines.length === 0) {
-    return {
-      points: [],
-      crosses: []
-    };
-  }
-
-  // 确保 K 线按时间正序排列
   const sortedKlines = [...klines].sort(
     (a, b) => a.openTime - b.openTime
   );
 
-  const prices = sortedKlines.map(
-    (kline) => kline.close
-  );
+  const prices = sortedKlines.map((item) => item.close);
 
-  const fastValues = calculateEMA(
-    prices,
-    fastPeriod
-  );
+  const fastValues = calculateEMA(prices, fastPeriod);
+  const slowValues = calculateEMA(prices, slowPeriod);
 
-  const slowValues = calculateEMA(
-    prices,
-    slowPeriod
-  );
+  const crosses: CrossSignal[] = [];
 
-  const points: EmaPoint[] = [];
-  const crosses: CrossEvent[] = [];
-
-  for (let i = slowPeriod - 1; i < sortedKlines.length; i++) {
-    const fastEma = fastValues[i];
-    const slowEma = slowValues[i];
-
-    if (fastEma === null || slowEma === null) {
-      continue;
-    }
-
-    const kline = sortedKlines[i];
-
-    points.push({
-      time: kline.closeTime,
-      close: kline.close,
-      fastEma,
-      slowEma
-    });
-
-    // 第一根有效慢 EMA 不具备前一根有效 EMA 比较数据
-    if (i === slowPeriod - 1) {
-      continue;
-    }
-
+  // slow EMA 从 slowPeriod - 1 开始有效。
+  // 交叉判断需要前一根 K 线，因此从 slowPeriod 开始。
+  for (let i = slowPeriod; i < sortedKlines.length; i++) {
     const previousFast = fastValues[i - 1];
     const previousSlow = slowValues[i - 1];
 
+    const currentFast = fastValues[i];
+    const currentSlow = slowValues[i];
+
     if (
       previousFast === null ||
-      previousSlow === null
+      previousSlow === null ||
+      currentFast === null ||
+      currentSlow === null
     ) {
       continue;
     }
 
-    let crossType: CrossType | null = null;
-
-    // 金叉：快线从慢线下方或相等位置向上穿越
-    if (
+    const isGoldenCross =
       previousFast <= previousSlow &&
-      fastEma > slowEma
-    ) {
-      crossType = "GOLDEN";
-    }
+      currentFast > currentSlow;
 
-    // 死叉：快线从慢线上方或相等位置向下穿越
-    else if (
+    const isDeathCross =
       previousFast >= previousSlow &&
-      fastEma < slowEma
-    ) {
-      crossType = "DEATH";
-    }
+      currentFast < currentSlow;
 
-    if (!crossType) {
+    if (!isGoldenCross && !isDeathCross) {
       continue;
     }
+
+    const currentKline = sortedKlines[i];
 
     crosses.push({
-      type: crossType,
-      price: kline.close,
-      time: kline.closeTime,
-      fastEma,
-      slowEma
+      type: isGoldenCross ? "GOLDEN" : "DEATH",
+      price: currentKline.close,
+      time: currentKline.closeTime,
+      fastEma: currentFast,
+      slowEma: currentSlow
     });
   }
 
-  return {
-    points,
-    crosses
-  };
+  return crosses;
 }
 
 /**
- * 根据交叉类型返回中文名称。
- */
-export function getCrossName(
-  type: CrossType
-): string {
-  return type === "GOLDEN" ? "金叉" : "死叉";
-}
-
-/**
- * 计算两个交叉点之间的价格绝对差。
- */
-export function calculatePriceDiff(
-  previousPrice: number,
-  currentPrice: number
-): number {
-  if (
-    !Number.isFinite(previousPrice) ||
-    !Number.isFinite(currentPrice)
-  ) {
-    throw new Error("Invalid cross price");
-  }
-
-  return Math.abs(currentPrice - previousPrice);
-}
-
-/**
- * 判断价格差是否严格超过阈值。
+ * 计算最新 EMA 状态。
  *
- * 注意：这里必须使用 >，不能使用 >=。
+ * 返回最后一根有效 K 线上的快慢线关系。
+ * UNKNOWN 表示数据不足或无法计算。
  */
-export function isThresholdExceeded(
-  priceDiff: number,
-  threshold: number
-): boolean {
-  if (
-    !Number.isFinite(priceDiff) ||
-    !Number.isFinite(threshold) ||
-    threshold < 0
-  ) {
-    throw new Error("Invalid price difference or threshold");
+export function getCurrentEmaState(
+  klines: Kline[],
+  fastPeriod: number,
+  slowPeriod: number
+): "GOLDEN" | "DEATH" | "UNKNOWN" {
+  validatePeriods(fastPeriod, slowPeriod);
+
+  if (klines.length < slowPeriod) {
+    return "UNKNOWN";
   }
 
-  return priceDiff > threshold;
+  const sortedKlines = [...klines].sort(
+    (a, b) => a.openTime - b.openTime
+  );
+
+  const prices = sortedKlines.map((item) => item.close);
+
+  const fastValues = calculateEMA(prices, fastPeriod);
+  const slowValues = calculateEMA(prices, slowPeriod);
+
+  const lastIndex = sortedKlines.length - 1;
+
+  const fast = fastValues[lastIndex];
+  const slow = slowValues[lastIndex];
+
+  if (fast === null || slow === null) {
+    return "UNKNOWN";
+  }
+
+  return fast > slow ? "GOLDEN" : "DEATH";
+}
+
+/**
+ * 获取 EMA 曲线数据。
+ * 后续前端可以使用这些数据绘制 EMA 快慢线。
+ */
+export function calculateEmaSeries(
+  klines: Kline[],
+  fastPeriod: number,
+  slowPeriod: number
+): EmaPoint[] {
+  validatePeriods(fastPeriod, slowPeriod);
+
+  const sortedKlines = [...klines].sort(
+    (a, b) => a.openTime - b.openTime
+  );
+
+  const prices = sortedKlines.map((item) => item.close);
+
+  const fastValues = calculateEMA(prices, fastPeriod);
+  const slowValues = calculateEMA(prices, slowPeriod);
+
+  return sortedKlines.map((item, index) => ({
+    time: item.closeTime,
+    close: item.close,
+    fastEma: fastValues[index],
+    slowEma: slowValues[index]
+  }));
 }
