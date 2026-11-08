@@ -23,22 +23,17 @@ if [ "${2:-}" != "--yes" ]; then
   esac
 fi
 
-CONTAINER_ID="$(docker compose ps -q --all server || true)"
-
-if [ -z "$CONTAINER_ID" ]; then
-  echo "server 容器不存在，请先执行 docker compose up -d" >&2
-  exit 1
-fi
+BACKUP_DIR="$(cd "$(dirname "$FILE")" && pwd)"
+BACKUP_NAME="$(basename "$FILE")"
 
 echo "停止 server..."
 docker compose stop server
 
-echo "复制备份到数据卷..."
-docker cp "$FILE" "${CONTAINER_ID}:/app/data/crypto-market-monitor.db"
-
-echo "清理 WAL/SHM..."
-docker compose run --rm --no-deps --entrypoint sh server -c \
-  "rm -f /app/data/crypto-market-monitor.db-wal /app/data/crypto-market-monitor.db-shm"
+echo "复制备份到数据卷并清理 WAL/SHM..."
+docker compose run --rm --no-deps \
+  -v "${BACKUP_DIR}:/backup:ro" \
+  --entrypoint sh server -c \
+  "cp \"/backup/${BACKUP_NAME}\" /app/data/crypto-market-monitor.db && rm -f /app/data/crypto-market-monitor.db-wal /app/data/crypto-market-monitor.db-shm"
 
 echo "启动 server..."
 docker compose start server
