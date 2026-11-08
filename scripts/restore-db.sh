@@ -31,7 +31,7 @@ docker compose stop server
 
 echo "复制备份到数据卷并清理 WAL/SHM..."
 docker compose run --rm --no-deps \
-  -v "${BACKUP_DIR}:/backup:ro" \
+  -v "${BACKUP_DIR}:/backup:ro,z" \
   --entrypoint sh server -c \
   "cp \"/backup/${BACKUP_NAME}\" /app/data/crypto-market-monitor.db && rm -f /app/data/crypto-market-monitor.db-wal /app/data/crypto-market-monitor.db-shm"
 
