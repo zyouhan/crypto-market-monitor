@@ -68,6 +68,8 @@ sudo ufw enable
 sudo ufw status
 ```
 
+> 云厂商控制台里的安全组/防火墙也要放行 80（或之后的 443/8080），ufw 只管系统内部。
+
 如果 80 端口被云厂商封锁，改用 8080（见 5.3）。
 
 ---
@@ -425,11 +427,13 @@ docker compose logs -f --tail=100 server
 curl -s http://127.0.0.1/api/health
 ```
 
-### 8.2 本次更新会看到什么
+### 8.2 版本与迁移日志
 
-- v1 旧库：首次启动会把旧库移到 `data/archive/v1-<时间戳>/` 并重建。
-- v2 → v3：日志出现 `[DB] 已升级到 v3，策略状态已重置，等待静默预热`；历史 `signals` 保留，策略状态清空后静默预热。
+- 首次部署会直接创建 v3 结构，没有迁移。
+- 以后从 v1 升级：首次启动会把旧库移到 `data/archive/v1-<时间戳>/` 并重建。
+- 以后从 v2 升级：日志出现 `[DB] 已升级到 v3，策略状态已重置，等待静默预热`；历史 `signals` 保留，策略状态清空后静默预热。
 - 升级后**不会补发历史信号**，也不会重复推送旧信号。
+- 未来如果出现 v4/v5，按同样方式处理：升级前备份，升级后先看 `[DB]` 日志。
 
 ### 8.3 修改 `.env`
 
@@ -459,12 +463,22 @@ docker compose build
 docker compose up -d
 ```
 
-如果本次更新包含数据库结构升级，旧代码可能不兼容新结构，回滚前先恢复升级前的备份：
+如果本次更新包含数据库结构升级，旧代码可能不兼容新结构，回滚需要按“先换代码、再恢复备份”的顺序：
 
 ```bash
-./scripts/restore-db.sh backups/backup-<升级前时间戳>.db
+cd /opt/crypto-market-monitor
+
+# 1. 停止应用
+docker compose stop
+
+# 2. 切回上一个稳定版本并重新构建镜像
 git checkout <上一个稳定提交>
 docker compose build
+
+# 3. 恢复升级前的数据库（脚本会用当前已构建的旧版本镜像重建 server）
+./scripts/restore-db.sh backups/backup-<升级前时间戳>.db --yes
+
+# 4. 确认 web 等容器也处于运行状态
 docker compose up -d
 ```
 

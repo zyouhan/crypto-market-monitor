@@ -35,8 +35,8 @@ docker compose run --rm --no-deps \
   --entrypoint sh server -c \
   "cp \"/backup/${BACKUP_NAME}\" /app/data/crypto-market-monitor.db && rm -f /app/data/crypto-market-monitor.db-wal /app/data/crypto-market-monitor.db-shm"
 
-echo "启动 server..."
-docker compose start server
+echo "启动 server（如镜像已重建会自动使用新镜像）..."
+docker compose up -d server
 
 docker compose ps
 echo "恢复完成，请检查: docker compose logs -f server"
