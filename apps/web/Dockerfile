@@ -13,6 +13,10 @@ COPY apps/web ./apps/web
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# rewrites 在 next build 时固化，compose 里通过 build.args 传入容器内地址
+ARG API_INTERNAL_URL=http://localhost:4000
+ENV API_INTERNAL_URL=$API_INTERNAL_URL
+
 RUN npm run build --workspace=crypto-market-monitor-web
 
 RUN npm prune --omit=dev

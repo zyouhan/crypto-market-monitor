@@ -1,0 +1,15 @@
+# 公网 IP / HTTP 阶段
+#
+# 以后有域名时，把下面这行改成域名即可（Caddy 会自动申请 HTTPS 证书）：
+#   monitor.example.com {
+:80 {
+    encode gzip
+
+    handle /api/* {
+        reverse_proxy 127.0.0.1:4000
+    }
+
+    handle {
+        reverse_proxy 127.0.0.1:3000
+    }
+}

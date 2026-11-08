@@ -8,4 +8,6 @@ dist/
 data/*
 !data/.gitkeep
 
+backups/
+
 *.tsbuildinfo

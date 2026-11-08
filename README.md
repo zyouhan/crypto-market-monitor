@@ -7,6 +7,12 @@
 - **threshold** 过滤横盘中的小幅反复交叉，并作为等待状态的失效距离。
 - SQLite 落库、ServerChan（Server酱）微信推送、Next.js 管理页面。
 
+## 部署
+
+VPS 生产部署（Docker Compose + 宿主机 Caddy、环境变量、备份/恢复、更新/回滚、排障）见 [DEPLOY.md](DEPLOY.md)。
+
+生产环境只运行一个 server 容器：Worker 与通知在同一个进程里，多副本会重复推送。
+
 ## 目录结构
 
 ```
