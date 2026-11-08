@@ -16,15 +16,39 @@ import type { SignalItem } from "../types";
 
 interface SignalTableProps {
   signals: SignalItem[];
+  symbols: string[];
 }
 
-export function SignalTable({ signals }: SignalTableProps) {
+export function SignalTable({
+  signals,
+  symbols
+}: SignalTableProps) {
+  const [symbolFilter, setSymbolFilter] = useState("ALL");
   const [kindFilter, setKindFilter] = useState("ALL");
   const [typeFilter, setTypeFilter] = useState("ALL");
+
+  const symbolOptions = useMemo(() => {
+    const values = new Set<string>(symbols);
+
+    for (const signal of signals) {
+      values.add(signal.symbol);
+    }
+
+    return Array.from(values).sort((a, b) =>
+      a.localeCompare(b)
+    );
+  }, [signals, symbols]);
 
   const filtered = useMemo(
     () =>
       signals.filter((signal) => {
+        if (
+          symbolFilter !== "ALL" &&
+          signal.symbol !== symbolFilter
+        ) {
+          return false;
+        }
+
         if (
           kindFilter !== "ALL" &&
           signal.kind !== kindFilter
@@ -41,12 +65,27 @@ export function SignalTable({ signals }: SignalTableProps) {
 
         return true;
       }),
-    [signals, kindFilter, typeFilter]
+    [signals, symbolFilter, kindFilter, typeFilter]
   );
 
   return (
     <>
       <div className="filter-row">
+        <select
+          aria-label="按标的筛选"
+          value={symbolFilter}
+          onChange={(event) =>
+            setSymbolFilter(event.target.value)
+          }
+        >
+          <option value="ALL">全部标的</option>
+          {symbolOptions.map((symbol) => (
+            <option key={symbol} value={symbol}>
+              {symbol}
+            </option>
+          ))}
+        </select>
+
         <select
           value={kindFilter}
           onChange={(event) =>

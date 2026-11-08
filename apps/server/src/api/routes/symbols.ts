@@ -27,6 +27,7 @@ import {
   updateSymbolFields
 } from "../../db/repo";
 import { getKlineLimit, isValidInterval } from "../../market/binance";
+import { requestManualRefresh } from "../../engine/worker";
 import {
   ParamValidationError,
   normalizeEmaParams,
@@ -410,6 +411,25 @@ symbolsRouter.post("/", (req, res) => {
   } catch (error) {
     respondError(res, error);
   }
+});
+
+/**
+ * 立即请求一次最新 K 线数据。
+ *
+ * 请求放入 Worker 队列异步执行，接口立即返回，
+ * 避免 Binance 网络超时导致前端长时间等待。
+ */
+symbolsRouter.post("/refresh", (_req, res) => {
+  if (!requestManualRefresh()) {
+    res
+      .status(409)
+      .json(failure("已有数据请求正在执行，请稍后再试"));
+    return;
+  }
+
+  res
+    .status(202)
+    .json(success({ queued: true }, "已开始请求最新数据"));
 });
 
 /**

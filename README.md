@@ -85,7 +85,9 @@ crypto-market-monitor/
 前端提示：
 
 - 轮询发现新触发信号时，右下角弹出提示卡片（10 秒自动消失，可手动关闭）；
-- 每个标的卡片显示该标的最近一条触发信号。
+- 每个标的卡片显示该标的最近一条触发信号；
+- 可在「声音提醒设置」中开启浏览器提示音，并分别选择入场信号与金叉/死叉信号；
+- 监控标的区域提供「立即请求数据」按钮，可跳过轮询节拍强制拉取一次。
 
 每次有效上穿/下穿各提醒一次；同一等待周期内可反复触发。
 
@@ -113,6 +115,7 @@ crypto-market-monitor/
 | POST | `/api/symbols` | 新增标的（可带 `strategies[]`） |
 | PUT | `/api/symbols/:id` | 改配置；参数/开关/周期变化会静默重新预热 |
 | DELETE | `/api/symbols/:id` | 级联删除策略、状态与信号 |
+| POST | `/api/symbols/refresh` | 立即请求全部启用标的的最新 K 线（异步执行） |
 | GET | `/api/signals` | 信号记录，支持 `limit/offset/symbol/kind/event_type/triggered`；`triggered=1` 只返回触发信号 |
 | GET/PUT | `/api/settings` | 全局通知开关（不返回 SendKey） |
 

@@ -104,7 +104,17 @@ export function SymbolCard({
           {entryText}
         </span>
 
-        <span className="badge">{alignmentText}</span>
+        <span
+          className={`badge ${
+            alignment === "BULL"
+              ? "long"
+              : alignment === "BEAR"
+                ? "short"
+                : ""
+          }`}
+        >
+          {alignmentText}
+        </span>
 
         <span className="badge">
           J{" "}

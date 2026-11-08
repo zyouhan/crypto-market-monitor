@@ -12,11 +12,21 @@ import { LoginCard } from "./components/LoginCard";
 import { NotificationSettings } from "./components/NotificationSettings";
 import { SignalTable } from "./components/SignalTable";
 import { SignalToasts } from "./components/SignalToasts";
+import { SoundSettings } from "./components/SoundSettings";
 import { SummaryCards } from "./components/SummaryCards";
 import { SymbolCard } from "./components/SymbolCard";
 import { SymbolModal } from "./components/SymbolModal";
 import { api, errorMessage } from "./lib/api";
 import { isAlertSignal } from "./lib/format";
+import {
+  DEFAULT_SOUND_ALERT_SETTINGS,
+  isSoundAlertSignal,
+  loadSoundAlertSettings,
+  playTripleBeep,
+  saveSoundAlertSettings,
+  unlockAudio,
+  type SoundAlertSettings
+} from "./lib/sound";
 import type {
   SaveSymbolPayload,
   SettingsData,
@@ -41,10 +51,19 @@ export default function HomePage() {
   const [toasts, setToasts] = useState<SignalItem[]>([]);
   const seenSignalIdsRef = useRef<Set<number> | null>(null);
 
+  const [soundSettings, setSoundSettings] =
+    useState<SoundAlertSettings>({
+      ...DEFAULT_SOUND_ALERT_SETTINGS
+    });
+  const soundSettingsRef = useRef<SoundAlertSettings>({
+    ...DEFAULT_SOUND_ALERT_SETTINGS
+  });
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<SymbolItem | null>(null);
 
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -90,6 +109,14 @@ export default function HomePage() {
         seen.add(signal.id);
       }
 
+      if (
+        fresh.some((signal) =>
+          isSoundAlertSignal(signal, soundSettingsRef.current)
+        )
+      ) {
+        playTripleBeep();
+      }
+
       setToasts((current) =>
         [...current, ...fresh].slice(-4)
       );
@@ -126,6 +153,31 @@ export default function HomePage() {
   useEffect(() => {
     void checkAuth();
   }, [checkAuth]);
+
+  useEffect(() => {
+    const loaded = loadSoundAlertSettings();
+
+    setSoundSettings(loaded);
+    soundSettingsRef.current = loaded;
+
+    if (!loaded.enabled) {
+      return;
+    }
+
+    // 上次已开启声音时，首次点击页面即解锁 AudioContext
+    const handlePointerDown = () => unlockAudio();
+
+    window.addEventListener("pointerdown", handlePointerDown, {
+      once: true
+    });
+
+    return () => {
+      window.removeEventListener(
+        "pointerdown",
+        handlePointerDown
+      );
+    };
+  }, []);
 
   useEffect(() => {
     if (!authenticated) {
@@ -341,6 +393,37 @@ export default function HomePage() {
     }
   }
 
+  function handleSoundChange(
+    next: SoundAlertSettings
+  ): void {
+    soundSettingsRef.current = next;
+    setSoundSettings(next);
+    saveSoundAlertSettings(next);
+  }
+
+  async function handleRefreshNow() {
+    setRefreshing(true);
+    setError("");
+    setMessage("");
+
+    try {
+      await api("/api/symbols/refresh", { method: "POST" });
+
+      setMessage(
+        "已提交数据请求，正在拉取最新 K 线；完成后页面会自动刷新"
+      );
+
+      // Binance 正常时通常 1~2 秒内完成；保留一次延迟刷新兜底
+      window.setTimeout(() => {
+        void loadDashboard();
+      }, 4000);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   if (checkingAuth) {
     return (
       <main className="login-page">
@@ -402,12 +485,22 @@ export default function HomePage() {
             </div>
           </div>
 
-          <button
-            className="button primary"
-            onClick={openAddModal}
-          >
-            + 添加标的
-          </button>
+          <div className="panel-actions">
+            <button
+              className="button"
+              onClick={() => void handleRefreshNow()}
+              disabled={refreshing}
+            >
+              {refreshing ? "请求中..." : "↻ 立即请求数据"}
+            </button>
+
+            <button
+              className="button primary"
+              onClick={openAddModal}
+            >
+              + 添加标的
+            </button>
+          </div>
         </div>
 
         {symbols.length === 0 ? (
@@ -438,6 +531,11 @@ export default function HomePage() {
         onChange={(value) => void handleGlobalNotify(value)}
       />
 
+      <SoundSettings
+        value={soundSettings}
+        onChange={handleSoundChange}
+      />
+
       <section className="panel">
         <div className="panel-header">
           <div>
@@ -450,7 +548,10 @@ export default function HomePage() {
           </div>
         </div>
 
-        <SignalTable signals={signals} />
+        <SignalTable
+          signals={signals}
+          symbols={symbols.map((item) => item.symbol)}
+        />
       </section>
 
       <footer className="footer">

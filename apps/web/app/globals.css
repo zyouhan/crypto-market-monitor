@@ -148,10 +148,18 @@ button:disabled {
 
 .panel-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: 16px;
   margin-bottom: 18px;
+}
+
+.panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .panel-title {
@@ -497,11 +505,13 @@ td {
 .badge.long {
   color: var(--green);
   border-color: rgb(32 201 151 / 35%);
+  background: #12372f;
 }
 
 .badge.short {
   color: var(--red);
   border-color: rgb(255 100 124 / 35%);
+  background: #3a202b;
 }
 
 .badge.warn {
@@ -617,6 +627,71 @@ td {
 
 .signal-hint strong {
   font-weight: 600;
+}
+
+.sound-state {
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  background: #0d131d;
+  font-size: 12px;
+}
+
+.sound-state.on {
+  color: var(--green);
+  border-color: rgb(32 201 151 / 35%);
+  background: #12372f;
+}
+
+.sound-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.sound-master {
+  margin-right: 0;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.sound-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.sound-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #0d131d;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sound-type span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.sound-type input {
+  accent-color: var(--blue);
+}
+
+.sound-type.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sound-hint {
+  margin-top: 12px;
 }
 
 .toast-stack {

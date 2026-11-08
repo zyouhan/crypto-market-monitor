@@ -54,6 +54,7 @@ const retryState = new Map<number, RetryState>();
 let timer: ReturnType<typeof setInterval> | null = null;
 let isRunning = false;
 let isStopped = false;
+let manualRefreshPromise: Promise<void> | null = null;
 
 /**
  * 有界并发执行，避免标的增多后串行拉取把一轮拖长。
@@ -90,7 +91,7 @@ async function runWithConcurrency<T>(
  * 扫描节拍由 POLL_INTERVAL_MS 决定，但每个标的只在
  * 「上一根 K 线收盘 + 周期」之后才会真正请求 Binance。
  */
-async function runMonitorCycle(): Promise<void> {
+async function runMonitorCycle(force = false): Promise<void> {
   if (isRunning || isStopped) {
     return;
   }
@@ -104,13 +105,15 @@ async function runMonitorCycle(): Promise<void> {
     const symbols = getEnabledSymbols();
     const now = Date.now();
 
-    const dueSymbols = symbols.filter((symbol) =>
-      isSymbolDue(
-        symbol,
-        now,
-        retryState.get(symbol.id)?.nextRetryAt ?? 0
-      )
-    );
+    const dueSymbols = force
+      ? symbols
+      : symbols.filter((symbol) =>
+          isSymbolDue(
+            symbol,
+            now,
+            retryState.get(symbol.id)?.nextRetryAt ?? 0
+          )
+        );
 
     health.lastTotalSymbols = symbols.length;
     health.lastDueSymbols = dueSymbols.length;
@@ -168,6 +171,43 @@ async function runMonitorCycle(): Promise<void> {
     health.lastCycleAt = Date.now();
     health.lastCycleDurationMs = Date.now() - startedAt;
   }
+}
+
+/**
+ * 手动刷新：等待当前轮询结束后，强制拉取全部启用标的。
+ *
+ * 返回 false 表示已有手动请求在排队或 Worker 已停止。
+ * 该函数只负责排队，不等待 Binance 请求完成，避免 API 被网络超时拖住。
+ */
+export function requestManualRefresh(): boolean {
+  if (isStopped || manualRefreshPromise) {
+    return false;
+  }
+
+  manualRefreshPromise = (async () => {
+    while (isRunning && !isStopped) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+
+    if (isStopped) {
+      return;
+    }
+
+    console.log("[Worker] 手动刷新：立即请求全部启用标的");
+
+    await runMonitorCycle(true);
+  })()
+    .catch((error) => {
+      health.lastError =
+        error instanceof Error ? error.message : String(error);
+
+      console.error("[Worker] 手动刷新失败:", error);
+    })
+    .finally(() => {
+      manualRefreshPromise = null;
+    });
+
+  return true;
 }
 
 /**
