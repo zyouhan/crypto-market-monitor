@@ -28,8 +28,8 @@ Caddy（宿主机）
 ```bash
 sudo dnf upgrade -y
 
-# 基础工具（git、编辑器、备份 cron、时间同步）
-sudo dnf install -y git nano curl cronie openssl
+# 基础工具（git、编辑器、备份 cron、时间同步、防火墙）
+sudo dnf install -y git nano curl cronie openssl chrony firewalld
 sudo systemctl enable --now crond
 sudo systemctl enable --now chronyd
 
