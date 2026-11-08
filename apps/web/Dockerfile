@@ -3,6 +3,13 @@ FROM node:22-bookworm-slim AS builder
 
 WORKDIR /app
 
+# better-sqlite3 原生模块编译依赖
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY package.json package-lock.json ./
 COPY apps/server/package.json ./apps/server/package.json
 COPY apps/web/package.json ./apps/web/package.json
