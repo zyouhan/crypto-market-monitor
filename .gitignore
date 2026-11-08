@@ -10,4 +10,7 @@ data/*
 
 backups/
 
+# 本地部署笔记，不纳入版本库
+DEPLOY.md
+
 *.tsbuildinfo

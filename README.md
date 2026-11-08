@@ -9,7 +9,7 @@
 
 ## 部署
 
-VPS 生产部署（Docker Compose + 宿主机 Caddy、环境变量、备份/恢复、更新/回滚、排障）见 [DEPLOY.md](DEPLOY.md)。
+仓库提供 `docker-compose.yml`、`deploy/Caddyfile` 与 `scripts/` 下的备份/恢复脚本，环境变量模板见 `.env.example`。
 
 生产环境只运行一个 server 容器：Worker 与通知在同一个进程里，多副本会重复推送。
 
