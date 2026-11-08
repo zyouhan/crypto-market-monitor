@@ -127,6 +127,8 @@ export function eventTypeLabel(eventType: string): string {
       return "金叉确认";
     case "TREND_DEATH":
       return "死叉确认";
+    case "TREND_INVALIDATED":
+      return "等待失效";
     case "ENTRY_LONG":
       return "做多入场";
     case "ENTRY_SHORT":
@@ -153,7 +155,11 @@ export function directionLabel(
 function reasonLabel(reason: string | null): string {
   switch (reason) {
     case "price_diff_not_exceeded":
-      return "未达阈值";
+      return "价格差未达阈值";
+    case "ema_diff_not_exceeded":
+      return "EMA 距离未达阈值";
+    case "ema_reverse_deviation":
+      return "EMA 反向偏离";
     case "stale_cross_suppressed":
     case "stale_signal_suppressed":
       return "过期抑制";
@@ -170,6 +176,48 @@ function reasonLabel(reason: string | null): string {
     default:
       return reason ?? "未发送";
   }
+}
+
+export function signalJValue(
+  signal: SignalItem
+): number | null {
+  const value = signal.payload?.j;
+
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : null;
+}
+
+/**
+ * 需要在前端提示的触发性信号：
+ * 金叉/死叉确认 + KDJ 做多/做空入场。
+ * 未达阈值的记录与等待失效不进入提示。
+ */
+export function isAlertSignal(signal: SignalItem): boolean {
+  if (signal.trigger_met !== 1) {
+    return false;
+  }
+
+  return (
+    signal.event_type === "TREND_GOLDEN" ||
+    signal.event_type === "TREND_DEATH" ||
+    signal.event_type === "ENTRY_LONG" ||
+    signal.event_type === "ENTRY_SHORT"
+  );
+}
+
+export function signalTone(
+  signal: SignalItem
+): "bull" | "bear" | "neutral" {
+  if (signal.direction === "BULL") {
+    return "bull";
+  }
+
+  if (signal.direction === "BEAR") {
+    return "bear";
+  }
+
+  return "neutral";
 }
 
 export function pushStateLabel(signal: SignalItem): string {

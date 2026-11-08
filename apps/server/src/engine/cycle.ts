@@ -73,6 +73,7 @@ function stateView(
       status: kind === "EMA_TREND" ? "NEUTRAL" : "IDLE",
       baselineType: null,
       baselinePrice: null,
+      baselineEma: null,
       baselineTime: null,
       extra: {}
     };
@@ -82,6 +83,7 @@ function stateView(
     status: record.status as TrendStatus | EntryStatus,
     baselineType: record.baseline_type,
     baselinePrice: record.baseline_price,
+    baselineEma: record.baseline_ema,
     baselineTime: record.baseline_time,
     extra: parseJsonObject(record.extra)
   };
@@ -159,6 +161,7 @@ async function dispatchNotification(
       event_time: row.event_time,
       threshold: row.threshold,
       price_diff: row.price_diff,
+      ema_diff: row.ema_diff,
       payload: parseJsonObject(row.payload)
     },
     symbol.interval
@@ -263,9 +266,7 @@ export async function runSymbolCycle(
 
   const shared: SharedContext = {
     trend: "NEUTRAL",
-    trendByCloseTime: new Map(),
-    alignment: null,
-    alignmentByCloseTime: new Map()
+    trendByCloseTime: new Map()
   };
 
   const pending: Array<{
@@ -308,6 +309,7 @@ export async function runSymbolCycle(
         status: String(result.state.status),
         baselineType: result.state.baselineType,
         baselinePrice: result.state.baselinePrice,
+        baselineEma: result.state.baselineEma,
         baselineTime: result.state.baselineTime,
         extra: JSON.stringify(result.state.extra)
       });
@@ -398,6 +400,7 @@ function toSignalRecord(
     event_time: draft.eventTime,
     threshold: draft.threshold,
     price_diff: draft.priceDiff,
+    ema_diff: draft.emaDiff,
     trigger_met: draft.triggerMet ? 1 : 0,
     push_state: draft.triggerMet
       ? ("PENDING" as const)

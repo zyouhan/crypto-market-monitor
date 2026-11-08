@@ -27,6 +27,7 @@ export interface NotifiableSignal {
   event_time: number;
   threshold: number | null;
   price_diff: number | null;
+  ema_diff: number | null;
   payload: Record<string, unknown> | null;
 }
 
@@ -89,8 +90,35 @@ export function buildSignalMessage(
   if (signal.kind === "EMA_TREND") {
     const fast = asNumber(payload.fast);
     const slow = asNumber(payload.slow);
-    const previousPrice = asNumber(payload.previousPrice);
     const threshold = signal.threshold;
+
+    if (signal.event_type === "TREND_INVALIDATED") {
+      const baselineEma = asNumber(payload.baselineEma);
+      const currentEma = asNumber(payload.currentEma);
+      const deviation = asNumber(payload.deviation);
+
+      const title = `[趋势] ${signal.symbol} 等待失效`;
+
+      const description = [
+        `交易标的：${signal.symbol}`,
+        `K 线周期：${interval}`,
+        `信号类型：${trendName(
+          signal.direction
+        )}已失效，暂停入场`,
+        `EMA 参数：${formatNumber(fast, 0)} / ${formatNumber(slow, 0)}`,
+        `基准交叉 EMA：${formatNumber(baselineEma)}`,
+        `当前 EMA：${formatNumber(currentEma)}`,
+        `反向偏离：${formatNumber(deviation)}（阈值 ${formatNumber(
+          threshold
+        )}）`,
+        `失效时间：${formatTime(signal.event_time)}`
+      ].join("\n\n");
+
+      return { title, description };
+    }
+
+    const previousEma = asNumber(payload.previousEma);
+    const crossEma = asNumber(payload.crossEma);
 
     const title = `[趋势] ${signal.symbol} EMA ${crossName(
       signal.event_type
@@ -103,11 +131,13 @@ export function buildSignalMessage(
         signal.direction
       )}）`,
       `EMA 参数：${formatNumber(fast, 0)} / ${formatNumber(slow, 0)}`,
-      `交叉价格：${formatNumber(signal.price)}`,
-      `上次反向交叉价：${formatNumber(previousPrice)}`,
-      `价格差：${formatNumber(signal.price_diff)}（阈值 ${formatNumber(
+      `EMA 距离：${formatNumber(signal.ema_diff)}（阈值 ${formatNumber(
         threshold
       )}）`,
+      `基准交叉 EMA：${formatNumber(previousEma)}`,
+      `本次交叉 EMA：${formatNumber(crossEma)}`,
+      `交叉价格：${formatNumber(signal.price)}`,
+      `价格差（参考）：${formatNumber(signal.price_diff)}`,
       `交叉时间：${formatTime(signal.event_time)}`
     ].join("\n\n");
 

@@ -2,9 +2,9 @@
 
 加密货币（Binance USDⓈ-M Futures）多指标监控系统：
 
-- **EMA 定趋势**：有效金叉 → 看涨等待；有效死叉 → 看跌等待。
+- **EMA 定趋势**：两次交叉点的**慢线 EMA 距离**超过阈值才确认转折；等待期间 EMA 反向偏离超过阈值则失效。
 - **KDJ 找入场**：看涨等待中 J 下穿超卖阈值 → 做多提醒；看跌等待中 J 上穿超买阈值 → 做空提醒。
-- **threshold** 过滤横盘中的小幅反复交叉。
+- **threshold** 过滤横盘中的小幅反复交叉，并作为等待状态的失效距离。
 - SQLite 落库、ServerChan（Server酱）微信推送、Next.js 管理页面。
 
 ## 目录结构
@@ -13,7 +13,7 @@
 crypto-market-monitor/
 ├─ apps/server/src/
 │  ├─ config/            默认参数、默认标的、路径
-│  ├─ db/                SQLite 连接、v2 schema、数据访问
+│  ├─ db/                SQLite 连接、schema 迁移、数据访问
 │  ├─ market/binance.ts  Binance K 线获取（只取已收盘）
 │  ├─ indicators/        EMA、KDJ 纯计算
 │  ├─ strategies/        策略注册表与状态机（EMA_TREND / KDJ_ENTRY）
@@ -28,22 +28,39 @@ crypto-market-monitor/
 
 ### 1. EMA 趋势（`EMA_TREND`）
 
-1. 第一根交叉只建立基准。
+每一次交叉同时记录交叉价格与该根 K 线的**慢线 EMA**，趋势判定使用慢线 EMA：
+
+1. 第一根交叉只建立基准（类型、价格、时间、慢线 EMA）。
 2. 同向交叉忽略，不更新基准。
-3. 反向交叉计算 `|交叉价 - 基准价|`：
-   - **严格大于** `threshold` → 确认转折：
-     - 金叉 → `BULL_WAITING`（看涨等待）
-     - 死叉 → `BEAR_WAITING`（看跌等待）
+3. 反向交叉计算：
+   - `emaDiff = |本次交叉慢线 EMA - 基准交叉慢线 EMA|`（判定依据）
+   - `priceDiff = |本次交叉价 - 基准交叉价|`（仅记录，供参考）
+   - **严格大于** `threshold` → 确认转折：金叉 → `BULL_WAITING`，死叉 → `BEAR_WAITING`
    - 未过阈值 → 状态不变，仅更新基准，并记录一条 `trigger_met=0` 的信号。
-4. 每次满足阈值的交叉都会推送趋势提醒（同状态再确认也推送）。
+4. 无论是否过阈值，基准都更新为本次交叉。
+5. **等待失效**：等待期间持续比较当前慢线 EMA 与基准交叉 EMA：
+   - 看跌等待：`当前 EMA - 基准 EMA > threshold` → 失效为中性
+   - 看涨等待：`基准 EMA - 当前 EMA > threshold` → 失效为中性
+   - 失效只改变状态、不改基准，记录一条不推送的 `TREND_INVALIDATED`；下一次交叉重新判定。
 
-示例（阈值 10）：
+示例（阈值 10，A 形走势）：
 
-| 步骤 | 交叉 | 价差 | 结果 |
+| 步骤 | 交叉 | 慢线 EMA | EMA 距离 | 结果 |
+|---|---|---|---|---|
+| 起点 | 金叉 | 100 | — | 建立基准，中性 |
+| 1 | 死叉 | 115 | 15 | 过阈值 → 看跌等待（价格可能只回到 100，但 EMA 已走开） |
+| 2 | 金叉 | 101 | 14 | 过阈值 → 看涨等待 |
+
+示例（未过阈值 + 续涨失效，阈值 10）：
+
+| 步骤 | 交叉/状态 | 慢线 EMA | 结果 |
 |---|---|---|---|
-| 起点 | 有效死叉 100 | — | 看跌等待，基准 100 |
-| 1 | 金叉 103 | 3 | 未过阈值，基准改为 103，仍看跌等待 |
-| 2 | 死叉 120 | 17 | 过阈值，看跌再确认，基准 120，推送趋势提醒 |
+| 起点 | 有效死叉 | 100 | 看跌等待，基准 100 |
+| 1 | 金叉 | 101 | 距离 1，未过阈值；基准更新为 101，仍看跌等待 |
+| 2 | 无新交叉，价格续涨 | 112 | 反向偏离 11 > 10 → 失效为中性，暂停做空 |
+| 3 | 之后的死叉 | 120 | 距离 19 > 10 → 看跌确认，恢复做空等待 |
+
+> 阈值是绝对数值，与 EMA 同单位。BTC 等高价位标的请按标的调整阈值。
 
 ### 2. KDJ 入场（`KDJ_ENTRY`）
 
@@ -57,9 +74,14 @@ crypto-market-monitor/
 - 趋势 `BULL_WAITING` 且做多开启，J 从 `≥ oversold` 变为 `< oversold` → `ENTRY_LONG`
 - 趋势 `BEAR_WAITING` 且做空开启，J 从 `≤ overbought` 变为 `> overbought` → `ENTRY_SHORT`
 
-**排列过滤**：入场还要求「等待方向与当前 EMA 排列一致」——做多必须快线在慢线上方，做空必须快线在慢线下方。这样当死叉 100 → 金叉 103（未过阈值，趋势状态仍是看跌等待）后价格一路走强，EMA 已转为多头排列，不会继续提示超买做空；等到下一次满足阈值的死叉才会重新对齐并恢复做空等待。页面会在状态徽标上标注「排列冲突」，入场徽标显示「暂停入场」。
+入场不再要求 EMA 排列一致；趋势是否仍然有效由上面的 EMA 距离/失效规则决定。页面上的「多头排列 / 空头排列」仅为展示。
 
-每次有效上穿/下穿各提醒一次；趋势未翻转前可反复触发，但必须保持排列一致。
+前端提示：
+
+- 轮询发现新触发信号时，右下角弹出提示卡片（10 秒自动消失，可手动关闭）；
+- 每个标的卡片显示该标的最近一条触发信号。
+
+每次有效上穿/下穿各提醒一次；同一等待周期内可反复触发。
 
 ### 3. 通知闸门
 
@@ -85,15 +107,17 @@ crypto-market-monitor/
 | POST | `/api/symbols` | 新增标的（可带 `strategies[]`） |
 | PUT | `/api/symbols/:id` | 改配置；参数/开关/周期变化会静默重新预热 |
 | DELETE | `/api/symbols/:id` | 级联删除策略、状态与信号 |
-| GET | `/api/signals` | 信号记录，支持 `limit/offset/symbol/kind/event_type` |
+| GET | `/api/signals` | 信号记录，支持 `limit/offset/symbol/kind/event_type/triggered`；`triggered=1` 只返回触发信号 |
 | GET/PUT | `/api/settings` | 全局通知开关（不返回 SendKey） |
 
 ## 数据库
 
 - 核心表：`symbols`、`strategies`、`strategy_states`、`signals`、`settings`。
-- `PRAGMA user_version` 标记结构版本（当前 2）。
-- 启动时若检测到 v1 旧库，会整体移动到 `data/archive/v1-<时间戳>/` 后重建并 seed 默认标的。
+- `PRAGMA user_version` 标记结构版本（当前 3）。
+- v1 旧库：启动时整体移动到 `data/archive/v1-<时间戳>/` 后重建。
+- v2 → v3：原地 `ALTER TABLE` 补 `baseline_ema` / `ema_diff`，随后清空策略状态并把处理进度归零（静默重新预热）；**历史信号与标的配置保留**。
 - 信号唯一键：`(symbol_id, kind, event_type, event_time)`，重复处理不会重复写库。
+- 旧版趋势信号的 `ema_diff` 为 `NULL`，页面显示 `--`。
 
 ## 开发
 

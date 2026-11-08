@@ -9,20 +9,13 @@ import {
   formatPrice,
   formatTime,
   kindLabel,
-  pushStateLabel
+  pushStateLabel,
+  signalJValue
 } from "../lib/format";
 import type { SignalItem } from "../types";
 
 interface SignalTableProps {
   signals: SignalItem[];
-}
-
-function signalJValue(signal: SignalItem): number | null {
-  const value = signal.payload?.j;
-
-  return typeof value === "number" && Number.isFinite(value)
-    ? value
-    : null;
 }
 
 export function SignalTable({ signals }: SignalTableProps) {
@@ -76,6 +69,7 @@ export function SignalTable({ signals }: SignalTableProps) {
           <option value="TREND_DEATH">死叉确认</option>
           <option value="ENTRY_LONG">做多入场</option>
           <option value="ENTRY_SHORT">做空入场</option>
+          <option value="TREND_INVALIDATED">等待失效</option>
         </select>
       </div>
 
@@ -92,7 +86,7 @@ export function SignalTable({ signals }: SignalTableProps) {
                 <th>类型</th>
                 <th>方向</th>
                 <th>价格</th>
-                <th>价差 / 阈值</th>
+                <th>EMA 距离 / 阈值</th>
                 <th>J 值</th>
                 <th>通知</th>
               </tr>
@@ -120,8 +114,16 @@ export function SignalTable({ signals }: SignalTableProps) {
                     </td>
                     <td>{directionLabel(signal.direction)}</td>
                     <td>{formatPrice(signal.price)}</td>
-                    <td>
-                      {formatPrice(signal.price_diff)} /{" "}
+                    <td
+                      title={
+                        signal.price_diff !== null
+                          ? `价格差 ${formatPrice(
+                              signal.price_diff
+                            )}`
+                          : undefined
+                      }
+                    >
+                      {formatPrice(signal.ema_diff)} /{" "}
                       {formatPrice(signal.threshold)}
                     </td>
                     <td>{formatFixed(jValue, 2)}</td>

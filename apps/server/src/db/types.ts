@@ -9,6 +9,7 @@ export type StrategyKind = "EMA_TREND" | "KDJ_ENTRY";
 export type SignalEventType =
   | "TREND_GOLDEN"
   | "TREND_DEATH"
+  | "TREND_INVALIDATED"
   | "ENTRY_LONG"
   | "ENTRY_SHORT";
 
@@ -47,6 +48,7 @@ export interface StrategyStateRecord {
   status: string;
   baseline_type: CrossType | null;
   baseline_price: number | null;
+  baseline_ema: number | null;
   baseline_time: number | null;
   extra: string | null;
   updated_at: number;
@@ -63,6 +65,7 @@ export interface SignalRecord {
   event_time: number;
   threshold: number | null;
   price_diff: number | null;
+  ema_diff: number | null;
   trigger_met: number;
   push_state: PushState;
   push_error: string | null;
@@ -81,6 +84,7 @@ export interface NewSignalRecord {
   event_time: number;
   threshold: number | null;
   price_diff: number | null;
+  ema_diff: number | null;
   trigger_met: number;
   push_state: PushState;
   reason: string | null;

@@ -3,6 +3,7 @@ export type StrategyKind = "EMA_TREND" | "KDJ_ENTRY";
 export type SignalEventType =
   | "TREND_GOLDEN"
   | "TREND_DEATH"
+  | "TREND_INVALIDATED"
   | "ENTRY_LONG"
   | "ENTRY_SHORT";
 
@@ -34,6 +35,7 @@ export interface StateItem {
   baseline: {
     type: "GOLDEN" | "DEATH";
     price: number | null;
+    ema: number | null;
     time: number | null;
   } | null;
   extra: Record<string, unknown>;
@@ -63,6 +65,7 @@ export interface SignalItem {
   event_time: number;
   threshold: number | null;
   price_diff: number | null;
+  ema_diff: number | null;
   trigger_met: number;
   push_state: "PENDING" | "SENT" | "FAILED" | "SKIPPED";
   push_error: string | null;

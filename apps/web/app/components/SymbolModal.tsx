@@ -284,7 +284,7 @@ export function SymbolModal({
             </div>
 
             <div className="form-field">
-              <label>价格差阈值</label>
+              <label>EMA 距离阈值</label>
               <input
                 type="number"
                 min="0"

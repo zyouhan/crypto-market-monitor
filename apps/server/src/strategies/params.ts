@@ -123,7 +123,7 @@ export function normalizeEmaParams(
   const threshold = readNumber(
     raw.threshold,
     DEFAULT_EMA_PARAMS.threshold,
-    "价格差阈值"
+    "EMA 距离阈值"
   );
 
   if (fast < 2) {
@@ -141,7 +141,7 @@ export function normalizeEmaParams(
   }
 
   if (threshold < 0) {
-    throw new ParamValidationError("价格差阈值不能小于 0");
+    throw new ParamValidationError("EMA 距离阈值不能小于 0");
   }
 
   return { fast, slow, threshold };

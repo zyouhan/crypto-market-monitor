@@ -3,10 +3,13 @@
 import {
   crossName,
   entryLabel,
+  eventTypeLabel,
   formatFixed,
   formatPrice,
   formatTime,
   jClass,
+  signalJValue,
+  signalTone,
   trendClass,
   trendLabel
 } from "../lib/format";
@@ -16,10 +19,11 @@ import {
   getExtraNumber,
   getKdjConfig
 } from "../lib/strategy";
-import type { SymbolItem } from "../types";
+import type { SignalItem, SymbolItem } from "../types";
 
 interface SymbolCardProps {
   item: SymbolItem;
+  latestSignal: SignalItem | null;
   onToggle: (
     id: number,
     patch: {
@@ -33,6 +37,7 @@ interface SymbolCardProps {
 
 export function SymbolCard({
   item,
+  latestSignal,
   onToggle,
   onEdit,
   onDelete
@@ -50,30 +55,11 @@ export function SymbolCard({
 
   const alignment = getEmaAlignment(item);
 
-  const trendWaiting =
-    trendStatus === "BULL_WAITING" ||
-    trendStatus === "BEAR_WAITING";
+  const trendText = trendLabel(trendStatus);
 
-  const trendConflicted =
-    (trendStatus === "BULL_WAITING" &&
-      alignment === "BEAR") ||
-    (trendStatus === "BEAR_WAITING" &&
-      alignment === "BULL");
-
-  const entryMisaligned =
-    kdj.enabled &&
-    trendWaiting &&
-    entryStatus === "IDLE";
-
-  const trendText = trendConflicted
-    ? `${trendLabel(trendStatus)}（排列冲突）`
-    : trendLabel(trendStatus);
-
-  const entryText = !kdj.enabled
-    ? "KDJ 已停用"
-    : entryMisaligned
-      ? "趋势排列冲突，暂停入场"
-      : entryLabel(entryStatus, kdj.oversold, kdj.overbought);
+  const entryText = kdj.enabled
+    ? entryLabel(entryStatus, kdj.oversold, kdj.overbought)
+    : "KDJ 已停用";
 
   const alignmentText =
     alignment === "BULL"
@@ -108,13 +94,11 @@ export function SymbolCard({
       <div className="badge-row">
         <span
           className={`badge ${
-            entryMisaligned
-              ? "warn"
-              : entryStatus === "ARMED_LONG"
-                ? "long"
-                : entryStatus === "ARMED_SHORT"
-                  ? "short"
-                  : ""
+            entryStatus === "ARMED_LONG"
+              ? "long"
+              : entryStatus === "ARMED_SHORT"
+                ? "short"
+                : ""
           }`}
         >
           {entryText}
@@ -140,6 +124,24 @@ export function SymbolCard({
         </span>
       </div>
 
+      {latestSignal && (
+        <div
+          className={`signal-hint ${signalTone(latestSignal)}`}
+        >
+          <span>最近信号</span>
+          <strong>
+            {eventTypeLabel(latestSignal.event_type)}
+          </strong>
+          {signalJValue(latestSignal) !== null && (
+            <span>
+              J{" "}
+              {formatFixed(signalJValue(latestSignal), 2)}
+            </span>
+          )}
+          <span>{formatTime(latestSignal.event_time)}</span>
+        </div>
+      )}
+
       <div className="detail-grid">
         <div className="detail-item">
           <label>最近交叉</label>
@@ -152,12 +154,17 @@ export function SymbolCard({
         </div>
 
         <div className="detail-item">
+          <label>交叉 EMA</label>
+          <strong>{formatPrice(baseline?.ema)}</strong>
+        </div>
+
+        <div className="detail-item">
           <label>交叉时间</label>
           <strong>{formatTime(baseline?.time)}</strong>
         </div>
 
         <div className="detail-item">
-          <label>价格差阈值</label>
+          <label>EMA 距离阈值</label>
           <strong>{formatPrice(ema.threshold)}</strong>
         </div>
       </div>

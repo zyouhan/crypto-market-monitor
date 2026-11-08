@@ -3,16 +3,20 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
+  useRef,
   useState
 } from "react";
 
 import { LoginCard } from "./components/LoginCard";
 import { NotificationSettings } from "./components/NotificationSettings";
 import { SignalTable } from "./components/SignalTable";
+import { SignalToasts } from "./components/SignalToasts";
 import { SummaryCards } from "./components/SummaryCards";
 import { SymbolCard } from "./components/SymbolCard";
 import { SymbolModal } from "./components/SymbolModal";
 import { api, errorMessage } from "./lib/api";
+import { isAlertSignal } from "./lib/format";
 import type {
   SaveSymbolPayload,
   SettingsData,
@@ -26,10 +30,16 @@ export default function HomePage() {
 
   const [symbols, setSymbols] = useState<SymbolItem[]>([]);
   const [signals, setSignals] = useState<SignalItem[]>([]);
+  const [alertSignals, setAlertSignals] = useState<
+    SignalItem[]
+  >([]);
   const [settings, setSettings] = useState<SettingsData>({
     global_wechat_enabled: false,
     serverchan_configured: false
   });
+
+  const [toasts, setToasts] = useState<SignalItem[]>([]);
+  const seenSignalIdsRef = useRef<Set<number> | null>(null);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<SymbolItem | null>(null);
@@ -39,19 +49,68 @@ export default function HomePage() {
   const [error, setError] = useState("");
 
   const loadDashboard = useCallback(async () => {
-    const [symbolData, signalData, settingsData] =
-      await Promise.all([
-        api<SymbolItem[]>("/api/symbols"),
-        api<{ items: SignalItem[] }>(
-          "/api/signals?limit=100"
-        ),
-        api<SettingsData>("/api/settings")
-      ]);
+    const [
+      symbolData,
+      signalData,
+      alertData,
+      settingsData
+    ] = await Promise.all([
+      api<SymbolItem[]>("/api/symbols"),
+      api<{ items: SignalItem[] }>(
+        "/api/signals?limit=100"
+      ),
+      api<{ items: SignalItem[] }>(
+        "/api/signals?limit=20&triggered=1"
+      ),
+      api<SettingsData>("/api/settings")
+    ]);
 
     setSymbols(symbolData);
     setSignals(signalData.items);
+    setAlertSignals(alertData.items);
     setSettings(settingsData);
+
+    const alerts = alertData.items.filter(isAlertSignal);
+
+    if (seenSignalIdsRef.current === null) {
+      // 首次加载只建立基线，不弹历史提示
+      seenSignalIdsRef.current = new Set(
+        alerts.map((signal) => signal.id)
+      );
+      return;
+    }
+
+    const seen = seenSignalIdsRef.current;
+    const fresh = alerts.filter(
+      (signal) => !seen.has(signal.id)
+    );
+
+    if (fresh.length > 0) {
+      for (const signal of fresh) {
+        seen.add(signal.id);
+      }
+
+      setToasts((current) =>
+        [...current, ...fresh].slice(-4)
+      );
+    }
   }, []);
+
+  const latestAlertBySymbol = useMemo(() => {
+    const map = new Map<number, SignalItem>();
+
+    for (const signal of alertSignals) {
+      if (!isAlertSignal(signal)) {
+        continue;
+      }
+
+      if (!map.has(signal.symbol_id)) {
+        map.set(signal.symbol_id, signal);
+      }
+    }
+
+    return map;
+  }, [alertSignals]);
 
   const checkAuth = useCallback(async () => {
     try {
@@ -112,6 +171,18 @@ export default function HomePage() {
     };
   }, [authenticated, loadDashboard]);
 
+  useEffect(() => {
+    if (toasts.length === 0) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setToasts((current) => current.slice(1));
+    }, 10000);
+
+    return () => window.clearTimeout(timer);
+  }, [toasts]);
+
   async function handleLogin(
     username: string,
     password: string
@@ -142,6 +213,9 @@ export default function HomePage() {
       setAuthenticated(false);
       setSymbols([]);
       setSignals([]);
+      setAlertSignals([]);
+      setToasts([]);
+      seenSignalIdsRef.current = null;
     }
   }
 
@@ -325,6 +399,9 @@ export default function HomePage() {
               <SymbolCard
                 key={item.id}
                 item={item}
+                latestSignal={
+                  latestAlertBySymbol.get(item.id) ?? null
+                }
                 onToggle={(id, patch) =>
                   void toggleSymbol(id, patch)
                 }
@@ -362,6 +439,15 @@ export default function HomePage() {
         <br />
         仅提供行情监控与信号提醒，不执行自动交易
       </footer>
+
+      <SignalToasts
+        toasts={toasts}
+        onDismiss={(id) =>
+          setToasts((current) =>
+            current.filter((signal) => signal.id !== id)
+          )
+        }
+      />
 
       {modalOpen && (
         <SymbolModal

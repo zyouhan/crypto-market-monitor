@@ -13,6 +13,7 @@ export const signalsRouter: Router = Router();
 const EVENT_TYPES: SignalEventType[] = [
   "TREND_GOLDEN",
   "TREND_DEATH",
+  "TREND_INVALIDATED",
   "ENTRY_LONG",
   "ENTRY_SHORT"
 ];
@@ -65,6 +66,10 @@ signalsRouter.get("/", (req, res) => {
 
   const kindRaw = req.query.kind;
   const eventTypeRaw = req.query.event_type;
+  const triggeredRaw = req.query.triggered;
+
+  const triggeredOnly =
+    triggeredRaw === "1" || triggeredRaw === "true";
 
   if (kindRaw !== undefined && !isStrategyKind(kindRaw)) {
     res.status(400).json(failure("未知的策略类型"));
@@ -84,7 +89,8 @@ signalsRouter.get("/", (req, res) => {
     offset,
     symbol: symbol || undefined,
     kind: kindRaw as StrategyKind | undefined,
-    eventType: eventTypeRaw as SignalEventType | undefined
+    eventType: eventTypeRaw as SignalEventType | undefined,
+    triggeredOnly
   }).map((row) => ({
     ...row,
     payload: parseJsonObject(row.payload)

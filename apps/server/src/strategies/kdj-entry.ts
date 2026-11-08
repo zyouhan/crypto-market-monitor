@@ -21,22 +21,13 @@ import type {
 
 export function entryStatusForTrend(
   trend: TrendStatus,
-  params: KdjEntryParams,
-  alignment: boolean | null
+  params: KdjEntryParams
 ): EntryStatus {
-  if (
-    trend === "BULL_WAITING" &&
-    params.longEnabled &&
-    alignment === true
-  ) {
+  if (trend === "BULL_WAITING" && params.longEnabled) {
     return "ARMED_LONG";
   }
 
-  if (
-    trend === "BEAR_WAITING" &&
-    params.shortEnabled &&
-    alignment === false
-  ) {
+  if (trend === "BEAR_WAITING" && params.shortEnabled) {
     return "ARMED_SHORT";
   }
 
@@ -65,6 +56,7 @@ function buildEntrySignal(
         ? params.oversold
         : params.overbought,
     priceDiff: null,
+    emaDiff: null,
     triggerMet: true,
     reason: null,
     payload: {
@@ -90,11 +82,7 @@ function runKdjEntry(
 
   const trend = input.shared.trend;
 
-  const status = entryStatusForTrend(
-    trend,
-    params,
-    input.shared.alignment
-  );
+  const status = entryStatusForTrend(trend, params);
 
   // 预热：只记录最新 J 值，不产生历史入场信号
   if (input.warmup) {
@@ -105,6 +93,7 @@ function runKdjEntry(
         status,
         baselineType: null,
         baselinePrice: null,
+        baselineEma: null,
         baselineTime: null,
         extra: {
           k: last?.k ?? null,
@@ -151,11 +140,6 @@ function runKdjEntry(
       input.shared.trendByCloseTime.get(kline.closeTime) ??
       trend;
 
-    const alignment =
-      input.shared.alignmentByCloseTime.get(
-        kline.closeTime
-      ) ?? null;
-
     if (previousJ !== null) {
       const crossDown =
         previousJ >= params.oversold &&
@@ -168,7 +152,6 @@ function runKdjEntry(
       if (
         candleTrend === "BULL_WAITING" &&
         params.longEnabled &&
-        alignment === true &&
         crossDown
       ) {
         signals.push(
@@ -183,7 +166,6 @@ function runKdjEntry(
       } else if (
         candleTrend === "BEAR_WAITING" &&
         params.shortEnabled &&
-        alignment === false &&
         crossUp
       ) {
         signals.push(
@@ -202,11 +184,7 @@ function runKdjEntry(
 
     state = {
       ...state,
-      status: entryStatusForTrend(
-        candleTrend,
-        params,
-        alignment
-      ),
+      status: entryStatusForTrend(candleTrend, params),
       extra: {
         k: point.k,
         d: point.d,
@@ -219,11 +197,7 @@ function runKdjEntry(
   // 没有新 K 线时也同步等待方向
   state = {
     ...state,
-    status: entryStatusForTrend(
-      trend,
-      params,
-      input.shared.alignment
-    )
+    status: entryStatusForTrend(trend, params)
   };
 
   return { state, signals };

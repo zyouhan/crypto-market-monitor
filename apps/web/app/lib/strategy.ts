@@ -87,7 +87,8 @@ export type EmaAlignment = "BULL" | "BEAR" | null;
 /**
  * EMA 排列：快线在慢线上方为多头排列。
  *
- * 入场要求等待方向与排列一致，避免在上涨中反复提示做空。
+ * 仅用于页面展示，不参与入场判定；
+ * 入场是否有效由 EMA 交叉点距离与等待失效规则决定。
  */
 export function getEmaAlignment(
   item: SymbolItem

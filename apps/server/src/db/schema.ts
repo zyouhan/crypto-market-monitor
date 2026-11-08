@@ -1,15 +1,13 @@
 import type Database from "better-sqlite3";
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 /**
- * v2 表结构。
+ * v3 表结构。
  *
- * 与 v1 的差异：
- * - symbols 不再保存 EMA 参数与交叉状态，只保存标的、周期与运行进度；
- * - strategies 保存每个标的启用的策略与参数；
- * - strategy_states 保存各策略状态机状态；
- * - signals 取代 events，支持多指标、多类信号，唯一键加入 kind 与 event_type。
+ * 与 v2 的差异：
+ * - strategy_states 增加 baseline_ema（交叉点的慢线 EMA）；
+ * - signals 增加 ema_diff（交叉点 EMA 距离，趋势判定的真实依据）。
  */
 const SCHEMA_SQL = `
   CREATE TABLE IF NOT EXISTS symbols (
@@ -59,6 +57,7 @@ const SCHEMA_SQL = `
 
     baseline_type TEXT,
     baseline_price REAL,
+    baseline_ema REAL,
     baseline_time INTEGER,
 
     extra TEXT,
@@ -86,6 +85,7 @@ const SCHEMA_SQL = `
 
     threshold REAL,
     price_diff REAL,
+    ema_diff REAL,
     trigger_met INTEGER NOT NULL DEFAULT 0,
 
     push_state TEXT NOT NULL DEFAULT 'SKIPPED',
@@ -118,7 +118,39 @@ const SCHEMA_SQL = `
   );
 `;
 
+function hasColumn(
+  database: Database.Database,
+  table: string,
+  column: string
+): boolean {
+  const columns = database.pragma(
+    `table_info(${table})`
+  ) as Array<{ name: string }>;
+
+  return columns.some((item) => item.name === column);
+}
+
+/**
+ * v2 升级到 v3：原地补列，不重建表、不归档。
+ */
+function ensureV3Columns(database: Database.Database): void {
+  if (
+    !hasColumn(database, "strategy_states", "baseline_ema")
+  ) {
+    database.exec(
+      "ALTER TABLE strategy_states ADD COLUMN baseline_ema REAL"
+    );
+  }
+
+  if (!hasColumn(database, "signals", "ema_diff")) {
+    database.exec(
+      "ALTER TABLE signals ADD COLUMN ema_diff REAL"
+    );
+  }
+}
+
 export function applySchema(database: Database.Database): void {
   database.exec(SCHEMA_SQL);
+  ensureV3Columns(database);
   database.pragma(`user_version = ${SCHEMA_VERSION}`);
 }

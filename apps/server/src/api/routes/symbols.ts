@@ -179,6 +179,7 @@ function buildStateView(record: StrategyStateRecord) {
       ? {
           type: record.baseline_type,
           price: record.baseline_price,
+          ema: record.baseline_ema,
           time: record.baseline_time
         }
       : null,

@@ -283,6 +283,7 @@ export function upsertState(input: {
   status: string;
   baselineType: CrossType | null;
   baselinePrice: number | null;
+  baselineEma: number | null;
   baselineTime: number | null;
   extra: string;
 }): void {
@@ -293,14 +294,16 @@ export function upsertState(input: {
       status,
       baseline_type,
       baseline_price,
+      baseline_ema,
       baseline_time,
       extra,
       updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(symbol_id, kind) DO UPDATE SET
       status = excluded.status,
       baseline_type = excluded.baseline_type,
       baseline_price = excluded.baseline_price,
+      baseline_ema = excluded.baseline_ema,
       baseline_time = excluded.baseline_time,
       extra = excluded.extra,
       updated_at = excluded.updated_at
@@ -310,6 +313,7 @@ export function upsertState(input: {
     input.status,
     input.baselineType,
     input.baselinePrice,
+    input.baselineEma,
     input.baselineTime,
     input.extra,
     Date.now()
@@ -333,12 +337,13 @@ export function insertSignalIgnore(
       event_time,
       threshold,
       price_diff,
+      ema_diff,
       trigger_met,
       push_state,
       reason,
       payload,
       created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     input.symbol_id,
     input.symbol,
@@ -349,6 +354,7 @@ export function insertSignalIgnore(
     input.event_time,
     input.threshold,
     input.price_diff,
+    input.ema_diff,
     input.trigger_met,
     input.push_state,
     input.reason,
@@ -400,6 +406,7 @@ export function getSignals(filter: {
   symbol?: string;
   kind?: StrategyKind;
   eventType?: SignalEventType;
+  triggeredOnly?: boolean;
 }): SignalRecord[] {
   const conditions: string[] = [];
   const parameters: unknown[] = [];
@@ -417,6 +424,10 @@ export function getSignals(filter: {
   if (filter.eventType) {
     conditions.push("event_type = ?");
     parameters.push(filter.eventType);
+  }
+
+  if (filter.triggeredOnly) {
+    conditions.push("trigger_met = 1");
   }
 
   const where =

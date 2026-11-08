@@ -157,6 +157,27 @@ function initialStatus(kind: StrategyKind): string {
   return kind === "EMA_TREND" ? "NEUTRAL" : "IDLE";
 }
 
+/**
+ * v2 → v3：新增 baseline_ema / ema_diff 后，
+ * 旧状态没有 EMA 基准，无法继续比较。
+ * 清空状态并把处理进度归零，让 worker 用新字段静默重新预热。
+ * 不清空 signals 与标的/策略配置。
+ */
+function resetStatesAfterUpgrade(
+  database: Database.Database
+): void {
+  const now = Date.now();
+
+  database.prepare("DELETE FROM strategy_states").run();
+
+  database.prepare(`
+    UPDATE symbols
+    SET
+      last_processed_close_time = 0,
+      updated_at = ?
+  `).run(now);
+}
+
 function openDatabase(dbFile: string): Database.Database {
   fs.mkdirSync(path.dirname(dbFile), { recursive: true });
 
@@ -170,7 +191,8 @@ function openDatabase(dbFile: string): Database.Database {
     database.pragma("user_version", { simple: true }) || 0
   );
 
-  if (existedBefore && version < SCHEMA_VERSION) {
+  // 只有 v1 需要归档重建；v2 及以上原地升级
+  if (existedBefore && version < 2) {
     database.close();
 
     const archived = archiveLegacyDatabase(dbFile);
@@ -185,6 +207,14 @@ function openDatabase(dbFile: string): Database.Database {
   }
 
   applySchema(database);
+
+  if (version >= 2 && version < SCHEMA_VERSION) {
+    resetStatesAfterUpgrade(database);
+
+    console.log(
+      `[DB] 已升级到 v${SCHEMA_VERSION}，策略状态已重置，等待静默预热`
+    );
+  }
 
   seedDefaults(database);
 

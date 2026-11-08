@@ -94,6 +94,7 @@ function emptyState(kind: string): StrategyStateView {
     status: kind === "EMA_TREND" ? "NEUTRAL" : "IDLE",
     baselineType: null,
     baselinePrice: null,
+    baselineEma: null,
     baselineTime: null,
     extra: {}
   };
@@ -118,15 +119,20 @@ function describePayload(payload: Record<string, unknown> | null): string {
 }
 
 function printSignal(draft: SignalDraft): void {
-  const diff =
+  const emaDiff =
+    typeof draft.emaDiff === "number"
+      ? ` EMA距离=${draft.emaDiff.toFixed(4)}/${draft.threshold}`
+      : "";
+
+  const priceDiff =
     typeof draft.priceDiff === "number"
-      ? ` 价差=${draft.priceDiff.toFixed(4)}/${draft.threshold}`
+      ? ` 价差=${draft.priceDiff.toFixed(4)}`
       : "";
 
   console.log(
     `[信号] ${formatTime(draft.eventTime)} ${draft.kind} ${
       draft.eventType
-    } ${draft.direction ?? "-"} 价格=${draft.price}${diff}${describePayload(
+    } ${draft.direction ?? "-"} 价格=${draft.price}${emaDiff}${priceDiff}${describePayload(
       draft.payload
     )}${draft.triggerMet ? "" : "（未达阈值）"}`
   );
@@ -158,9 +164,7 @@ async function main(): Promise<void> {
 
   const shared: SharedContext = {
     trend: "NEUTRAL",
-    trendByCloseTime: new Map(),
-    alignment: null,
-    alignmentByCloseTime: new Map()
+    trendByCloseTime: new Map()
   };
 
   console.log(
@@ -188,7 +192,9 @@ async function main(): Promise<void> {
     console.log(
       `[预热] ${kind} 状态=${result.state.status} 基准=${JSON.stringify(
         result.state.baselineType
-      )} 额外=${JSON.stringify(result.state.extra)}`
+      )} 基准EMA=${result.state.baselineEma} 额外=${JSON.stringify(
+        result.state.extra
+      )}`
     );
   }
 
