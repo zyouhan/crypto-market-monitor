@@ -146,6 +146,47 @@ export function buildSignalMessage(
 
   const isLong = signal.event_type === "ENTRY_LONG";
 
+  if (signal.kind === "KDJ_TIMING") {
+    const j = asNumber(payload.j);
+    const previousJ = asNumber(payload.previousJ);
+    const k = asNumber(payload.k);
+    const d = asNumber(payload.d);
+    const threshold = isLong
+      ? asNumber(payload.oversold)
+      : asNumber(payload.overbought);
+
+    const condition = isLong
+      ? `J ${formatNumber(j, 2)} < ${formatNumber(
+          threshold,
+          2
+        )}`
+      : `J ${formatNumber(j, 2)} > ${formatNumber(
+          threshold,
+          2
+        )}`;
+
+    return {
+      title: `[简易J] ${signal.symbol} ${
+        isLong ? "超卖做多" : "超买做空"
+      }提示`,
+      description: [
+        `交易标的：${signal.symbol}`,
+        `K 线周期：${interval}`,
+        `信号类型：简易 J 值${
+          isLong ? "超卖做多" : "超买做空"
+        }提示`,
+        `触发条件：${condition}（前值 ${formatNumber(
+          previousJ,
+          2
+        )}）`,
+        `K / D：${formatNumber(k, 2)} / ${formatNumber(d, 2)}`,
+        `触发价格：${formatNumber(signal.price)}`,
+        `触发时间：${formatTime(signal.event_time)}`,
+        "策略说明：固定 KDJ 9/3/3，仅监控 J 值穿越阈值，不参考 EMA 趋势"
+      ].join("\n\n")
+    };
+  }
+
   const title = `[入场] ${signal.symbol} KDJ ${
     isLong ? "做多" : "做空"
   }信号`;

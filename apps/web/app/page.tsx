@@ -213,13 +213,13 @@ export default function HomePage() {
 
     void refresh();
 
-    // 页面隐藏时暂停轮询，回到前台立即刷新一次
+    // 后台标签页也必须继续轮询，否则切走后不会发现新信号、也不会响铃。
+    // 浏览器会节流后台定时器（通常最低 1 分钟），但不会完全停止。
     const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") {
-        void refresh();
-      }
+      void refresh();
     }, 15000);
 
+    // 回到前台立即补一次刷新
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         void refresh();
@@ -481,7 +481,7 @@ export default function HomePage() {
           <div>
             <div className="panel-title">监控标的</div>
             <div className="panel-subtitle">
-              每个标的独立配置 EMA 趋势参数与 KDJ 入场参数
+              每个标的独立配置 EMA 趋势、KDJ 入场与简易 J 值监控
             </div>
           </div>
 

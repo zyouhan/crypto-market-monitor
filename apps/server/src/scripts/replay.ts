@@ -156,7 +156,11 @@ async function main(): Promise<void> {
 
   const klineLimit = getKlineLimit();
 
-  const kinds = ["EMA_TREND", "KDJ_ENTRY"] as const;
+  const kinds = [
+    "EMA_TREND",
+    "KDJ_ENTRY",
+    "KDJ_TIMING"
+  ] as const;
 
   const states = new Map<string, StrategyStateView>(
     kinds.map((kind) => [kind, emptyState(kind)])
@@ -230,6 +234,8 @@ async function main(): Promise<void> {
   console.log(
     `[完成] 趋势=${states.get("EMA_TREND")?.status} 入场=${states.get(
       "KDJ_ENTRY"
+    )?.status} 简易J=${states.get(
+      "KDJ_TIMING"
     )?.status} 陈旧阈值=${STALE_CANDLES} 个周期`
   );
 }

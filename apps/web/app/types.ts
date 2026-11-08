@@ -1,4 +1,7 @@
-export type StrategyKind = "EMA_TREND" | "KDJ_ENTRY";
+export type StrategyKind =
+  | "EMA_TREND"
+  | "KDJ_ENTRY"
+  | "KDJ_TIMING";
 
 export type SignalEventType =
   | "TREND_GOLDEN"
@@ -17,6 +20,13 @@ export interface KdjParams {
   period: number;
   kSmooth: number;
   dSmooth: number;
+  oversold: number;
+  overbought: number;
+  longEnabled: boolean;
+  shortEnabled: boolean;
+}
+
+export interface KdjTimingParams {
   oversold: number;
   overbought: number;
   longEnabled: boolean;
@@ -58,6 +68,7 @@ export interface SignalItem {
   id: number;
   symbol_id: number;
   symbol: string;
+  interval: string | null;
   kind: StrategyKind;
   event_type: SignalEventType;
   direction: "BULL" | "BEAR" | null;

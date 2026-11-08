@@ -2,6 +2,7 @@ import type { StrategyKind } from "../db/types";
 
 import { emaTrendRunner } from "./ema-trend";
 import { kdjEntryRunner } from "./kdj-entry";
+import { kdjTimingRunner } from "./kdj-timing";
 import type { StrategyRunner } from "./types";
 
 /**
@@ -17,7 +18,8 @@ export const STRATEGY_RUNNERS: Record<
   StrategyRunner
 > = {
   EMA_TREND: emaTrendRunner,
-  KDJ_ENTRY: kdjEntryRunner
+  KDJ_ENTRY: kdjEntryRunner,
+  KDJ_TIMING: kdjTimingRunner
 };
 
 export const STRATEGY_KINDS = Object.keys(

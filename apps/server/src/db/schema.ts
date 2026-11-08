@@ -1,13 +1,12 @@
 import type Database from "better-sqlite3";
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 /**
- * v3 表结构。
+ * v4 表结构。
  *
- * 与 v2 的差异：
- * - strategy_states 增加 baseline_ema（交叉点的慢线 EMA）；
- * - signals 增加 ema_diff（交叉点 EMA 距离，趋势判定的真实依据）。
+ * 与 v3 的差异：
+ * - signals 增加 interval，记录信号触发时所属标的的 K 线周期。
  */
 const SCHEMA_SQL = `
   CREATE TABLE IF NOT EXISTS symbols (
@@ -75,6 +74,7 @@ const SCHEMA_SQL = `
 
     symbol_id INTEGER NOT NULL,
     symbol TEXT NOT NULL,
+    interval TEXT,
 
     kind TEXT NOT NULL,
     event_type TEXT NOT NULL,
@@ -149,8 +149,30 @@ function ensureV3Columns(database: Database.Database): void {
   }
 }
 
+/**
+ * v3 升级到 v4：给历史信号补 K 线周期，不重建表。
+ */
+function ensureV4Columns(database: Database.Database): void {
+  if (!hasColumn(database, "signals", "interval")) {
+    database.exec(
+      "ALTER TABLE signals ADD COLUMN interval TEXT"
+    );
+  }
+
+  database.exec(`
+    UPDATE signals
+    SET interval = (
+      SELECT symbols.interval
+      FROM symbols
+      WHERE symbols.id = signals.symbol_id
+    )
+    WHERE interval IS NULL
+  `);
+}
+
 export function applySchema(database: Database.Database): void {
   database.exec(SCHEMA_SQL);
   ensureV3Columns(database);
+  ensureV4Columns(database);
   database.pragma(`user_version = ${SCHEMA_VERSION}`);
 }

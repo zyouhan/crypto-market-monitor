@@ -393,6 +393,7 @@ function toSignalRecord(
   return {
     symbol_id: symbol.id,
     symbol: symbol.symbol,
+    interval: symbol.interval,
     kind: draft.kind,
     event_type: draft.eventType,
     direction: draft.direction,

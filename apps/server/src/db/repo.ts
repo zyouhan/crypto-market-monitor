@@ -330,6 +330,7 @@ export function insertSignalIgnore(
     INSERT OR IGNORE INTO signals (
       symbol_id,
       symbol,
+      interval,
       kind,
       event_type,
       direction,
@@ -343,10 +344,11 @@ export function insertSignalIgnore(
       reason,
       payload,
       created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     input.symbol_id,
     input.symbol,
+    input.interval,
     input.kind,
     input.event_type,
     input.direction,

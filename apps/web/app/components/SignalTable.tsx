@@ -95,6 +95,7 @@ export function SignalTable({
           <option value="ALL">全部指标</option>
           <option value="EMA_TREND">EMA 趋势</option>
           <option value="KDJ_ENTRY">KDJ 入场</option>
+          <option value="KDJ_TIMING">简易 J 值</option>
         </select>
 
         <select
@@ -121,6 +122,7 @@ export function SignalTable({
               <tr>
                 <th>时间</th>
                 <th>标的</th>
+                <th>K 线</th>
                 <th>指标</th>
                 <th>类型</th>
                 <th>方向</th>
@@ -139,6 +141,7 @@ export function SignalTable({
                   <tr key={signal.id}>
                     <td>{formatTime(signal.event_time)}</td>
                     <td>{signal.symbol}</td>
+                    <td>{signal.interval ?? "--"}</td>
                     <td>{kindLabel(signal.kind)}</td>
                     <td
                       className={

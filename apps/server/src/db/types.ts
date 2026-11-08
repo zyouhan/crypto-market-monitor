@@ -4,7 +4,10 @@ export type TrendStatus = "NEUTRAL" | "BULL_WAITING" | "BEAR_WAITING";
 
 export type EntryStatus = "IDLE" | "ARMED_LONG" | "ARMED_SHORT";
 
-export type StrategyKind = "EMA_TREND" | "KDJ_ENTRY";
+export type StrategyKind =
+  | "EMA_TREND"
+  | "KDJ_ENTRY"
+  | "KDJ_TIMING";
 
 export type SignalEventType =
   | "TREND_GOLDEN"
@@ -58,6 +61,7 @@ export interface SignalRecord {
   id: number;
   symbol_id: number;
   symbol: string;
+  interval: string | null;
   kind: StrategyKind;
   event_type: SignalEventType;
   direction: SignalDirection | null;
@@ -77,6 +81,7 @@ export interface SignalRecord {
 export interface NewSignalRecord {
   symbol_id: number;
   symbol: string;
+  interval: string;
   kind: StrategyKind;
   event_type: SignalEventType;
   direction: SignalDirection | null;

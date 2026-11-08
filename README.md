@@ -86,12 +86,22 @@ crypto-market-monitor/
 
 - 轮询发现新触发信号时，右下角弹出提示卡片（10 秒自动消失，可手动关闭）；
 - 每个标的卡片显示该标的最近一条触发信号；
-- 可在「声音提醒设置」中开启浏览器提示音，并分别选择入场信号与金叉/死叉信号；
+- 可在「声音提醒设置」中开启浏览器提示音，并分别选择入场信号与金叉/死叉信号；保持标签页打开时切到后台也会继续轮询并响铃；
 - 监控标的区域提供「立即请求数据」按钮，可跳过轮询节拍强制拉取一次。
 
 每次有效上穿/下穿各提醒一次；同一等待周期内可反复触发。
 
-### 3. 通知闸门
+### 3. 简易 J 值入场（`KDJ_TIMING`）
+
+只监控 J 值极值，不参考 EMA 趋势，适合作为独立的入场时机提醒：
+
+- KDJ 参数固定为 `9 / 3 / 3`，不开放周期与平滑参数；
+- J 从 `≥ oversold` 下穿到 `< oversold` → `ENTRY_LONG`
+- J 从 `≤ overbought` 上穿到 `> overbought` → `ENTRY_SHORT`
+- 可只监控超卖做多、只监控超买做空，或两者同时监控；
+- 与 `KDJ_ENTRY` 的区别：不要求趋势为 `BULL_WAITING` / `BEAR_WAITING`，只产生入场提示。
+
+### 4. 通知闸门
 
 顺序：新鲜度（`now - 2 × 周期` 内）→ 全局开关 → 标的开关 → 策略开关 → SendKey 是否配置 → 发送。
 
@@ -101,6 +111,7 @@ crypto-market-monitor/
 |---|---|
 | EMA_TREND | fast=25, slow=60, threshold=10 |
 | KDJ_ENTRY | period=9, kSmooth=3, dSmooth=3, oversold=5, overbought=85，多空均开启 |
+| KDJ_TIMING | 固定 KDJ 9/3/3，oversold=5, overbought=85，多空均开启 |
 
 默认标的：`ETHUSDT`、`BTCUSDT`（均为 1m）。
 
@@ -122,11 +133,12 @@ crypto-market-monitor/
 ## 数据库
 
 - 核心表：`symbols`、`strategies`、`strategy_states`、`signals`、`settings`。
-- `PRAGMA user_version` 标记结构版本（当前 3）。
+- `PRAGMA user_version` 标记结构版本（当前 4）。
 - v1 旧库：启动时整体移动到 `data/archive/v1-<时间戳>/` 后重建。
 - v2 → v3：原地 `ALTER TABLE` 补 `baseline_ema` / `ema_diff`，随后清空策略状态并把处理进度归零（静默重新预热）；**历史信号与标的配置保留**。
+- v3 → v4：原地给 `signals` 补 `interval`，并按标的当前周期回填历史信号；不重置策略状态。
 - 信号唯一键：`(symbol_id, kind, event_type, event_time)`，重复处理不会重复写库。
-- 旧版趋势信号的 `ema_diff` 为 `NULL`，页面显示 `--`。
+- 旧版趋势信号的 `ema_diff` 为 `NULL`，页面显示 `--`；无法回填周期的旧信号显示 `--`。
 
 ## 开发
 

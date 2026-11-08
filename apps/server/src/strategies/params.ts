@@ -14,7 +14,24 @@ export interface KdjEntryParams {
   shortEnabled: boolean;
 }
 
-export type StrategyParams = EmaTrendParams | KdjEntryParams;
+/**
+ * 简易 J 值入场：固定 KDJ 9/3/3，只看 J 值穿越阈值，不参考 EMA 趋势。
+ */
+export interface KdjTimingParams {
+  oversold: number;
+  overbought: number;
+  longEnabled: boolean;
+  shortEnabled: boolean;
+}
+
+export type StrategyParams =
+  | EmaTrendParams
+  | KdjEntryParams
+  | KdjTimingParams;
+
+export const KDJ_TIMING_PERIOD = 9;
+export const KDJ_TIMING_K_SMOOTH = 3;
+export const KDJ_TIMING_D_SMOOTH = 3;
 
 export const DEFAULT_EMA_PARAMS: EmaTrendParams = {
   fast: 25,
@@ -26,6 +43,13 @@ export const DEFAULT_KDJ_PARAMS: KdjEntryParams = {
   period: 9,
   kSmooth: 3,
   dSmooth: 3,
+  oversold: 5,
+  overbought: 85,
+  longEnabled: true,
+  shortEnabled: true
+};
+
+export const DEFAULT_KDJ_TIMING_PARAMS: KdjTimingParams = {
   oversold: 5,
   overbought: 85,
   longEnabled: true,
@@ -232,6 +256,77 @@ export function normalizeKdjParams(
     period,
     kSmooth,
     dSmooth,
+    oversold,
+    overbought,
+    longEnabled,
+    shortEnabled
+  };
+}
+
+/**
+ * 校验并补全简易 J 值入场参数。
+ *
+ * 固定 KDJ 9/3/3，不接收 period / kSmooth / dSmooth。
+ */
+export function normalizeKdjTimingParams(
+  input: unknown,
+  klineLimit: number
+): KdjTimingParams {
+  if (input !== undefined && input !== null && !isPlainObject(input)) {
+    throw new ParamValidationError("简易 J 值参数必须为对象");
+  }
+
+  const raw = isPlainObject(input) ? input : {};
+
+  const oversold = readNumber(
+    raw.oversold,
+    DEFAULT_KDJ_TIMING_PARAMS.oversold,
+    "J 超卖阈值"
+  );
+
+  const overbought = readNumber(
+    raw.overbought,
+    DEFAULT_KDJ_TIMING_PARAMS.overbought,
+    "J 超买阈值"
+  );
+
+  const longEnabled = readBoolean(
+    raw.longEnabled,
+    DEFAULT_KDJ_TIMING_PARAMS.longEnabled,
+    "做多开关"
+  );
+
+  const shortEnabled = readBoolean(
+    raw.shortEnabled,
+    DEFAULT_KDJ_TIMING_PARAMS.shortEnabled,
+    "做空开关"
+  );
+
+  if (KDJ_TIMING_PERIOD > klineLimit) {
+    throw new ParamValidationError(
+      `简易 J 值固定周期 ${KDJ_TIMING_PERIOD} 超过 K 线获取数量（${klineLimit}）`
+    );
+  }
+
+  if (oversold < 0 || oversold > 50) {
+    throw new ParamValidationError(
+      "J 超卖阈值必须在 0 到 50 之间"
+    );
+  }
+
+  if (overbought < 50 || overbought > 100) {
+    throw new ParamValidationError(
+      "J 超买阈值必须在 50 到 100 之间"
+    );
+  }
+
+  if (oversold >= overbought) {
+    throw new ParamValidationError(
+      "J 超卖阈值必须小于超买阈值"
+    );
+  }
+
+  return {
     oversold,
     overbought,
     longEnabled,

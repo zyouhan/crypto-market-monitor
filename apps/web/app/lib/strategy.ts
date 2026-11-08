@@ -1,6 +1,7 @@
 import type {
   EmaParams,
   KdjParams,
+  KdjTimingParams,
   StrategyItem,
   SymbolItem
 } from "../types";
@@ -21,12 +22,24 @@ export const DEFAULT_KDJ: KdjParams = {
   shortEnabled: true
 };
 
+export const DEFAULT_KDJ_TIMING: KdjTimingParams = {
+  oversold: 5,
+  overbought: 85,
+  longEnabled: true,
+  shortEnabled: true
+};
+
 export interface EmaConfig extends EmaParams {
   enabled: boolean;
   notify: boolean;
 }
 
 export interface KdjConfig extends KdjParams {
+  enabled: boolean;
+  notify: boolean;
+}
+
+export interface KdjTimingConfig extends KdjTimingParams {
   enabled: boolean;
   notify: boolean;
 }
@@ -68,6 +81,28 @@ export function getKdjConfig(item: SymbolItem): KdjConfig {
     overbought: numberOr(
       params.overbought,
       DEFAULT_KDJ.overbought
+    ),
+    longEnabled: params.longEnabled !== false,
+    shortEnabled: params.shortEnabled !== false,
+    enabled: (strategy?.enabled ?? 0) === 1,
+    notify: (strategy?.notify_enabled ?? 0) === 1
+  };
+}
+
+export function getKdjTimingConfig(
+  item: SymbolItem
+): KdjTimingConfig {
+  const strategy = findStrategy(item, "KDJ_TIMING");
+  const params = strategy?.params ?? {};
+
+  return {
+    oversold: numberOr(
+      params.oversold,
+      DEFAULT_KDJ_TIMING.oversold
+    ),
+    overbought: numberOr(
+      params.overbought,
+      DEFAULT_KDJ_TIMING.overbought
     ),
     longEnabled: params.longEnabled !== false,
     shortEnabled: params.shortEnabled !== false,

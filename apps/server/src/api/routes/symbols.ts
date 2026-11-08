@@ -32,6 +32,7 @@ import {
   ParamValidationError,
   normalizeEmaParams,
   normalizeKdjParams,
+  normalizeKdjTimingParams,
   type StrategyParams
 } from "../../strategies/params";
 import { getRunner, isStrategyKind } from "../../strategies/registry";
@@ -101,9 +102,15 @@ function normalizeByKind(
   params: unknown,
   klineLimit: number
 ): StrategyParams {
-  return kind === "EMA_TREND"
-    ? normalizeEmaParams(params, klineLimit)
-    : normalizeKdjParams(params, klineLimit);
+  if (kind === "EMA_TREND") {
+    return normalizeEmaParams(params, klineLimit);
+  }
+
+  if (kind === "KDJ_TIMING") {
+    return normalizeKdjTimingParams(params, klineLimit);
+  }
+
+  return normalizeKdjParams(params, klineLimit);
 }
 
 function parseStrategyList(

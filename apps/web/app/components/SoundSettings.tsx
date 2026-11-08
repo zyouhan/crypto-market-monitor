@@ -120,7 +120,7 @@ export function SoundSettings({
       </div>
 
       <div className="panel-subtitle sound-hint">
-        仅对页面轮询到的新信号生效；浏览器限制自动播放，首次使用请点击“试听”或开关解锁声音。
+        保持本页标签打开即可在后台响铃（可切到其他标签或窗口）；完全关闭页面后无法播放。浏览器限制自动播放，首次使用请点击“试听”或开关解锁声音。
       </div>
     </section>
   );

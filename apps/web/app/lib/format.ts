@@ -118,6 +118,10 @@ export function kindLabel(kind: string): string {
     return "KDJ 入场";
   }
 
+  if (kind === "KDJ_TIMING") {
+    return "简易 J 值";
+  }
+
   return kind;
 }
 

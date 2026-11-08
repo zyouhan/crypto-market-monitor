@@ -208,11 +208,17 @@ function openDatabase(dbFile: string): Database.Database {
 
   applySchema(database);
 
-  if (version >= 2 && version < SCHEMA_VERSION) {
+  if (version >= 2 && version < 3) {
     resetStatesAfterUpgrade(database);
 
     console.log(
-      `[DB] 已升级到 v${SCHEMA_VERSION}，策略状态已重置，等待静默预热`
+      "[DB] v3 升级：策略状态已重置，等待静默预热"
+    );
+  }
+
+  if (version > 0 && version < SCHEMA_VERSION) {
+    console.log(
+      `[DB] 数据库结构已从 v${version} 升级到 v${SCHEMA_VERSION}`
     );
   }
 

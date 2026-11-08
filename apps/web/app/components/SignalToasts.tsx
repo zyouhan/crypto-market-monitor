@@ -41,6 +41,9 @@ export function SignalToasts({
             <div className="toast-head">
               <strong>
                 {signal.symbol} ·{" "}
+                {signal.kind === "KDJ_TIMING"
+                  ? "简易J · "
+                  : ""}
                 {eventTypeLabel(signal.event_type)}
               </strong>
 

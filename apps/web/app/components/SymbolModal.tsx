@@ -8,8 +8,10 @@ import {
 import {
   DEFAULT_EMA,
   DEFAULT_KDJ,
+  DEFAULT_KDJ_TIMING,
   getEmaConfig,
-  getKdjConfig
+  getKdjConfig,
+  getKdjTimingConfig
 } from "../lib/strategy";
 import type {
   SaveSymbolPayload,
@@ -59,11 +61,18 @@ interface FormState {
   overbought: number;
   longEnabled: boolean;
   shortEnabled: boolean;
+  timingEnabled: boolean;
+  timingNotify: boolean;
+  timingOversold: number;
+  timingOverbought: number;
+  timingLongEnabled: boolean;
+  timingShortEnabled: boolean;
 }
 
 function initialState(item: SymbolItem | null): FormState {
   const ema = item ? getEmaConfig(item) : null;
   const kdj = item ? getKdjConfig(item) : null;
+  const timing = item ? getKdjTimingConfig(item) : null;
 
   return {
     symbol: item?.symbol ?? "",
@@ -81,7 +90,17 @@ function initialState(item: SymbolItem | null): FormState {
     oversold: kdj ? kdj.oversold : DEFAULT_KDJ.oversold,
     overbought: kdj ? kdj.overbought : DEFAULT_KDJ.overbought,
     longEnabled: kdj ? kdj.longEnabled : true,
-    shortEnabled: kdj ? kdj.shortEnabled : true
+    shortEnabled: kdj ? kdj.shortEnabled : true,
+    timingEnabled: timing ? timing.enabled : false,
+    timingNotify: timing ? timing.notify : true,
+    timingOversold: timing
+      ? timing.oversold
+      : DEFAULT_KDJ_TIMING.oversold,
+    timingOverbought: timing
+      ? timing.overbought
+      : DEFAULT_KDJ_TIMING.overbought,
+    timingLongEnabled: timing ? timing.longEnabled : true,
+    timingShortEnabled: timing ? timing.shortEnabled : true
   };
 }
 
@@ -129,35 +148,72 @@ export function SymbolModal({
       return;
     }
 
+    if (form.timingEnabled) {
+      if (form.timingOversold >= form.timingOverbought) {
+        setLocalError("简易监控的 J 超卖阈值必须小于超买阈值");
+        return;
+      }
+
+      if (
+        !form.timingLongEnabled &&
+        !form.timingShortEnabled
+      ) {
+        setLocalError("简易监控至少选择一个监控方向");
+        return;
+      }
+    }
+
+    const strategies: SaveSymbolPayload["strategies"] = [
+      {
+        kind: "EMA_TREND",
+        enabled: form.emaEnabled,
+        notify_enabled: form.emaNotify,
+        params: {
+          fast: Number(form.fast),
+          slow: Number(form.slow),
+          threshold: Number(form.threshold)
+        }
+      },
+      {
+        kind: "KDJ_ENTRY",
+        enabled: form.kdjEnabled,
+        notify_enabled: form.kdjNotify,
+        params: {
+          period: Number(form.period),
+          kSmooth: Number(form.kSmooth),
+          dSmooth: Number(form.dSmooth),
+          oversold: Number(form.oversold),
+          overbought: Number(form.overbought),
+          longEnabled: form.longEnabled,
+          shortEnabled: form.shortEnabled
+        }
+      }
+    ];
+
+    // 已有简易策略或本次启用时才写入，避免编辑旧标的时无谓重置状态
+    const hasTimingStrategy =
+      item?.strategies.some(
+        (strategy) => strategy.kind === "KDJ_TIMING"
+      ) ?? false;
+
+    if (form.timingEnabled || hasTimingStrategy) {
+      strategies.push({
+        kind: "KDJ_TIMING",
+        enabled: form.timingEnabled,
+        notify_enabled: form.timingNotify,
+        params: {
+          oversold: Number(form.timingOversold),
+          overbought: Number(form.timingOverbought),
+          longEnabled: form.timingLongEnabled,
+          shortEnabled: form.timingShortEnabled
+        }
+      });
+    }
+
     const payload: SaveSymbolPayload = {
       symbol,
       interval: form.interval,
-      strategies: [
-        {
-          kind: "EMA_TREND",
-          enabled: form.emaEnabled,
-          notify_enabled: form.emaNotify,
-          params: {
-            fast: Number(form.fast),
-            slow: Number(form.slow),
-            threshold: Number(form.threshold)
-          }
-        },
-        {
-          kind: "KDJ_ENTRY",
-          enabled: form.kdjEnabled,
-          notify_enabled: form.kdjNotify,
-          params: {
-            period: Number(form.period),
-            kSmooth: Number(form.kSmooth),
-            dSmooth: Number(form.dSmooth),
-            oversold: Number(form.oversold),
-            overbought: Number(form.overbought),
-            longEnabled: form.longEnabled,
-            shortEnabled: form.shortEnabled
-          }
-        }
-      ]
+      strategies
     };
 
     try {
@@ -222,11 +278,18 @@ export function SymbolModal({
         </div>
 
         <div className="strategy-block">
-          <div className="strategy-title">
-            <span>EMA 趋势（定方向）</span>
+          <div className="strategy-head">
+            <div className="strategy-heading">
+              <div className="strategy-title">
+                EMA 趋势（定方向）
+              </div>
+              <div className="strategy-desc">
+                快慢线交叉，且 EMA 距离超过阈值后确认趋势
+              </div>
+            </div>
 
-            <span className="strategy-toggles">
-              <label className="switch-row">
+            <div className="strategy-switches">
+              <label className="switch-chip">
                 <input
                   type="checkbox"
                   checked={form.emaEnabled}
@@ -237,10 +300,10 @@ export function SymbolModal({
                     )
                   }
                 />
-                启用
+                启用策略
               </label>
 
-              <label className="switch-row">
+              <label className="switch-chip">
                 <input
                   type="checkbox"
                   checked={form.emaNotify}
@@ -251,63 +314,78 @@ export function SymbolModal({
                     )
                   }
                 />
-                通知
+                微信通知
               </label>
-            </span>
+            </div>
           </div>
 
-          <div className="form-grid three">
-            <div className="form-field">
-              <label>快线 EMA</label>
-              <input
-                type="number"
-                min="2"
-                value={form.fast}
-                onChange={(event) =>
-                  setField("fast", Number(event.target.value))
-                }
-                required
-              />
-            </div>
+          <div className="strategy-body">
+            <div className="form-grid three">
+              <div className="form-field">
+                <label>快线 EMA</label>
+                <input
+                  type="number"
+                  min="2"
+                  value={form.fast}
+                  onChange={(event) =>
+                    setField(
+                      "fast",
+                      Number(event.target.value)
+                    )
+                  }
+                  required
+                />
+              </div>
 
-            <div className="form-field">
-              <label>慢线 EMA</label>
-              <input
-                type="number"
-                min="3"
-                value={form.slow}
-                onChange={(event) =>
-                  setField("slow", Number(event.target.value))
-                }
-                required
-              />
-            </div>
+              <div className="form-field">
+                <label>慢线 EMA</label>
+                <input
+                  type="number"
+                  min="3"
+                  value={form.slow}
+                  onChange={(event) =>
+                    setField(
+                      "slow",
+                      Number(event.target.value)
+                    )
+                  }
+                  required
+                />
+              </div>
 
-            <div className="form-field">
-              <label>EMA 距离阈值</label>
-              <input
-                type="number"
-                min="0"
-                step="any"
-                value={form.threshold}
-                onChange={(event) =>
-                  setField(
-                    "threshold",
-                    Number(event.target.value)
-                  )
-                }
-                required
-              />
+              <div className="form-field">
+                <label>EMA 距离阈值</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={form.threshold}
+                  onChange={(event) =>
+                    setField(
+                      "threshold",
+                      Number(event.target.value)
+                    )
+                  }
+                  required
+                />
+              </div>
             </div>
           </div>
         </div>
 
         <div className="strategy-block">
-          <div className="strategy-title">
-            <span>KDJ 入场（找时机）</span>
+          <div className="strategy-head">
+            <div className="strategy-heading">
+              <div className="strategy-title">
+                KDJ 入场（找时机）
+              </div>
+              <div className="strategy-desc">
+                趋势等待中，J 值穿越超卖或超买阈值后提示入场
+              </div>
+            </div>
 
-            <span className="strategy-toggles">
-              <label className="switch-row">
+            <div className="strategy-switches">
+              <label className="switch-chip">
                 <input
                   type="checkbox"
                   checked={form.kdjEnabled}
@@ -318,10 +396,10 @@ export function SymbolModal({
                     )
                   }
                 />
-                启用
+                启用策略
               </label>
 
-              <label className="switch-row">
+              <label className="switch-chip">
                 <input
                   type="checkbox"
                   checked={form.kdjNotify}
@@ -332,102 +410,109 @@ export function SymbolModal({
                     )
                   }
                 />
-                通知
+                微信通知
               </label>
-            </span>
+            </div>
           </div>
 
-          <div className="form-grid three">
-            <div className="form-field">
-              <label>KDJ 周期</label>
-              <input
-                type="number"
-                min="2"
-                value={form.period}
-                onChange={(event) =>
-                  setField(
-                    "period",
-                    Number(event.target.value)
-                  )
-                }
-                required
-              />
+          <div className="strategy-body">
+            <div className="form-grid three">
+              <div className="form-field">
+                <label>KDJ 周期</label>
+                <input
+                  type="number"
+                  min="2"
+                  value={form.period}
+                  onChange={(event) =>
+                    setField(
+                      "period",
+                      Number(event.target.value)
+                    )
+                  }
+                  required
+                />
+              </div>
+
+              <div className="form-field">
+                <label>K 平滑</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={form.kSmooth}
+                  onChange={(event) =>
+                    setField(
+                      "kSmooth",
+                      Number(event.target.value)
+                    )
+                  }
+                  required
+                />
+              </div>
+
+              <div className="form-field">
+                <label>D 平滑</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={form.dSmooth}
+                  onChange={(event) =>
+                    setField(
+                      "dSmooth",
+                      Number(event.target.value)
+                    )
+                  }
+                  required
+                />
+              </div>
             </div>
 
-            <div className="form-field">
-              <label>K 平滑</label>
-              <input
-                type="number"
-                min="1"
-                max="20"
-                value={form.kSmooth}
-                onChange={(event) =>
-                  setField(
-                    "kSmooth",
-                    Number(event.target.value)
-                  )
-                }
-                required
-              />
+            <div className="form-grid">
+              <div className="form-field">
+                <label>超卖阈值（做多）</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="50"
+                  step="any"
+                  value={form.oversold}
+                  onChange={(event) =>
+                    setField(
+                      "oversold",
+                      Number(event.target.value)
+                    )
+                  }
+                  required
+                />
+              </div>
+
+              <div className="form-field">
+                <label>超买阈值（做空）</label>
+                <input
+                  type="number"
+                  min="50"
+                  max="100"
+                  step="any"
+                  value={form.overbought}
+                  onChange={(event) =>
+                    setField(
+                      "overbought",
+                      Number(event.target.value)
+                    )
+                  }
+                  required
+                />
+              </div>
             </div>
 
-            <div className="form-field">
-              <label>D 平滑</label>
-              <input
-                type="number"
-                min="1"
-                max="20"
-                value={form.dSmooth}
-                onChange={(event) =>
-                  setField(
-                    "dSmooth",
-                    Number(event.target.value)
-                  )
-                }
-                required
-              />
-            </div>
+            <div className="direction-row">
+              <span className="direction-row-label">
+                入场方向
+              </span>
 
-            <div className="form-field">
-              <label>超卖阈值（做多）</label>
-              <input
-                type="number"
-                min="0"
-                max="50"
-                step="any"
-                value={form.oversold}
-                onChange={(event) =>
-                  setField(
-                    "oversold",
-                    Number(event.target.value)
-                  )
-                }
-                required
-              />
-            </div>
-
-            <div className="form-field">
-              <label>超买阈值（做空）</label>
-              <input
-                type="number"
-                min="50"
-                max="100"
-                step="any"
-                value={form.overbought}
-                onChange={(event) =>
-                  setField(
-                    "overbought",
-                    Number(event.target.value)
-                  )
-                }
-                required
-              />
-            </div>
-
-            <div className="form-field">
-              <label>方向</label>
-              <div className="checkbox-group">
-                <label className="switch-row">
+              <div className="direction-options">
+                <label className="switch-chip">
                   <input
                     type="checkbox"
                     checked={form.longEnabled}
@@ -438,10 +523,10 @@ export function SymbolModal({
                       )
                     }
                   />
-                  做多
+                  超卖做多
                 </label>
 
-                <label className="switch-row">
+                <label className="switch-chip">
                   <input
                     type="checkbox"
                     checked={form.shortEnabled}
@@ -452,7 +537,127 @@ export function SymbolModal({
                       )
                     }
                   />
-                  做空
+                  超买做空
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="strategy-block">
+          <div className="strategy-head">
+            <div className="strategy-heading">
+              <div className="strategy-title">
+                简易 J 值入场（不看趋势）
+              </div>
+              <div className="strategy-desc">
+                固定 KDJ 9/3/3，仅看 J 值穿越阈值；不要求 EMA
+                趋势，只产生做多/做空入场提示
+              </div>
+            </div>
+
+            <div className="strategy-switches">
+              <label className="switch-chip">
+                <input
+                  type="checkbox"
+                  checked={form.timingEnabled}
+                  onChange={(event) =>
+                    setField(
+                      "timingEnabled",
+                      event.target.checked
+                    )
+                  }
+                />
+                启用策略
+              </label>
+
+              <label className="switch-chip">
+                <input
+                  type="checkbox"
+                  checked={form.timingNotify}
+                  onChange={(event) =>
+                    setField(
+                      "timingNotify",
+                      event.target.checked
+                    )
+                  }
+                />
+                微信通知
+              </label>
+            </div>
+          </div>
+
+          <div className="strategy-body">
+            <div className="form-grid">
+              <div className="form-field">
+                <label>J 超卖阈值（做多）</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="50"
+                  step="any"
+                  value={form.timingOversold}
+                  onChange={(event) =>
+                    setField(
+                      "timingOversold",
+                      Number(event.target.value)
+                    )
+                  }
+                  required
+                />
+              </div>
+
+              <div className="form-field">
+                <label>J 超买阈值（做空）</label>
+                <input
+                  type="number"
+                  min="50"
+                  max="100"
+                  step="any"
+                  value={form.timingOverbought}
+                  onChange={(event) =>
+                    setField(
+                      "timingOverbought",
+                      Number(event.target.value)
+                    )
+                  }
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="direction-row">
+              <span className="direction-row-label">
+                监控方向
+              </span>
+
+              <div className="direction-options">
+                <label className="switch-chip">
+                  <input
+                    type="checkbox"
+                    checked={form.timingLongEnabled}
+                    onChange={(event) =>
+                      setField(
+                        "timingLongEnabled",
+                        event.target.checked
+                      )
+                    }
+                  />
+                  超卖做多
+                </label>
+
+                <label className="switch-chip">
+                  <input
+                    type="checkbox"
+                    checked={form.timingShortEnabled}
+                    onChange={(event) =>
+                      setField(
+                        "timingShortEnabled",
+                        event.target.checked
+                      )
+                    }
+                  />
+                  超买做空
                 </label>
               </div>
             </div>
