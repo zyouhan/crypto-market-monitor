@@ -1,17 +1,9 @@
-
 import https from "node:https";
 import { URL } from "node:url";
+
 import { SocksProxyAgent } from "socks-proxy-agent";
 
-export interface Kline {
-  openTime: number;
-  closeTime: number;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-}
+import type { Kline } from "../indicators/types";
 
 const BINANCE_BASE_URL =
   process.env.BINANCE_BASE_URL || "https://fapi.binance.com";
@@ -58,6 +50,14 @@ export function isValidInterval(
   );
 }
 
+/**
+ * 每次请求获取的 K 线数量。
+ * 同时作为策略周期的上限校验值。
+ */
+export function getKlineLimit(): number {
+  return KLINE_LIMIT;
+}
+
 function requestJson<T>(url: URL): Promise<T> {
   return new Promise((resolve, reject) => {
     const request = https.request(
@@ -67,7 +67,7 @@ function requestJson<T>(url: URL): Promise<T> {
         agent: proxyAgent,
         headers: {
           Accept: "application/json",
-          "User-Agent": "crypto-market-monitor/1.0"
+          "User-Agent": "crypto-market-monitor/2.0"
         }
       },
       (response) => {

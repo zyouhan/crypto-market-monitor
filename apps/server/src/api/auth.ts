@@ -1,5 +1,5 @@
-
 import crypto from "node:crypto";
+
 import type { RequestHandler } from "express";
 
 const COOKIE_NAME = "cmm_session";
@@ -12,7 +12,9 @@ const AUTH_SECRET = process.env.AUTH_SECRET || "";
 const COOKIE_SECURE = process.env.COOKIE_SECURE === "true";
 
 if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
-  throw new Error("ADMIN_USERNAME and ADMIN_PASSWORD must be configured");
+  throw new Error(
+    "ADMIN_USERNAME and ADMIN_PASSWORD must be configured"
+  );
 }
 
 if (Buffer.byteLength(AUTH_SECRET, "utf8") < 32) {
@@ -48,9 +50,9 @@ function createToken(username: string): string {
     expiresAt: Date.now() + SESSION_MAX_AGE
   };
 
-  const encodedPayload = Buffer
-    .from(JSON.stringify(payload))
-    .toString("base64url");
+  const encodedPayload = Buffer.from(
+    JSON.stringify(payload)
+  ).toString("base64url");
 
   const signature = sign(encodedPayload);
 

@@ -5,9 +5,10 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "node scripts/clean-dist.cjs && tsc -p tsconfig.json",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "replay": "tsx src/scripts/replay.ts"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",

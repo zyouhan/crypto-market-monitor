@@ -473,3 +473,117 @@ td {
     padding: 14px;
   }
 }
+
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0 4px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--muted);
+  background: #0d131d;
+}
+
+.badge.long {
+  color: var(--green);
+  border-color: rgb(32 201 151 / 35%);
+}
+
+.badge.short {
+  color: var(--red);
+  border-color: rgb(255 100 124 / 35%);
+}
+
+.badge.warn {
+  color: var(--yellow);
+  border-color: rgb(245 189 79 / 35%);
+}
+
+.j-value {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.j-value.oversold {
+  color: var(--green);
+}
+
+.j-value.overbought {
+  color: var(--red);
+}
+
+.strategy-block {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.strategy-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.strategy-toggles {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.strategy-title .switch-row,
+.checkbox-group .switch-row {
+  margin-right: 0;
+}
+
+.form-grid.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.checkbox-group {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  min-height: 39px;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.filter-row select {
+  padding: 8px 12px;
+  background: #0d131d;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  outline: none;
+}
+
+.modal {
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+
+@media (max-width: 560px) {
+  .form-grid.three {
+    grid-template-columns: 1fr;
+  }
+}
