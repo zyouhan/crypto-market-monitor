@@ -1,18 +1,17 @@
-
 {
-  "name": "crypto-market-monitor",
-  "private": true,
-  "workspaces": [
-    "apps/server",
-    "apps/web"
-  ],
-  "scripts": {
-    "dev": "concurrently \"npm run dev -w apps/server\" \"npm run dev -w apps/web\"",
-    "build": "npm run build -w apps/server && npm run build -w apps/web",
-    "dev:server": "npm run dev -w apps/server",
-    "dev:web": "npm run dev -w apps/web"
-  },
-  "devDependencies": {
-    "concurrently": "^9.1.2"
-  }
+    "name": "crypto-market-monitor",
+    "private": true,
+    "workspaces": [
+        "apps/server",
+        "apps/web"
+    ],
+    "scripts": {
+        "dev": "concurrently \"npm run dev:server\" \"npm run dev:web\"",
+        "dev:server": "npm run dev --workspace=crypto-market-monitor-server",
+        "dev:web": "npm run dev --workspace=crypto-market-monitor-web",
+        "build": "npm run build -w apps/server && npm run build -w apps/web"
+    },
+    "devDependencies": {
+        "concurrently": "^9.1.2"
+    }
 }

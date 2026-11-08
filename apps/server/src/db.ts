@@ -3,10 +3,16 @@ import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
 
-const databasePath =
+// 项目根目录：crypto-market-monitor
+const projectRoot = path.resolve(__dirname, "../../../");
+
+const configuredDatabasePath =
   process.env.DATABASE_PATH || "./data/crypto-market-monitor.db";
 
-const resolvedDatabasePath = path.resolve(databasePath);
+export const resolvedDatabasePath = path.resolve(
+  projectRoot,
+  configuredDatabasePath
+);
 
 fs.mkdirSync(path.dirname(resolvedDatabasePath), {
   recursive: true
