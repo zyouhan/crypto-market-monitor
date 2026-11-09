@@ -1,0 +1,478 @@
+import { db } from "./index";
+import type {
+  ConditionKind,
+  ConditionRole,
+  MonitorConditionRecord,
+  MonitorRecord,
+  MonitorSignalRecord,
+  NewMonitorSignalRecord,
+  PushState
+} from "./types";
+
+export function getMonitors(): MonitorRecord[] {
+  return db.prepare(`
+    SELECT *
+    FROM monitors
+    ORDER BY id ASC
+  `).all() as MonitorRecord[];
+}
+
+export function getEnabledMonitors(): MonitorRecord[] {
+  return db.prepare(`
+    SELECT *
+    FROM monitors
+    WHERE enabled = 1
+    ORDER BY id ASC
+  `).all() as MonitorRecord[];
+}
+
+export function getMonitorById(
+  id: number
+): MonitorRecord | undefined {
+  return db.prepare(`
+    SELECT *
+    FROM monitors
+    WHERE id = ?
+  `).get(id) as MonitorRecord | undefined;
+}
+
+export function getMonitorConditions(
+  monitorId: number
+): MonitorConditionRecord[] {
+  return db.prepare(`
+    SELECT *
+    FROM monitor_conditions
+    WHERE monitor_id = ?
+    ORDER BY sort_order ASC, id ASC
+  `).all(monitorId) as MonitorConditionRecord[];
+}
+
+export function getAllMonitorConditions(): MonitorConditionRecord[] {
+  return db.prepare(`
+    SELECT *
+    FROM monitor_conditions
+    ORDER BY monitor_id ASC, sort_order ASC, id ASC
+  `).all() as MonitorConditionRecord[];
+}
+
+export function insertMonitor(input: {
+  name: string;
+  symbol: string;
+  interval: string;
+  enabled: number;
+  wechatEnabled: number;
+  soundEnabled: number;
+}): number {
+  const now = Date.now();
+
+  const result = db.prepare(`
+    INSERT INTO monitors (
+      name,
+      symbol,
+      interval,
+      enabled,
+      wechat_enabled,
+      sound_enabled,
+      created_at,
+      updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    input.name,
+    input.symbol,
+    input.interval,
+    input.enabled,
+    input.wechatEnabled,
+    input.soundEnabled,
+    now,
+    now
+  );
+
+  return Number(result.lastInsertRowid);
+}
+
+export function insertCondition(input: {
+  monitorId: number;
+  kind: ConditionKind;
+  role: ConditionRole;
+  interval: string | null;
+  params: string;
+  sortOrder: number;
+}): number {
+  const now = Date.now();
+
+  const result = db.prepare(`
+    INSERT INTO monitor_conditions (
+      monitor_id,
+      kind,
+      role,
+      interval,
+      params,
+      sort_order,
+      created_at,
+      updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    input.monitorId,
+    input.kind,
+    input.role,
+    input.interval,
+    input.params,
+    input.sortOrder,
+    now,
+    now
+  );
+
+  return Number(result.lastInsertRowid);
+}
+
+export function updateMonitorFields(input: {
+  id: number;
+  name: string;
+  interval: string;
+  enabled: number;
+  wechatEnabled: number;
+  soundEnabled: number;
+}): void {
+  db.prepare(`
+    UPDATE monitors
+    SET
+      name = ?,
+      interval = ?,
+      enabled = ?,
+      wechat_enabled = ?,
+      sound_enabled = ?,
+      updated_at = ?
+    WHERE id = ?
+  `).run(
+    input.name,
+    input.interval,
+    input.enabled,
+    input.wechatEnabled,
+    input.soundEnabled,
+    Date.now(),
+    input.id
+  );
+}
+
+export function deleteMonitorConditions(monitorId: number): void {
+  db.prepare(`
+    DELETE FROM monitor_conditions
+    WHERE monitor_id = ?
+  `).run(monitorId);
+}
+
+export function resetMonitorState(monitorId: number): void {
+  const now = Date.now();
+
+  db.prepare(`
+    UPDATE monitors
+    SET
+      last_processed_close_time = 0,
+      snapshot = NULL,
+      updated_at = ?
+    WHERE id = ?
+  `).run(now, monitorId);
+
+  db.prepare(`
+    UPDATE monitor_conditions
+    SET
+      state = NULL,
+      last_processed_close_time = 0,
+      state_updated_at = NULL,
+      updated_at = ?
+    WHERE monitor_id = ?
+  `).run(now, monitorId);
+}
+
+export function deleteMonitor(id: number): number {
+  return db.prepare(`
+    DELETE FROM monitors
+    WHERE id = ?
+  `).run(id).changes;
+}
+
+export function updateMonitorProgress(input: {
+  id: number;
+  lastPrice: number;
+  lastPriceTime: number;
+  lastProcessedCloseTime: number;
+  source: string | null;
+  sourceNote: string | null;
+  snapshot: string;
+  successAt: number;
+}): void {
+  db.prepare(`
+    UPDATE monitors
+    SET
+      last_price = ?,
+      last_price_time = ?,
+      last_processed_close_time = ?,
+      source = ?,
+      source_note = ?,
+      snapshot = ?,
+      last_attempt_at = ?,
+      last_success_at = ?,
+      last_error = NULL,
+      last_error_at = NULL,
+      updated_at = ?
+    WHERE id = ?
+  `).run(
+    input.lastPrice,
+    input.lastPriceTime,
+    input.lastProcessedCloseTime,
+    input.source,
+    input.sourceNote,
+    input.snapshot,
+    input.successAt,
+    input.successAt,
+    input.successAt,
+    input.id
+  );
+}
+
+export function updateMonitorSnapshot(input: {
+  id: number;
+  lastPrice: number | null;
+  lastPriceTime: number | null;
+  source: string | null;
+  sourceNote: string | null;
+  snapshot: string;
+  successAt: number;
+}): void {
+  db.prepare(`
+    UPDATE monitors
+    SET
+      last_price = ?,
+      last_price_time = ?,
+      source = ?,
+      source_note = ?,
+      snapshot = ?,
+      last_attempt_at = ?,
+      last_success_at = ?,
+      last_error = NULL,
+      last_error_at = NULL,
+      updated_at = ?
+    WHERE id = ?
+  `).run(
+    input.lastPrice,
+    input.lastPriceTime,
+    input.source,
+    input.sourceNote,
+    input.snapshot,
+    input.successAt,
+    input.successAt,
+    input.successAt,
+    input.id
+  );
+}
+
+export function updateMonitorError(input: {
+  id: number;
+  message: string;
+  at: number;
+}): void {
+  db.prepare(`
+    UPDATE monitors
+    SET
+      last_attempt_at = ?,
+      last_error = ?,
+      last_error_at = ?,
+      updated_at = ?
+    WHERE id = ?
+  `).run(
+    input.at,
+    input.message.slice(0, 1000),
+    input.at,
+    input.at,
+    input.id
+  );
+}
+
+export function updateConditionState(input: {
+  id: number;
+  state: string;
+  lastProcessedCloseTime: number;
+  updatedAt: number;
+}): void {
+  db.prepare(`
+    UPDATE monitor_conditions
+    SET
+      state = ?,
+      last_processed_close_time = ?,
+      state_updated_at = ?,
+      updated_at = ?
+    WHERE id = ?
+  `).run(
+    input.state,
+    input.lastProcessedCloseTime,
+    input.updatedAt,
+    input.updatedAt,
+    input.id
+  );
+}
+
+export function insertSignalIgnore(
+  input: NewMonitorSignalRecord
+): number | null {
+  const result = db.prepare(`
+    INSERT OR IGNORE INTO signals (
+      monitor_id,
+      monitor_name,
+      symbol,
+      interval,
+      kind,
+      event_type,
+      direction,
+      price,
+      event_time,
+      primary_condition,
+      conditions,
+      source,
+      threshold,
+      price_diff,
+      ema_diff,
+      trigger_met,
+      push_state,
+      reason,
+      payload,
+      created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    input.monitor_id,
+    input.monitor_name,
+    input.symbol,
+    input.interval,
+    input.kind,
+    input.event_type,
+    input.direction,
+    input.price,
+    input.event_time,
+    input.primary_condition,
+    input.conditions,
+    input.source,
+    input.threshold,
+    input.price_diff,
+    input.ema_diff,
+    input.trigger_met,
+    input.push_state,
+    input.reason,
+    input.payload,
+    input.created_at
+  );
+
+  if (result.changes === 0) {
+    return null;
+  }
+
+  return Number(result.lastInsertRowid);
+}
+
+export function getSignalById(
+  id: number
+): MonitorSignalRecord | undefined {
+  return db.prepare(`
+    SELECT *
+    FROM signals
+    WHERE id = ?
+  `).get(id) as MonitorSignalRecord | undefined;
+}
+
+export function updateSignalPush(input: {
+  id: number;
+  pushState: PushState;
+  pushError: string | null;
+  reason: string | null;
+}): void {
+  db.prepare(`
+    UPDATE signals
+    SET
+      push_state = ?,
+      push_error = ?,
+      reason = ?
+    WHERE id = ?
+  `).run(
+    input.pushState,
+    input.pushError,
+    input.reason,
+    input.id
+  );
+}
+
+export function getSignals(filter: {
+  limit: number;
+  offset: number;
+  symbol?: string;
+  interval?: string;
+  monitorId?: number;
+  eventType?: string;
+  triggeredOnly?: boolean;
+}): MonitorSignalRecord[] {
+  const conditions: string[] = [];
+  const parameters: unknown[] = [];
+
+  if (filter.symbol) {
+    conditions.push("symbol = ?");
+    parameters.push(filter.symbol);
+  }
+
+  if (filter.interval) {
+    conditions.push("interval = ?");
+    parameters.push(filter.interval);
+  }
+
+  if (filter.monitorId !== undefined) {
+    conditions.push("monitor_id = ?");
+    parameters.push(filter.monitorId);
+  }
+
+  if (filter.eventType) {
+    conditions.push("event_type = ?");
+    parameters.push(filter.eventType);
+  }
+
+  if (filter.triggeredOnly) {
+    conditions.push("trigger_met = 1");
+  }
+
+  const where =
+    conditions.length > 0
+      ? `WHERE ${conditions.join(" AND ")}`
+      : "";
+
+  return db.prepare(`
+    SELECT *
+    FROM signals
+    ${where}
+    ORDER BY event_time DESC, id DESC
+    LIMIT ? OFFSET ?
+  `).all(
+    ...parameters,
+    filter.limit,
+    filter.offset
+  ) as MonitorSignalRecord[];
+}
+
+export function getLastSignalByMonitor(
+  monitorId: number
+): MonitorSignalRecord | undefined {
+  return db.prepare(`
+    SELECT *
+    FROM signals
+    WHERE monitor_id = ?
+    ORDER BY event_time DESC, id DESC
+    LIMIT 1
+  `).get(monitorId) as MonitorSignalRecord | undefined;
+}
+
+export function getRecentSignalsByMonitor(
+  monitorId: number,
+  limit = 5
+): MonitorSignalRecord[] {
+  return db.prepare(`
+    SELECT *
+    FROM signals
+    WHERE monitor_id = ?
+    ORDER BY event_time DESC, id DESC
+    LIMIT ?
+  `).all(monitorId, limit) as MonitorSignalRecord[];
+}

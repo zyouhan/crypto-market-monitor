@@ -1,0 +1,358 @@
+import type {
+  ConditionDisplayItem,
+  SignalDirection
+} from "../db/types";
+import { calculateKDJ } from "../indicators/kdj";
+import type { KdjPoint } from "../indicators/types";
+import {
+  DEFAULT_KDJ_PARAMS,
+  normalizeKdjParams,
+  type KdjEntryParams
+} from "../strategies/params";
+
+import type {
+  ConditionDefinition,
+  ConditionPoint,
+  ConditionRunInput,
+  ConditionRunResult
+} from "./types";
+
+function latestPoint(
+  points: KdjPoint[]
+): KdjPoint | null {
+  return points.length > 0 ? points[points.length - 1] : null;
+}
+
+function directionState(
+  point: KdjPoint,
+  params: KdjEntryParams
+): SignalDirection | null {
+  if (point.j === null) {
+    return null;
+  }
+
+  if (params.longEnabled && point.j < params.oversold) {
+    return "BULL";
+  }
+
+  if (params.shortEnabled && point.j > params.overbought) {
+    return "BEAR";
+  }
+
+  return null;
+}
+
+function statusText(
+  point: KdjPoint | null,
+  params: KdjEntryParams
+): string {
+  if (!point || point.j === null) {
+    return "等待数据";
+  }
+
+  if (params.longEnabled && point.j < params.oversold) {
+    return `超卖区 J=${point.j.toFixed(2)}，等待做多触发`;
+  }
+
+  if (params.shortEnabled && point.j > params.overbought) {
+    return `超买区 J=${point.j.toFixed(2)}，等待做空触发`;
+  }
+
+  if (params.longEnabled && params.shortEnabled) {
+    return `等待 J<${params.oversold} 做多 / J>${params.overbought} 做空`;
+  }
+
+  if (params.longEnabled) {
+    return `等待 J<${params.oversold} 做多`;
+  }
+
+  if (params.shortEnabled) {
+    return `等待 J>${params.overbought} 做空`;
+  }
+
+  return "未启用方向";
+}
+
+function display(
+  point: KdjPoint | null,
+  params: KdjEntryParams
+): ConditionDisplayItem[] {
+  const isOversold =
+    point?.j !== null &&
+    point?.j !== undefined &&
+    params.longEnabled &&
+    point.j < params.oversold;
+
+  const isOverbought =
+    point?.j !== null &&
+    point?.j !== undefined &&
+    params.shortEnabled &&
+    point.j > params.overbought;
+
+  return [
+    {
+      label: "状态",
+      value: statusText(point, params),
+      tone: isOversold ? "bull" : isOverbought ? "bear" : "neutral"
+    },
+    {
+      label: "J / K / D",
+      value: point
+        ? `${point.j?.toFixed(2) ?? "--"} / ${
+            point.k?.toFixed(2) ?? "--"
+          } / ${point.d?.toFixed(2) ?? "--"}`
+        : "--"
+    },
+    {
+      label: "阈值",
+      value: `J<${params.oversold} 做多 · J>${params.overbought} 做空`
+    }
+  ];
+}
+
+function pointFrom(
+  point: KdjPoint,
+  params: KdjEntryParams,
+  previousJ: number | null
+): ConditionPoint {
+  const currentJ = point.j;
+
+  let eventType: ConditionPoint["eventType"] = null;
+  let eventDirection: SignalDirection | null = null;
+
+  if (previousJ !== null && currentJ !== null) {
+    const crossDown =
+      previousJ >= params.oversold &&
+      currentJ < params.oversold;
+    const crossUp =
+      previousJ <= params.overbought &&
+      currentJ > params.overbought;
+
+    if (params.longEnabled && crossDown) {
+      eventType = "ENTRY_LONG";
+      eventDirection = "BULL";
+    } else if (params.shortEnabled && crossUp) {
+      eventType = "ENTRY_SHORT";
+      eventDirection = "BEAR";
+    }
+  }
+
+  const activeDirection = directionState(point, params);
+
+  return {
+    time: point.time,
+    eventType,
+    direction: eventDirection ?? activeDirection,
+    active: activeDirection !== null,
+    threshold:
+      eventType === "ENTRY_LONG"
+        ? params.oversold
+        : eventType === "ENTRY_SHORT"
+          ? params.overbought
+          : null,
+    payload: {
+      period: params.period,
+      kSmooth: params.kSmooth,
+      dSmooth: params.dSmooth,
+      oversold: params.oversold,
+      overbought: params.overbought,
+      previousJ,
+      k: point.k,
+      d: point.d,
+      j: point.j
+    },
+    display: display(point, params)
+  };
+}
+
+function latestConditionPoint(
+  point: KdjPoint | null,
+  params: KdjEntryParams
+): ConditionPoint | null {
+  if (!point) {
+    return null;
+  }
+
+  const activeDirection = directionState(point, params);
+
+  return {
+    time: point.time,
+    eventType: null,
+    direction: activeDirection,
+    active: activeDirection !== null,
+    threshold: null,
+    payload: {
+      period: params.period,
+      kSmooth: params.kSmooth,
+      dSmooth: params.dSmooth,
+      oversold: params.oversold,
+      overbought: params.overbought,
+      k: point.k,
+      d: point.d,
+      j: point.j
+    },
+    display: display(point, params)
+  };
+}
+
+function runKdjCondition(
+  input: ConditionRunInput
+): ConditionRunResult {
+  const params = input.params as unknown as KdjEntryParams;
+  const points = calculateKDJ(input.klines, params);
+  const last = latestPoint(points);
+  const latest = latestConditionPoint(last, params);
+
+  if (input.warmup) {
+    return {
+      state: {
+        prevJ: last?.j ?? null,
+        latest
+      },
+      points: new Map(),
+      latest,
+      statusText: statusText(last, params)
+    };
+  }
+
+  const pointByTime = new Map<number, KdjPoint>();
+
+  for (const point of points) {
+    pointByTime.set(point.time, point);
+  }
+
+  let previousJ: number | null =
+    typeof input.state.prevJ === "number"
+      ? (input.state.prevJ as number)
+      : null;
+
+  if (previousJ === null) {
+    const firstNew = input.newKlines[0];
+
+    if (firstNew) {
+      const index = points.findIndex(
+        (point) => point.time === firstNew.closeTime
+      );
+
+      if (index > 0) {
+        previousJ = points[index - 1]?.j ?? null;
+      }
+    }
+  }
+
+  const resultPoints = new Map<number, ConditionPoint>();
+
+  for (const kline of input.newKlines) {
+    const point = pointByTime.get(kline.closeTime);
+
+    if (!point || point.j === null) {
+      continue;
+    }
+
+    resultPoints.set(
+      kline.closeTime,
+      pointFrom(point, params, previousJ)
+    );
+
+    previousJ = point.j;
+  }
+
+  return {
+    state: {
+      prevJ: previousJ,
+      latest
+    },
+    points: resultPoints,
+    latest,
+    statusText: statusText(last, params)
+  };
+}
+
+function summary(params: KdjEntryParams): string {
+  const pieces: string[] = [];
+
+  if (params.longEnabled) {
+    pieces.push(`J<${params.oversold} 做多`);
+  }
+
+  if (params.shortEnabled) {
+    pieces.push(`J>${params.overbought} 做空`);
+  }
+
+  return `KDJ ${params.period}/${params.kSmooth}/${params.dSmooth} · ${
+    pieces.length > 0 ? pieces.join(" / ") : "未选方向"
+  }`;
+}
+
+export const kdjExtremeDefinition: ConditionDefinition = {
+  kind: "KDJ_EXTREME",
+  label: "KDJ 极值",
+  description:
+    "监控 J 值穿越超卖/超买阈值；可作为触发条件，也可作为过滤条件检查当前 J 区域。",
+  roles: ["trigger", "filter"],
+  defaultRole: "trigger",
+  summaryTemplate:
+    "KDJ {period}/{kSmooth}/{dSmooth} · J<{oversold} 做多 / J>{overbought} 做空",
+  fields: [
+    {
+      key: "period",
+      label: "KDJ 周期",
+      type: "number",
+      min: 2,
+      defaultValue: DEFAULT_KDJ_PARAMS.period
+    },
+    {
+      key: "kSmooth",
+      label: "K 平滑",
+      type: "number",
+      min: 1,
+      max: 20,
+      defaultValue: DEFAULT_KDJ_PARAMS.kSmooth
+    },
+    {
+      key: "dSmooth",
+      label: "D 平滑",
+      type: "number",
+      min: 1,
+      max: 20,
+      defaultValue: DEFAULT_KDJ_PARAMS.dSmooth
+    },
+    {
+      key: "oversold",
+      label: "J 超卖阈值（做多）",
+      type: "number",
+      min: 0,
+      max: 50,
+      step: "any",
+      defaultValue: DEFAULT_KDJ_PARAMS.oversold
+    },
+    {
+      key: "overbought",
+      label: "J 超买阈值（做空）",
+      type: "number",
+      min: 50,
+      max: 100,
+      step: "any",
+      defaultValue: DEFAULT_KDJ_PARAMS.overbought
+    },
+    {
+      key: "longEnabled",
+      label: "监控做多",
+      type: "boolean",
+      defaultValue: true
+    },
+    {
+      key: "shortEnabled",
+      label: "监控做空",
+      type: "boolean",
+      defaultValue: true
+    }
+  ],
+  normalizeParams(raw, klineLimit) {
+    return { ...normalizeKdjParams(raw, klineLimit) };
+  },
+  summarize(params) {
+    return summary(params as unknown as KdjEntryParams);
+  },
+  run: runKdjCondition
+};

@@ -1,20 +1,46 @@
+import type {
+  ConditionRole,
+  MonitorConditionRecord,
+  MonitorRecord
+} from "../db/types";
+import { db } from "../db";
 import {
-  getEnabledSymbols,
-  getSetting
-} from "../db/repo";
-
-import { runSymbolCycle } from "./cycle";
+  getMonitorById,
+  getMonitorConditions,
+  getEnabledMonitors,
+  getSignalById,
+  insertSignalIgnore,
+  updateConditionState,
+  updateMonitorError,
+  updateMonitorProgress,
+  updateMonitorSnapshot
+} from "../db/monitor-repo";
 import {
-  computeBackoffMs,
-  isSymbolDue
-} from "./schedule";
+  getConditionDefinition,
+  isConditionKind
+} from "../conditions/registry";
+import type {
+  ConditionDefinition,
+  ConditionRunResult
+} from "../conditions/types";
+import { getKlineLimit } from "../market/binance";
+import { getMarketKlines } from "../market";
+import type { MarketKlines } from "../market";
+import { evaluateMonitorSignals } from "../monitors/evaluator";
+import type {
+  ConditionRuntime,
+  MonitorSignalDraft
+} from "../monitors/evaluator";
+import { getSetting } from "../db/repo";
+import { getNextCloseTime } from "./time";
+import { dispatchMonitorNotification } from "./notify";
 
 const POLL_INTERVAL_MS = Math.max(
   Number(process.env.POLL_INTERVAL_MS) || 10000,
   5000
 );
 
-const MAX_CONCURRENT_SYMBOLS = Math.min(
+const MAX_CONCURRENT_MONITORS = Math.min(
   Math.max(
     Math.floor(Number(process.env.MAX_CONCURRENT_SYMBOLS)) || 3,
     1
@@ -26,39 +52,84 @@ export interface WorkerHealth {
   running: boolean;
   lastCycleAt: number | null;
   lastCycleDurationMs: number | null;
-  lastDueSymbols: number | null;
-  lastTotalSymbols: number | null;
+  lastDueMonitors: number | null;
+  lastTotalMonitors: number | null;
   lastError: string | null;
+  pending: number;
 }
 
 const health: WorkerHealth = {
   running: false,
   lastCycleAt: null,
   lastCycleDurationMs: null,
-  lastDueSymbols: null,
-  lastTotalSymbols: null,
-  lastError: null
+  lastDueMonitors: null,
+  lastTotalMonitors: null,
+  lastError: null,
+  pending: 0
 };
 
 export function getWorkerHealth(): WorkerHealth {
-  return { ...health };
+  return {
+    ...health,
+    pending: pendingMonitorIds.size
+  };
 }
 
-interface RetryState {
-  failures: number;
-  nextRetryAt: number;
-}
+const pendingMonitorIds = new Set<number>();
 
-const retryState = new Map<number, RetryState>();
+export function getPendingMonitorIds(): number[] {
+  return Array.from(pendingMonitorIds);
+}
 
 let timer: ReturnType<typeof setInterval> | null = null;
 let isRunning = false;
 let isStopped = false;
-let manualRefreshPromise: Promise<void> | null = null;
+let refreshPromise: Promise<void> | null = null;
 
-/**
- * 有界并发执行，避免标的增多后串行拉取把一轮拖长。
- */
+function parseJsonObject(
+  value: string | null
+): Record<string, unknown> {
+  if (!value) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+
+    return typeof parsed === "object" &&
+      parsed !== null &&
+      !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function conditionInterval(
+  condition: MonitorConditionRecord,
+  monitor: MonitorRecord
+): string {
+  return condition.interval || monitor.interval;
+}
+
+function isMonitorDue(
+  monitor: MonitorRecord,
+  now: number
+): boolean {
+  if (monitor.last_processed_close_time === 0) {
+    return true;
+  }
+
+  return (
+    now >=
+    getNextCloseTime(
+      monitor.last_processed_close_time,
+      monitor.interval
+    )
+  );
+}
+
 async function runWithConcurrency<T>(
   items: T[],
   limit: number,
@@ -85,13 +156,352 @@ async function runWithConcurrency<T>(
   await Promise.all(workers);
 }
 
-/**
- * 执行一轮监控。
- *
- * 扫描节拍由 POLL_INTERVAL_MS 决定，但每个标的只在
- * 「上一根 K 线收盘 + 周期」之后才会真正请求 Binance。
- */
-async function runMonitorCycle(force = false): Promise<void> {
+function buildSnapshot(
+  runtimes: ConditionRuntime[],
+  marketByInterval: Map<string, MarketKlines>,
+  price: number | null
+): string {
+  return JSON.stringify({
+    price,
+    conditions: runtimes.map((runtime) => {
+      const market = marketByInterval.get(runtime.interval);
+
+      return {
+        kind: runtime.kind,
+        role: runtime.role,
+        interval: runtime.interval,
+        summary: runtime.definition.summarize(runtime.params),
+        statusText: runtime.result.statusText,
+        display: runtime.result.latest?.display ?? [],
+        time: runtime.result.latest?.time ?? null,
+        source: market?.source ?? null
+      };
+    }),
+    updatedAt: Date.now()
+  });
+}
+
+function combineSource(
+  marketByInterval: Map<string, MarketKlines>
+): { source: string | null; note: string | null } {
+  const sources = new Set<string>();
+  const warnings = new Set<string>();
+
+  for (const market of marketByInterval.values()) {
+    sources.add(market.source);
+
+    for (const warning of market.warnings) {
+      warnings.add(warning);
+    }
+  }
+
+  if (sources.size === 0) {
+    return { source: null, note: null };
+  }
+
+  return {
+    source:
+      sources.size === 1
+        ? (Array.from(sources)[0] as string)
+        : "MIXED",
+    note:
+      warnings.size > 0
+        ? Array.from(warnings).join("；").slice(0, 800)
+        : null
+  };
+}
+
+function toSignalRecord(
+  monitor: MonitorRecord,
+  draft: MonitorSignalDraft
+) {
+  return {
+    monitor_id: monitor.id,
+    monitor_name: monitor.name,
+    symbol: monitor.symbol,
+    interval: monitor.interval,
+    kind: "MONITOR",
+    event_type: draft.eventType,
+    direction: draft.direction,
+    price: draft.price,
+    event_time: draft.eventTime,
+    primary_condition: draft.primaryCondition,
+    conditions: JSON.stringify(draft.conditions),
+    source: null,
+    threshold: draft.threshold,
+    price_diff: null,
+    ema_diff: null,
+    trigger_met: 1,
+    push_state: "PENDING" as const,
+    reason: null,
+    payload: JSON.stringify(draft.payload),
+    created_at: Date.now()
+  };
+}
+
+async function runMonitor(
+  monitor: MonitorRecord,
+  cache: Map<string, Promise<MarketKlines>>,
+  globalNotifyEnabled: boolean
+): Promise<void> {
+  const conditions = getMonitorConditions(monitor.id);
+
+  if (conditions.length === 0) {
+    throw new Error("监控项没有配置条件");
+  }
+
+  if (!conditions.some((condition) => condition.role === "trigger")) {
+    throw new Error("监控项至少需要一个触发条件");
+  }
+
+  const intervals = new Set<string>([monitor.interval]);
+
+  for (const condition of conditions) {
+    intervals.add(conditionInterval(condition, monitor));
+  }
+
+  const marketByInterval = new Map<string, MarketKlines>();
+
+  try {
+    await Promise.all(
+      Array.from(intervals).map(async (interval) => {
+        const key = `${monitor.symbol}|${interval}`;
+        let promise = cache.get(key);
+
+        if (!promise) {
+          promise = getMarketKlines(
+            monitor.symbol,
+            interval,
+            getKlineLimit()
+          );
+          cache.set(key, promise);
+        }
+
+        marketByInterval.set(interval, await promise);
+      })
+    );
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : String(error);
+
+    throw new Error(
+      `[${monitor.symbol} ${monitor.interval}] 行情获取失败: ${message}`
+    );
+  }
+
+  const baseKlines = marketByInterval.get(monitor.interval)?.klines ?? [];
+
+  if (baseKlines.length === 0) {
+    throw new Error("入场周期没有可用 K 线");
+  }
+
+  const warmup =
+    monitor.last_processed_close_time === 0 ||
+    conditions.some(
+      (condition) =>
+        condition.last_processed_close_time === 0 ||
+        !condition.state
+    );
+
+  const runtimes: ConditionRuntime[] = [];
+  const stateUpdates: Array<{
+    condition: MonitorConditionRecord;
+    result: ConditionRunResult;
+    lastProcessedCloseTime: number;
+  }> = [];
+
+  for (const condition of conditions) {
+    if (!isConditionKind(condition.kind)) {
+      throw new Error(`未知条件类型: ${condition.kind}`);
+    }
+
+    const definition = getConditionDefinition(condition.kind);
+    const interval = conditionInterval(condition, monitor);
+    const klines = marketByInterval.get(interval)?.klines ?? [];
+
+    if (klines.length === 0) {
+      throw new Error(`条件周期 ${interval} 没有可用 K 线`);
+    }
+
+    const params = definition.normalizeParams(
+      parseJsonObject(condition.params),
+      getKlineLimit()
+    );
+
+    const newKlines = warmup
+      ? []
+      : klines.filter(
+          (kline) =>
+            kline.closeTime > condition.last_processed_close_time
+        );
+
+    const result = definition.run({
+      state: parseJsonObject(condition.state),
+      params,
+      klines,
+      newKlines,
+      warmup
+    });
+
+    runtimes.push({
+      id: condition.id,
+      kind: condition.kind,
+      role: condition.role as ConditionRole,
+      interval,
+      params,
+      definition,
+      result
+    });
+
+    stateUpdates.push({
+      condition,
+      result,
+      lastProcessedCloseTime:
+        klines[klines.length - 1]?.closeTime ??
+        condition.last_processed_close_time
+    });
+  }
+
+  const latestBase = baseKlines[baseKlines.length - 1];
+  const { source, note } = combineSource(marketByInterval);
+  const snapshot = buildSnapshot(
+    runtimes,
+    marketByInterval,
+    latestBase.close
+  );
+  const successAt = Date.now();
+
+  if (warmup) {
+    const updateWarmup = () => {
+      for (const update of stateUpdates) {
+        updateConditionState({
+          id: update.condition.id,
+          state: JSON.stringify(update.result.state),
+          lastProcessedCloseTime: update.lastProcessedCloseTime,
+          updatedAt: successAt
+        });
+      }
+
+      updateMonitorProgress({
+        id: monitor.id,
+        lastPrice: latestBase.close,
+        lastPriceTime: latestBase.closeTime,
+        lastProcessedCloseTime: latestBase.closeTime,
+        source,
+        sourceNote: note,
+        snapshot,
+        successAt
+      });
+    };
+
+    const transaction = db.transaction(updateWarmup);
+    transaction();
+
+    console.log(
+      `[Worker] ${monitor.name} 预热完成: ${runtimes
+        .map(
+          (runtime) =>
+            `${runtime.kind}@${runtime.interval}=${runtime.result.statusText}`
+        )
+        .join(", ")}`
+    );
+
+    return;
+  }
+
+  const newBaseKlines = baseKlines.filter(
+    (kline) =>
+      kline.closeTime > monitor.last_processed_close_time
+  );
+
+  if (newBaseKlines.length === 0) {
+    const updateSnapshot = () => {
+      for (const update of stateUpdates) {
+        updateConditionState({
+          id: update.condition.id,
+          state: JSON.stringify(update.result.state),
+          lastProcessedCloseTime: update.lastProcessedCloseTime,
+          updatedAt: successAt
+        });
+      }
+
+      updateMonitorSnapshot({
+        id: monitor.id,
+        lastPrice: latestBase.close,
+        lastPriceTime: latestBase.closeTime,
+        source,
+        sourceNote: note,
+        snapshot,
+        successAt
+      });
+    };
+
+    const transaction = db.transaction(updateSnapshot);
+    transaction();
+
+    return;
+  }
+
+  const drafts = evaluateMonitorSignals({
+    monitor,
+    runtimes,
+    newBaseKlines,
+    source
+  });
+
+  const insertedIds: number[] = [];
+
+  const transaction = db.transaction(() => {
+    for (const update of stateUpdates) {
+      updateConditionState({
+        id: update.condition.id,
+        state: JSON.stringify(update.result.state),
+        lastProcessedCloseTime: update.lastProcessedCloseTime,
+        updatedAt: successAt
+      });
+    }
+
+    for (const draft of drafts) {
+      const record = toSignalRecord(monitor, draft);
+
+      const inserted = insertSignalIgnore({
+        ...record,
+        source
+      });
+
+      if (inserted !== null) {
+        insertedIds.push(inserted);
+      }
+    }
+
+    updateMonitorProgress({
+      id: monitor.id,
+      lastPrice: latestBase.close,
+      lastPriceTime: latestBase.closeTime,
+      lastProcessedCloseTime: latestBase.closeTime,
+      source,
+      sourceNote: note,
+      snapshot,
+      successAt
+    });
+  });
+
+  transaction();
+
+  for (const id of insertedIds) {
+    const signal = getSignalById(id);
+
+    if (signal) {
+      await dispatchMonitorNotification(
+        signal,
+        monitor,
+        globalNotifyEnabled
+      );
+    }
+  }
+}
+
+async function runMonitorCycle(forceIds?: number[]): Promise<void> {
   if (isRunning || isStopped) {
     return;
   }
@@ -102,61 +512,57 @@ async function runMonitorCycle(force = false): Promise<void> {
   const startedAt = Date.now();
 
   try {
-    const symbols = getEnabledSymbols();
+    const monitors =
+      forceIds && forceIds.length > 0
+        ? forceIds
+            .map((id) => getMonitorById(id))
+            .filter((monitor): monitor is MonitorRecord => Boolean(monitor))
+        : getEnabledMonitors();
+
     const now = Date.now();
 
-    const dueSymbols = force
-      ? symbols
-      : symbols.filter((symbol) =>
-          isSymbolDue(
-            symbol,
-            now,
-            retryState.get(symbol.id)?.nextRetryAt ?? 0
-          )
-        );
+    const dueMonitors =
+      forceIds && forceIds.length > 0
+        ? monitors
+        : monitors.filter((monitor) => isMonitorDue(monitor, now));
 
-    health.lastTotalSymbols = symbols.length;
-    health.lastDueSymbols = dueSymbols.length;
+    health.lastTotalMonitors = monitors.length;
+    health.lastDueMonitors = dueMonitors.length;
 
     const globalNotifyEnabled =
       getSetting("global_wechat_enabled") === "true";
 
     let cycleError: string | null = null;
+    const cache = new Map<string, Promise<MarketKlines>>();
 
     await runWithConcurrency(
-      dueSymbols,
-      MAX_CONCURRENT_SYMBOLS,
-      async (symbol) => {
+      dueMonitors,
+      MAX_CONCURRENT_MONITORS,
+      async (monitor) => {
         try {
-          await runSymbolCycle(symbol, globalNotifyEnabled);
-          retryState.delete(symbol.id);
+          await runMonitor(monitor, cache, globalNotifyEnabled);
         } catch (error) {
           const message =
-            error instanceof Error
-              ? error.message
-              : String(error);
+            error instanceof Error ? error.message : String(error);
 
-          const previous = retryState.get(symbol.id);
-          const failures = (previous?.failures ?? 0) + 1;
-
-          retryState.set(symbol.id, {
-            failures,
-            nextRetryAt:
-              Date.now() + computeBackoffMs(failures)
+          updateMonitorError({
+            id: monitor.id,
+            message,
+            at: Date.now()
           });
 
-          cycleError = `${symbol.symbol}: ${message}`;
+          cycleError = `${monitor.name}: ${message}`;
           health.lastError = cycleError;
 
           console.error(
-            `[Worker] ${symbol.symbol} 监控失败:`,
+            `[Worker] ${monitor.name} 监控失败:`,
             message
           );
         }
       }
     );
 
-    if (dueSymbols.length > 0 && cycleError === null) {
+    if (dueMonitors.length > 0 && cycleError === null) {
       health.lastError = null;
     }
   } catch (error) {
@@ -166,53 +572,63 @@ async function runMonitorCycle(force = false): Promise<void> {
     console.error("[Worker] 监控周期执行失败:", error);
   } finally {
     isRunning = false;
-
     health.running = false;
     health.lastCycleAt = Date.now();
     health.lastCycleDurationMs = Date.now() - startedAt;
+
+    for (const id of forceIds ?? []) {
+      pendingMonitorIds.delete(id);
+    }
+
+    health.pending = pendingMonitorIds.size;
   }
 }
 
 /**
- * 手动刷新：等待当前轮询结束后，强制拉取全部启用标的。
- *
- * 返回 false 表示已有手动请求在排队或 Worker 已停止。
- * 该函数只负责排队，不等待 Binance 请求完成，避免 API 被网络超时拖住。
+ * 单项立即请求。返回 false 表示监控项不存在或 Worker 已停止。
  */
-export function requestManualRefresh(): boolean {
-  if (isStopped || manualRefreshPromise) {
+export function requestMonitorRefresh(id: number): boolean {
+  if (isStopped) {
     return false;
   }
 
-  manualRefreshPromise = (async () => {
-    while (isRunning && !isStopped) {
-      await new Promise((resolve) => setTimeout(resolve, 200));
-    }
+  const monitor = getMonitorById(id);
 
-    if (isStopped) {
-      return;
-    }
+  if (!monitor) {
+    return false;
+  }
 
-    console.log("[Worker] 手动刷新：立即请求全部启用标的");
+  pendingMonitorIds.add(id);
+  health.pending = pendingMonitorIds.size;
 
-    await runMonitorCycle(true);
-  })()
-    .catch((error) => {
-      health.lastError =
-        error instanceof Error ? error.message : String(error);
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      while (pendingMonitorIds.size > 0 && !isStopped) {
+        while (isRunning && !isStopped) {
+          await new Promise((resolve) => setTimeout(resolve, 200));
+        }
 
-      console.error("[Worker] 手动刷新失败:", error);
-    })
-    .finally(() => {
-      manualRefreshPromise = null;
-    });
+        const ids = Array.from(pendingMonitorIds);
+        pendingMonitorIds.clear();
+
+        await runMonitorCycle(ids);
+      }
+    })()
+      .catch((error) => {
+        health.lastError =
+          error instanceof Error ? error.message : String(error);
+        console.error("[Worker] 手动刷新失败:", error);
+      })
+      .finally(() => {
+        refreshPromise = null;
+        pendingMonitorIds.clear();
+        health.pending = 0;
+      });
+  }
 
   return true;
 }
 
-/**
- * 启动 Worker。
- */
 export function startWorker(): void {
   if (timer) {
     return;
@@ -221,7 +637,7 @@ export function startWorker(): void {
   isStopped = false;
 
   console.log(
-    `[Worker] 启动，扫描间隔 ${POLL_INTERVAL_MS}ms，并发 ${MAX_CONCURRENT_SYMBOLS}`
+    `[Worker] 启动，扫描间隔 ${POLL_INTERVAL_MS}ms，并发 ${MAX_CONCURRENT_MONITORS}`
   );
 
   void runMonitorCycle();
@@ -231,9 +647,6 @@ export function startWorker(): void {
   }, POLL_INTERVAL_MS);
 }
 
-/**
- * 停止 Worker。
- */
 export function stopWorker(): void {
   isStopped = true;
 

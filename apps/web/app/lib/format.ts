@@ -197,7 +197,10 @@ export function signalJValue(
  * 金叉/死叉确认 + KDJ 做多/做空入场。
  * 未达阈值的记录与等待失效不进入提示。
  */
-export function isAlertSignal(signal: SignalItem): boolean {
+export function isAlertSignal(signal: {
+  trigger_met: number;
+  event_type: string;
+}): boolean {
   if (signal.trigger_met !== 1) {
     return false;
   }

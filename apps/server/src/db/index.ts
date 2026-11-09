@@ -3,14 +3,12 @@ import path from "node:path";
 
 import Database from "better-sqlite3";
 
-import {
-  DEFAULT_INTERVAL,
-  DEFAULT_STRATEGIES,
-  DEFAULT_SYMBOLS
-} from "../config/defaults";
 import { PROJECT_ROOT } from "../config/paths";
+import {
+  migrateToV5,
+  seedDefaultMonitors
+} from "./migrate";
 import { applySchema, SCHEMA_VERSION } from "./schema";
-import type { StrategyKind } from "./types";
 
 const configuredDatabasePath =
   process.env.DATABASE_PATH || "./data/crypto-market-monitor.db";
@@ -27,9 +25,7 @@ function configure(database: Database.Database): void {
 }
 
 /**
- * v1 数据库没有 user_version 标记。
- * 由于 v2 移除了旧列并重建了事件表，直接整体归档旧库再建新库，
- * 避免半迁移状态。
+ * v1 数据库没有 user_version 标记，直接归档后重建。
  */
 function archiveLegacyDatabase(dbFile: string): string | null {
   const candidates = [
@@ -62,120 +58,19 @@ function archiveLegacyDatabase(dbFile: string): string | null {
   return targetDir;
 }
 
-function seedDefaults(database: Database.Database): void {
+function seedSettings(database: Database.Database): void {
   const now = Date.now();
 
-  const insertSymbol = database.prepare(`
-    INSERT OR IGNORE INTO symbols (
-      symbol,
-      interval,
-      enabled,
-      notify_enabled,
-      created_at,
-      updated_at
-    ) VALUES (?, ?, 1, 1, ?, ?)
-  `);
-
-  const selectSymbol = database.prepare(`
-    SELECT id
-    FROM symbols
-    WHERE symbol = ?
-  `);
-
-  const insertStrategy = database.prepare(`
-    INSERT OR IGNORE INTO strategies (
-      symbol_id,
-      kind,
-      enabled,
-      notify_enabled,
-      params,
-      sort_order,
-      created_at,
-      updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  const insertState = database.prepare(`
-    INSERT OR IGNORE INTO strategy_states (
-      symbol_id,
-      kind,
-      status,
-      updated_at
-    ) VALUES (?, ?, ?, ?)
-  `);
-
-  const insertSetting = database.prepare(`
-    INSERT OR IGNORE INTO settings (
-      key,
-      value,
-      updated_at
-    ) VALUES (?, ?, ?)
-  `);
-
-  for (const symbol of DEFAULT_SYMBOLS) {
-    insertSymbol.run(symbol, DEFAULT_INTERVAL, now, now);
-
-    const row = selectSymbol.get(symbol) as
-      | { id: number }
-      | undefined;
-
-    if (!row) {
-      continue;
-    }
-
-    for (const strategy of DEFAULT_STRATEGIES) {
-      insertStrategy.run(
-        row.id,
-        strategy.kind,
-        strategy.enabled,
-        strategy.notify_enabled,
-        JSON.stringify(strategy.params),
-        strategy.sort_order,
-        now,
-        now
-      );
-
-      insertState.run(
-        row.id,
-        strategy.kind,
-        initialStatus(strategy.kind),
-        now
-      );
-    }
-  }
-
-  insertSetting.run(
+  database.prepare(`
+    INSERT OR IGNORE INTO settings (key, value, updated_at)
+    VALUES (?, ?, ?)
+  `).run(
     "global_wechat_enabled",
     process.env.GLOBAL_WECHAT_ENABLED === "true"
       ? "true"
       : "false",
     now
   );
-}
-
-function initialStatus(kind: StrategyKind): string {
-  return kind === "EMA_TREND" ? "NEUTRAL" : "IDLE";
-}
-
-/**
- * v2 → v3：新增 baseline_ema / ema_diff 后，
- * 旧状态没有 EMA 基准，无法继续比较。
- * 清空状态并把处理进度归零，让 worker 用新字段静默重新预热。
- * 不清空 signals 与标的/策略配置。
- */
-function resetStatesAfterUpgrade(
-  database: Database.Database
-): void {
-  const now = Date.now();
-
-  database.prepare("DELETE FROM strategy_states").run();
-
-  database.prepare(`
-    UPDATE symbols
-    SET
-      last_processed_close_time = 0,
-      updated_at = ?
-  `).run(now);
 }
 
 function openDatabase(dbFile: string): Database.Database {
@@ -187,11 +82,11 @@ function openDatabase(dbFile: string): Database.Database {
 
   configure(database);
 
-  const version = Number(
+  let version = Number(
     database.pragma("user_version", { simple: true }) || 0
   );
 
-  // 只有 v1 需要归档重建；v2 及以上原地升级
+  // v1 及更早版本没有可靠的迁移路径，先归档再重建
   if (existedBefore && version < 2) {
     database.close();
 
@@ -202,27 +97,24 @@ function openDatabase(dbFile: string): Database.Database {
     }
 
     database = new Database(dbFile);
-
     configure(database);
+    version = 0;
   }
 
-  applySchema(database);
-
-  if (version >= 2 && version < 3) {
-    resetStatesAfterUpgrade(database);
-
-    console.log(
-      "[DB] v3 升级：策略状态已重置，等待静默预热"
-    );
+  if (version < SCHEMA_VERSION) {
+    migrateToV5(database, dbFile, version);
+  } else {
+    applySchema(database);
   }
+
+  seedSettings(database);
+  seedDefaultMonitors(database);
 
   if (version > 0 && version < SCHEMA_VERSION) {
     console.log(
       `[DB] 数据库结构已从 v${version} 升级到 v${SCHEMA_VERSION}`
     );
   }
-
-  seedDefaults(database);
 
   return database;
 }

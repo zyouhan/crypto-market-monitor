@@ -1,186 +1,163 @@
 # Crypto Market Monitor
 
-加密货币（Binance USDⓈ-M Futures）多指标监控系统：
+加密货币多指标、多周期组合监控系统。
 
-- **EMA 定趋势**：两次交叉点的**慢线 EMA 距离**超过阈值才确认转折；等待期间 EMA 反向偏离超过阈值则失效。
-- **KDJ 找入场**：看涨等待中 J 下穿超卖阈值 → 做多提醒；看跌等待中 J 上穿超买阈值 → 做空提醒。
-- **threshold** 过滤横盘中的小幅反复交叉，并作为等待状态的失效距离。
-- SQLite 落库、ServerChan（Server酱）微信推送、Next.js 管理页面。
+- 一个监控项 = **标的 + 入场 K 线周期 + 条件组合**；
+- 同一标的可以同时存在多个监控项，例如 BTCUSDT 1m 趋势、BTCUSDT 5m KDJ、BTCUSDT 5m EMA 30/200；
+- 条件支持 **触发（trigger）** 与 **过滤（filter）**，按 AND 组合；
+- 支持跨周期过滤，例如 1h J<5 时，在 15m 等待 J 下穿 5；
+- 行情优先请求 OKX，异常时回退 Binance；
+- 每个监控项独立记录信号、独立控制微信/声音、独立立即请求；
+- 信号记录支持按标的、K 线周期、监控项、类型筛选。
 
-## 部署
-
-仓库提供 `docker-compose.yml`、`deploy/Caddyfile` 与 `scripts/` 下的备份/恢复脚本，环境变量模板见 `.env.example`。
-
-生产环境只运行一个 server 容器：Worker 与通知在同一个进程里，多副本会重复推送。
-
-## 目录结构
+## 数据模型
 
 ```
-crypto-market-monitor/
-├─ apps/server/src/
-│  ├─ config/            默认参数、默认标的、路径
-│  ├─ db/                SQLite 连接、schema 迁移、数据访问
-│  ├─ market/binance.ts  Binance K 线获取（只取已收盘）
-│  ├─ indicators/        EMA、KDJ 纯计算
-│  ├─ strategies/        策略注册表与状态机（EMA_TREND / KDJ_ENTRY）
-│  ├─ engine/            worker 轮询、单轮编排、通知
-│  ├─ api/               路由、鉴权、中间件
-│  └─ scripts/replay.ts  只读回放脚本
-├─ apps/web/app/         Next.js 页面（components / lib / types）
-└─ data/                 SQLite 数据（v1 旧库自动归档到 data/archive/）
+monitors             监控项：标的、入场周期、开关、状态、错误、数据源
+monitor_conditions   条件：类型、角色、自己的周期、参数、运行状态
+signals              信号：监控项、条件快照、周期、方向、通知状态
 ```
 
-## 策略规则
+### 条件角色
 
-### 1. EMA 趋势（`EMA_TREND`）
+- **触发条件**：必须在入场周期出现事件；
+- **过滤条件**：触发发生时必须同时有效；可使用入场周期或更高周期；
+- 至少一个触发条件，过滤条件可选。
 
-每一次交叉同时记录交叉价格与该根 K 线的**慢线 EMA**，趋势判定使用慢线 EMA：
+### 跨周期示例
 
-1. 第一根交叉只建立基准（类型、价格、时间、慢线 EMA）。
-2. 同向交叉忽略，不更新基准。
-3. 反向交叉计算：
-   - `emaDiff = |本次交叉慢线 EMA - 基准交叉慢线 EMA|`（判定依据）
-   - `priceDiff = |本次交叉价 - 基准交叉价|`（仅记录，供参考）
-   - **严格大于** `threshold` → 确认转折：金叉 → `BULL_WAITING`，死叉 → `BEAR_WAITING`
-   - 未过阈值 → 状态不变，仅更新基准，并记录一条 `trigger_met=0` 的信号。
-4. 无论是否过阈值，基准都更新为本次交叉。
-5. **等待失效**：等待期间持续比较当前慢线 EMA 与基准交叉 EMA：
-   - 看跌等待：`当前 EMA - 基准 EMA > threshold` → 失效为中性
-   - 看涨等待：`基准 EMA - 当前 EMA > threshold` → 失效为中性
-   - 失效只改变状态、不改基准，记录一条不推送的 `TREND_INVALIDATED`；下一次交叉重新判定。
+“1h 进入 J<5，15m 找 J<5 做多”：
 
-示例（阈值 10，A 形走势）：
+```json
+{
+  "symbol": "BTCUSDT",
+  "interval": "15m",
+  "conditions": [
+    {
+      "kind": "KDJ_EXTREME",
+      "role": "filter",
+      "interval": "1h",
+      "params": {
+        "period": 9,
+        "kSmooth": 3,
+        "dSmooth": 3,
+        "oversold": 5,
+        "overbought": 85,
+        "longEnabled": true,
+        "shortEnabled": false
+      }
+    },
+    {
+      "kind": "KDJ_EXTREME",
+      "role": "trigger",
+      "interval": "15m",
+      "params": {
+        "period": 9,
+        "kSmooth": 3,
+        "dSmooth": 3,
+        "oversold": 5,
+        "overbought": 85,
+        "longEnabled": true,
+        "shortEnabled": false
+      }
+    }
+  ]
+}
+```
 
-| 步骤 | 交叉 | 慢线 EMA | EMA 距离 | 结果 |
-|---|---|---|---|---|
-| 起点 | 金叉 | 100 | — | 建立基准，中性 |
-| 1 | 死叉 | 115 | 15 | 过阈值 → 看跌等待（价格可能只回到 100，但 EMA 已走开） |
-| 2 | 金叉 | 101 | 14 | 过阈值 → 看涨等待 |
+高周期条件使用最近一根已收盘 K 线，且 `closeTime <= 入场 K 线 closeTime`，不会使用未来数据。
 
-示例（未过阈值 + 续涨失效，阈值 10）：
+## 条件类型
 
-| 步骤 | 交叉/状态 | 慢线 EMA | 结果 |
-|---|---|---|---|
-| 起点 | 有效死叉 | 100 | 看跌等待，基准 100 |
-| 1 | 金叉 | 101 | 距离 1，未过阈值；基准更新为 101，仍看跌等待 |
-| 2 | 无新交叉，价格续涨 | 112 | 反向偏离 11 > 10 → 失效为中性，暂停做空 |
-| 3 | 之后的死叉 | 120 | 距离 19 > 10 → 看跌确认，恢复做空等待 |
+### `EMA_CROSS`
 
-> 阈值是绝对数值，与 EMA 同单位。BTC 等高价位标的请按标的调整阈值。
+- 参数：`fast`、`slow`、`threshold`；
+- 触发事件：达到距离阈值的金叉 / 死叉；
+- 过滤状态：`BULL_WAITING` / `BEAR_WAITING`；
+- 展示：多空排列、最近交叉、交叉价、EMA 距离、阈值。
 
-### 2. KDJ 入场（`KDJ_ENTRY`）
+### `KDJ_EXTREME`
 
-- RSV = `(C - LLV(Low, N)) / (HHV(High, N) - LLV(Low, N)) × 100`（区间为 0 时取 50）
-- `K = ((kSmooth-1) × 前K + RSV) / kSmooth`
-- `D = ((dSmooth-1) × 前D + K) / dSmooth`
-- `J = 3K - 2D`
+- 参数：`period`、`kSmooth`、`dSmooth`、`oversold`、`overbought`、`longEnabled`、`shortEnabled`；
+- 触发事件：J 下穿超卖 → 做多；J 上穿超买 → 做空；
+- 过滤状态：当前 J 低于超卖阈值（多头）或高于超买阈值（空头）；
+- 展示：J/K/D、超买/超卖状态、阈值。
 
-触发条件：
-
-- 趋势 `BULL_WAITING` 且做多开启，J 从 `≥ oversold` 变为 `< oversold` → `ENTRY_LONG`
-- 趋势 `BEAR_WAITING` 且做空开启，J 从 `≤ overbought` 变为 `> overbought` → `ENTRY_SHORT`
-
-入场不再要求 EMA 排列一致；趋势是否仍然有效由上面的 EMA 距离/失效规则决定。页面上的「多头排列 / 空头排列」仅为展示。
-
-前端提示：
-
-- 轮询发现新触发信号时，右下角弹出提示卡片（10 秒自动消失，可手动关闭）；
-- 每个标的卡片显示该标的最近一条触发信号；
-- 可在「声音提醒设置」中开启浏览器提示音，并分别选择入场信号与金叉/死叉信号；保持标签页打开时切到后台也会继续轮询并响铃；
-- 监控标的区域提供「立即请求数据」按钮，可跳过轮询节拍强制拉取一次。
-
-每次有效上穿/下穿各提醒一次；同一等待周期内可反复触发。
-
-### 3. 简易 J 值入场（`KDJ_TIMING`）
-
-只监控 J 值极值，不参考 EMA 趋势，适合作为独立的入场时机提醒：
-
-- KDJ 参数固定为 `9 / 3 / 3`，不开放周期与平滑参数；
-- J 从 `≥ oversold` 下穿到 `< oversold` → `ENTRY_LONG`
-- J 从 `≤ overbought` 上穿到 `> overbought` → `ENTRY_SHORT`
-- 可只监控超卖做多、只监控超买做空，或两者同时监控；
-- 与 `KDJ_ENTRY` 的区别：不要求趋势为 `BULL_WAITING` / `BEAR_WAITING`，只产生入场提示。
-
-### 4. 通知闸门
-
-顺序：新鲜度（`now - 2 × 周期` 内）→ 全局开关 → 标的开关 → 策略开关 → SendKey 是否配置 → 发送。
-
-## 默认参数
-
-| 策略 | 参数 |
-|---|---|
-| EMA_TREND | fast=25, slow=60, threshold=10 |
-| KDJ_ENTRY | period=9, kSmooth=3, dSmooth=3, oversold=5, overbought=85，多空均开启 |
-| KDJ_TIMING | 固定 KDJ 9/3/3，oversold=5, overbought=85，多空均开启 |
-
-默认标的：`ETHUSDT`、`BTCUSDT`（均为 1m）。
+未来新增 MACD、量能等指标时，只需增加条件定义和字段元数据，前端条件编辑器会自动渲染。
 
 ## API
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| GET | `/api/health` | 健康检查（含 worker 状态） |
+| GET | `/api/health` | 健康检查，含 Worker 状态 |
 | POST | `/api/auth/login` / `/api/auth/logout` | 登录 / 退出 |
 | GET | `/api/auth/me` | 登录状态 |
-| GET | `/api/symbols` | 标的 + 策略 + 状态 |
-| POST | `/api/symbols` | 新增标的（可带 `strategies[]`） |
-| PUT | `/api/symbols/:id` | 改配置；参数/开关/周期变化会静默重新预热 |
-| DELETE | `/api/symbols/:id` | 级联删除策略、状态与信号 |
-| POST | `/api/symbols/refresh` | 立即请求全部启用标的的最新 K 线（异步执行） |
-| GET | `/api/signals` | 信号记录，支持 `limit/offset/symbol/kind/event_type/triggered`；`triggered=1` 只返回触发信号 |
-| GET/PUT | `/api/settings` | 全局通知开关（不返回 SendKey） |
+| GET | `/api/conditions` | 条件目录与字段定义 |
+| GET | `/api/monitors` | 监控项、条件、快照、pending、错误 |
+| POST | `/api/monitors` | 新建监控项 |
+| PUT | `/api/monitors/:id` | 修改监控项/条件 |
+| PATCH | `/api/monitors/:id` | 只修改启用、微信、声音开关 |
+| DELETE | `/api/monitors/:id` | 删除监控项，历史信号保留 |
+| POST | `/api/monitors/:id/refresh` | 单项立即请求，返回 pending |
+| GET | `/api/signals` | 信号记录，支持 `symbol/interval/monitor_id/event_type/triggered/limit/offset` |
+| GET/PUT | `/api/settings` | 全局微信通知开关 |
 
-## 数据库
+## 数据源
 
-- 核心表：`symbols`、`strategies`、`strategy_states`、`signals`、`settings`。
-- `PRAGMA user_version` 标记结构版本（当前 4）。
-- v1 旧库：启动时整体移动到 `data/archive/v1-<时间戳>/` 后重建。
-- v2 → v3：原地 `ALTER TABLE` 补 `baseline_ema` / `ema_diff`，随后清空策略状态并把处理进度归零（静默重新预热）；**历史信号与标的配置保留**。
-- v3 → v4：原地给 `signals` 补 `interval`，并按标的当前周期回填历史信号；不重置策略状态。
-- 信号唯一键：`(symbol_id, kind, event_type, event_time)`，重复处理不会重复写库。
-- 旧版趋势信号的 `ema_diff` 为 `NULL`，页面显示 `--`；无法回填周期的旧信号显示 `--`。
+优先 OKX USDT 永续：
+
+- `BTCUSDT` → `BTC-USDT-SWAP`；
+- OKX 网络错误、业务错误、空数据或解析失败时回退 Binance；
+- OKX 连续失败时会短时熔断，减少重复超时；
+- 每个监控项的条件可以来自不同周期，监控项会记录 `OKX`、`BINANCE` 或 `MIXED`；
+- OKX 不支持的周期（如 8h）直接使用 Binance。
+
+`.env` 配置：
+
+```env
+OKX_BASE_URL=https://www.okx.com
+BINANCE_BASE_URL=https://fapi.binance.com
+PROXY_URL=
+```
+
+## 数据库迁移
+
+当前 `PRAGMA user_version = 5`。
+
+- v4 → v5 前会自动备份到 `data/archive/v4-<时间戳>/`；
+- 旧的 `symbols` / `strategies` / `strategy_states` / `signals_v4` 保留用于回滚；
+- 旧策略迁移规则：
+  - `EMA_TREND` → EMA 触发条件；
+  - `KDJ_TIMING` → KDJ 触发条件（旧“简易 KDJ”不再作为新策略提供）；
+  - `KDJ_ENTRY` → EMA 过滤 + KDJ 触发；
+- 历史信号复制到新 `signals`，显示为“历史记录”，不强行归属到新监控项；
+- 旧标的/策略配置不会丢失。
 
 ## 开发
 
 ```bash
 npm install
-npm run dev          # 同时启动 server(4000) 与 web(3000)
+npm run dev          # server(4000) + web(3000)
 npm run typecheck
 npm run build
 ```
 
-只读回放（不写库、不推送）：
+登录后访问 <http://localhost:3000>。
+
+## 部署
+
+仍使用 `docker-compose.yml` 的 `monitor-data` 数据卷。升级时执行：
 
 ```bash
-npm run replay --workspace=crypto-market-monitor-server -- --symbol ETHUSDT --interval 1m
+./scripts/backup-db.sh
+git pull
+docker compose up -d --build
 ```
 
-也可以离线回放 JSON K 线：
+不要执行 `docker compose down -v`，否则会删除数据库卷。
 
-```bash
-npx tsx src/scripts/replay.ts --json fixtures/klines.json
-```
+## 说明
 
-## 轮询与扩容
-
-- `POLL_INTERVAL_MS` 只是 worker 的**扫描节拍**，不是每个标的的请求间隔。
-- 每个标的只在「上一根已处理 K 线收盘时间 + 该标的周期」之后才会请求 Binance：
-  - 1m 标的约 1 次/分钟；
-  - 5m 标的约 1 次/5 分钟；
-  - 15m/1h 标的按各自周期，不会跟着 1m 空转；
-  - 1M 标的按 UTC 自然月计算下一根收盘时间，不用 30 天近似。
-- `MAX_CONCURRENT_SYMBOLS`（默认 3，最大 10）控制同时拉取的标的数，避免标的多时一轮被串行网络延迟拖长。
-- 失败退避：单个标的请求失败后按 30s → 60s → 120s → 240s 退避，最长 5 分钟，成功后恢复。
-- 前端看板每 15 秒拉取一次；标签页隐藏时暂停轮询，回到前台立即刷新。
-- 粗略容量：Binance `/fapi/v1/klines`（limit=300）单次权重约 2，限流约 2400 权重/分钟；100 个 1m 标的约 200 权重/分钟，远低于限制，真正的瓶颈通常是代理延迟与一轮耗时，所以用并发控制而不是一味拉长间隔。
-- 如果想进一步减少 1m 标的请求量，把 `POLL_INTERVAL_MS` 调到 120000/180000 即可（代价是信号最多延迟 2-3 分钟）。
-
-## 后续扩展（MACD 等）
-
-1. `indicators/macd.ts`：纯计算。
-2. `strategies/macd-*.ts`：实现 `StrategyRunner`（状态机 + 信号草稿）。
-3. `strategies/registry.ts`：注册一行。
-4. `strategies/params.ts`：默认参数与校验。
-5. `config/defaults.ts`：需要默认启用时加入 seed。
-
-表结构、引擎编排与通知无需改动。
+- 只做行情监控和提醒，不执行自动交易；
+- 浏览器声音提醒需要保持标签页打开；
+- 微信通知需要同时满足全局开关、监控项开关、SendKey 配置和信号新鲜度。

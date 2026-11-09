@@ -2,26 +2,29 @@
 
 import {
   eventTypeLabel,
-  formatFixed,
   formatPrice,
-  formatTime,
-  signalJValue,
-  signalTone
+  formatTime
 } from "../lib/format";
-import type { SignalItem } from "../types";
+import type { MonitorItem, MonitorSignalItem } from "../types";
 
 interface SignalToastsProps {
-  toasts: SignalItem[];
+  toasts: MonitorSignalItem[];
+  monitors: MonitorItem[];
   onDismiss: (id: number) => void;
 }
 
 export function SignalToasts({
   toasts,
+  monitors,
   onDismiss
 }: SignalToastsProps) {
   if (toasts.length === 0) {
     return null;
   }
+
+  const monitorById = new Map(
+    monitors.map((monitor) => [monitor.id, monitor])
+  );
 
   return (
     <div
@@ -30,20 +33,21 @@ export function SignalToasts({
       aria-live="polite"
     >
       {[...toasts].reverse().map((signal) => {
-        const tone = signalTone(signal);
-        const jValue = signalJValue(signal);
+        const tone =
+          signal.direction === "BULL"
+            ? "bull"
+            : signal.direction === "BEAR"
+              ? "bear"
+              : "neutral";
+        const monitor = signal.monitor_id
+          ? monitorById.get(signal.monitor_id)
+          : undefined;
 
         return (
-          <div
-            key={signal.id}
-            className={`toast ${tone}`}
-          >
+          <div key={signal.id} className={`toast ${tone}`}>
             <div className="toast-head">
               <strong>
                 {signal.symbol} ·{" "}
-                {signal.kind === "KDJ_TIMING"
-                  ? "简易J · "
-                  : ""}
                 {eventTypeLabel(signal.event_type)}
               </strong>
 
@@ -58,10 +62,21 @@ export function SignalToasts({
             </div>
 
             <div className="toast-body">
-              价格 {formatPrice(signal.price)}
-              {jValue !== null
-                ? ` · J ${formatFixed(jValue, 2)}`
-                : ""}
+              {signal.monitor_name ?? monitor?.name ?? "监控项"} · 价格{" "}
+              {formatPrice(signal.price)}
+            </div>
+
+            <div className="toast-body">
+              {signal.conditions
+                .map(
+                  (condition) =>
+                    `[${condition.interval}] ${
+                      condition.role === "filter"
+                        ? "过滤"
+                        : "触发"
+                    } ${condition.summary}`
+                )
+                .join(" · ")}
             </div>
 
             <div className="toast-time">

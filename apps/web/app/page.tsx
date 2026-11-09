@@ -9,13 +9,13 @@ import {
 } from "react";
 
 import { LoginCard } from "./components/LoginCard";
+import { MonitorList } from "./components/MonitorList";
+import { MonitorModal } from "./components/MonitorModal";
 import { NotificationSettings } from "./components/NotificationSettings";
 import { SignalTable } from "./components/SignalTable";
 import { SignalToasts } from "./components/SignalToasts";
 import { SoundSettings } from "./components/SoundSettings";
 import { SummaryCards } from "./components/SummaryCards";
-import { SymbolCard } from "./components/SymbolCard";
-import { SymbolModal } from "./components/SymbolModal";
 import { api, errorMessage } from "./lib/api";
 import { isAlertSignal } from "./lib/format";
 import {
@@ -28,27 +28,29 @@ import {
   type SoundAlertSettings
 } from "./lib/sound";
 import type {
-  SaveSymbolPayload,
-  SettingsData,
-  SignalItem,
-  SymbolItem
+  ConditionCatalogItem,
+  MonitorItem,
+  MonitorSignalItem,
+  SaveMonitorPayload,
+  SettingsData
 } from "./types";
 
 export default function HomePage() {
   const [authenticated, setAuthenticated] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
-  const [symbols, setSymbols] = useState<SymbolItem[]>([]);
-  const [signals, setSignals] = useState<SignalItem[]>([]);
+  const [monitors, setMonitors] = useState<MonitorItem[]>([]);
+  const [signals, setSignals] = useState<MonitorSignalItem[]>([]);
   const [alertSignals, setAlertSignals] = useState<
-    SignalItem[]
+    MonitorSignalItem[]
   >([]);
+  const [catalog, setCatalog] = useState<ConditionCatalogItem[]>([]);
   const [settings, setSettings] = useState<SettingsData>({
     global_wechat_enabled: false,
     serverchan_configured: false
   });
 
-  const [toasts, setToasts] = useState<SignalItem[]>([]);
+  const [toasts, setToasts] = useState<MonitorSignalItem[]>([]);
   const seenSignalIdsRef = useRef<Set<number> | null>(null);
 
   const [soundSettings, setSoundSettings] =
@@ -60,39 +62,43 @@ export default function HomePage() {
   });
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState<SymbolItem | null>(null);
+  const [editing, setEditing] = useState<MonitorItem | null>(null);
 
   const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
   const loadDashboard = useCallback(async () => {
     const [
-      symbolData,
+      monitorData,
       signalData,
       alertData,
-      settingsData
+      settingsData,
+      catalogData
     ] = await Promise.all([
-      api<SymbolItem[]>("/api/symbols"),
-      api<{ items: SignalItem[] }>(
+      api<MonitorItem[]>("/api/monitors"),
+      api<{ items: MonitorSignalItem[] }>(
         "/api/signals?limit=100"
       ),
-      api<{ items: SignalItem[] }>(
-        "/api/signals?limit=20&triggered=1"
+      api<{ items: MonitorSignalItem[] }>(
+        "/api/signals?limit=30&triggered=1"
       ),
-      api<SettingsData>("/api/settings")
+      api<SettingsData>("/api/settings"),
+      api<ConditionCatalogItem[]>("/api/conditions")
     ]);
 
-    setSymbols(symbolData);
+    setMonitors(monitorData);
     setSignals(signalData.items);
     setAlertSignals(alertData.items);
     setSettings(settingsData);
+    setCatalog(catalogData);
 
     const alerts = alertData.items.filter(isAlertSignal);
+    const monitorById = new Map(
+      monitorData.map((monitor) => [monitor.id, monitor])
+    );
 
     if (seenSignalIdsRef.current === null) {
-      // 首次加载只建立基线，不弹历史提示
       seenSignalIdsRef.current = new Set(
         alerts.map((signal) => signal.id)
       );
@@ -109,11 +115,18 @@ export default function HomePage() {
         seen.add(signal.id);
       }
 
-      if (
-        fresh.some((signal) =>
+      const shouldBeep = fresh.some((signal) => {
+        const monitor = signal.monitor_id
+          ? monitorById.get(signal.monitor_id)
+          : undefined;
+
+        return (
+          monitor?.sound_enabled === 1 &&
           isSoundAlertSignal(signal, soundSettingsRef.current)
-        )
-      ) {
+        );
+      });
+
+      if (shouldBeep) {
         playTripleBeep();
       }
 
@@ -123,16 +136,16 @@ export default function HomePage() {
     }
   }, []);
 
-  const latestAlertBySymbol = useMemo(() => {
-    const map = new Map<number, SignalItem>();
+  const latestAlertByMonitor = useMemo(() => {
+    const map = new Map<number, MonitorSignalItem>();
 
     for (const signal of alertSignals) {
-      if (!isAlertSignal(signal)) {
+      if (!isAlertSignal(signal) || signal.monitor_id === null) {
         continue;
       }
 
-      if (!map.has(signal.symbol_id)) {
-        map.set(signal.symbol_id, signal);
+      if (!map.has(signal.monitor_id)) {
+        map.set(signal.monitor_id, signal);
       }
     }
 
@@ -164,7 +177,6 @@ export default function HomePage() {
       return;
     }
 
-    // 上次已开启声音时，首次点击页面即解锁 AudioContext
     const handlePointerDown = () => unlockAudio();
 
     window.addEventListener("pointerdown", handlePointerDown, {
@@ -178,6 +190,8 @@ export default function HomePage() {
       );
     };
   }, []);
+
+  const hasPending = monitors.some((monitor) => monitor.pending);
 
   useEffect(() => {
     if (!authenticated) {
@@ -213,13 +227,10 @@ export default function HomePage() {
 
     void refresh();
 
-    // 后台标签页也必须继续轮询，否则切走后不会发现新信号、也不会响铃。
-    // 浏览器会节流后台定时器（通常最低 1 分钟），但不会完全停止。
     const timer = window.setInterval(() => {
       void refresh();
-    }, 15000);
+    }, hasPending ? 3000 : 15000);
 
-    // 回到前台立即补一次刷新
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         void refresh();
@@ -234,13 +245,12 @@ export default function HomePage() {
     return () => {
       active = false;
       window.clearInterval(timer);
-
       document.removeEventListener(
         "visibilitychange",
         handleVisibilityChange
       );
     };
-  }, [authenticated, loadDashboard]);
+  }, [authenticated, loadDashboard, hasPending]);
 
   useEffect(() => {
     if (toasts.length === 0) {
@@ -282,7 +292,7 @@ export default function HomePage() {
       await api("/api/auth/logout", { method: "POST" });
     } finally {
       setAuthenticated(false);
-      setSymbols([]);
+      setMonitors([]);
       setSignals([]);
       setAlertSignals([]);
       setToasts([]);
@@ -290,16 +300,17 @@ export default function HomePage() {
     }
   }
 
-  async function toggleSymbol(
+  async function toggleMonitor(
     id: number,
     patch: {
       enabled?: boolean;
-      notify_enabled?: boolean;
+      wechat_enabled?: boolean;
+      sound_enabled?: boolean;
     }
   ) {
     try {
-      await api(`/api/symbols/${id}`, {
-        method: "PUT",
+      await api(`/api/monitors/${id}`, {
+        method: "PATCH",
         body: JSON.stringify(patch)
       });
 
@@ -309,20 +320,43 @@ export default function HomePage() {
     }
   }
 
-  async function deleteSymbol(item: SymbolItem) {
-    if (!window.confirm(`确定删除 ${item.symbol} 吗？`)) {
+  async function deleteMonitor(item: MonitorItem) {
+    if (!window.confirm(`确定删除监控项「${item.name}」吗？`)) {
       return;
     }
 
     try {
-      await api(`/api/symbols/${item.id}`, {
+      await api(`/api/monitors/${item.id}`, {
         method: "DELETE"
       });
 
       await loadDashboard();
-      setMessage(`${item.symbol} 已删除`);
+      setMessage(`监控项「${item.name}」已删除`);
     } catch (err) {
       setError(errorMessage(err));
+    }
+  }
+
+  async function refreshMonitor(item: MonitorItem) {
+    setMonitors((current) =>
+      current.map((monitor) =>
+        monitor.id === item.id
+          ? { ...monitor, pending: true }
+          : monitor
+      )
+    );
+
+    try {
+      await api(`/api/monitors/${item.id}/refresh`, {
+        method: "POST"
+      });
+
+      window.setTimeout(() => {
+        void loadDashboard();
+      }, 1200);
+    } catch (err) {
+      setError(errorMessage(err));
+      await loadDashboard();
     }
   }
 
@@ -332,7 +366,7 @@ export default function HomePage() {
     setModalOpen(true);
   }
 
-  function openEditModal(item: SymbolItem) {
+  function openEditModal(item: MonitorItem) {
     setEditing(item);
     setError("");
     setModalOpen(true);
@@ -343,29 +377,29 @@ export default function HomePage() {
     setEditing(null);
   }
 
-  async function handleSaveSymbol(
-    payload: SaveSymbolPayload
+  async function handleSaveMonitor(
+    payload: SaveMonitorPayload
   ) {
     setLoading(true);
     setError("");
 
     try {
       if (editing) {
-        await api(`/api/symbols/${editing.id}`, {
+        await api(`/api/monitors/${editing.id}`, {
           method: "PUT",
           body: JSON.stringify(payload)
         });
       } else {
-        await api("/api/symbols", {
+        await api("/api/monitors", {
           method: "POST",
           body: JSON.stringify(payload)
         });
       }
 
-      setMessage(editing ? "配置更新成功" : "标的添加成功");
-
+      setMessage(
+        editing ? "监控项更新成功" : "监控项创建成功"
+      );
       closeModal();
-
       await loadDashboard();
     } catch (err) {
       setError(errorMessage(err));
@@ -401,29 +435,6 @@ export default function HomePage() {
     saveSoundAlertSettings(next);
   }
 
-  async function handleRefreshNow() {
-    setRefreshing(true);
-    setError("");
-    setMessage("");
-
-    try {
-      await api("/api/symbols/refresh", { method: "POST" });
-
-      setMessage(
-        "已提交数据请求，正在拉取最新 K 线；完成后页面会自动刷新"
-      );
-
-      // Binance 正常时通常 1~2 秒内完成；保留一次延迟刷新兜底
-      window.setTimeout(() => {
-        void loadDashboard();
-      }, 4000);
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setRefreshing(false);
-    }
-  }
-
   if (checkingAuth) {
     return (
       <main className="login-page">
@@ -447,7 +458,7 @@ export default function HomePage() {
       <header className="header">
         <div className="brand">
           <h1>Crypto Market Monitor</h1>
-          <p>EMA 定趋势 · KDJ 找入场</p>
+          <p>多指标组合 · 多周期确认 · OKX 优先</p>
         </div>
 
         <div className="header-actions">
@@ -474,56 +485,17 @@ export default function HomePage() {
         </div>
       )}
 
-      <SummaryCards symbols={symbols} />
+      <SummaryCards monitors={monitors} />
 
-      <section className="panel">
-        <div className="panel-header">
-          <div>
-            <div className="panel-title">监控标的</div>
-            <div className="panel-subtitle">
-              每个标的独立配置 EMA 趋势、KDJ 入场与简易 J 值监控
-            </div>
-          </div>
-
-          <div className="panel-actions">
-            <button
-              className="button"
-              onClick={() => void handleRefreshNow()}
-              disabled={refreshing}
-            >
-              {refreshing ? "请求中..." : "↻ 立即请求数据"}
-            </button>
-
-            <button
-              className="button primary"
-              onClick={openAddModal}
-            >
-              + 添加标的
-            </button>
-          </div>
-        </div>
-
-        {symbols.length === 0 ? (
-          <div className="empty">暂无监控标的，请先添加</div>
-        ) : (
-          <div className="symbol-grid">
-            {symbols.map((item) => (
-              <SymbolCard
-                key={item.id}
-                item={item}
-                latestSignal={
-                  latestAlertBySymbol.get(item.id) ?? null
-                }
-                onToggle={(id, patch) =>
-                  void toggleSymbol(id, patch)
-                }
-                onEdit={openEditModal}
-                onDelete={(value) => void deleteSymbol(value)}
-              />
-            ))}
-          </div>
-        )}
-      </section>
+      <MonitorList
+        monitors={monitors}
+        latestSignals={latestAlertByMonitor}
+        onToggle={(id, patch) => void toggleMonitor(id, patch)}
+        onEdit={openEditModal}
+        onDelete={(item) => void deleteMonitor(item)}
+        onRefresh={(item) => void refreshMonitor(item)}
+        onAdd={openAddModal}
+      />
 
       <NotificationSettings
         globalNotify={settings.global_wechat_enabled}
@@ -539,29 +511,25 @@ export default function HomePage() {
       <section className="panel">
         <div className="panel-header">
           <div>
-            <div className="panel-title">
-              交叉与入场信号记录
-            </div>
+            <div className="panel-title">信号记录</div>
             <div className="panel-subtitle">
-              最近 100 条趋势确认与入场信号
+              每个监控项独立记录触发结果与条件快照
             </div>
           </div>
         </div>
 
-        <SignalTable
-          signals={signals}
-          symbols={symbols.map((item) => item.symbol)}
-        />
+        <SignalTable signals={signals} monitors={monitors} />
       </section>
 
       <footer className="footer">
-        Crypto Market Monitor · 数据来源 Binance USDⓈ-M Futures
+        Crypto Market Monitor · 行情来源 OKX 优先，Binance 备用
         <br />
         仅提供行情监控与信号提醒，不执行自动交易
       </footer>
 
       <SignalToasts
         toasts={toasts}
+        monitors={monitors}
         onDismiss={(id) =>
           setToasts((current) =>
             current.filter((signal) => signal.id !== id)
@@ -570,13 +538,14 @@ export default function HomePage() {
       />
 
       {modalOpen && (
-        <SymbolModal
+        <MonitorModal
           key={editing?.id ?? "new"}
           item={editing}
+          catalog={catalog}
           loading={loading}
           error={error}
           onClose={closeModal}
-          onSave={handleSaveSymbol}
+          onSave={handleSaveMonitor}
         />
       )}
     </main>

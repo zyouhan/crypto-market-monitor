@@ -1,5 +1,3 @@
-import type { SignalItem } from "../types";
-
 export interface SoundAlertSettings {
   enabled: boolean;
   entry: boolean;
@@ -60,7 +58,7 @@ export function saveSoundAlertSettings(
 }
 
 export function isSoundAlertSignal(
-  signal: SignalItem,
+  signal: { event_type: string },
   settings: SoundAlertSettings
 ): boolean {
   if (!settings.enabled) {

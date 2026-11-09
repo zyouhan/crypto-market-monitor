@@ -11,9 +11,10 @@ import {
   success
 } from "./api/middleware";
 import { authRouter } from "./api/routes/auth";
+import { conditionsRouter } from "./api/routes/conditions";
+import { monitorsRouter } from "./api/routes/monitors";
 import { settingsRouter } from "./api/routes/settings";
 import { signalsRouter } from "./api/routes/signals";
-import { symbolsRouter } from "./api/routes/symbols";
 import { db, resolvedDatabasePath } from "./db";
 import {
   getWorkerHealth,
@@ -56,7 +57,8 @@ app.use("/api/auth", authRouter);
  */
 app.use("/api", requireAuth);
 
-app.use("/api/symbols", symbolsRouter);
+app.use("/api/monitors", monitorsRouter);
+app.use("/api/conditions", conditionsRouter);
 app.use("/api/signals", signalsRouter);
 app.use("/api/settings", settingsRouter);
 

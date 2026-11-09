@@ -102,3 +102,128 @@ export interface SaveSymbolPayload {
   interval: string;
   strategies: SaveStrategyInput[];
 }
+
+export type ConditionKind = "EMA_CROSS" | "KDJ_EXTREME";
+
+export type ConditionRole = "trigger" | "filter";
+
+export interface ConditionField {
+  key: string;
+  label: string;
+  type: "number" | "boolean" | "select";
+  min?: number;
+  max?: number;
+  step?: number | "any";
+  options?: Array<{ value: string; label: string }>;
+  defaultValue: number | boolean | string;
+  help?: string;
+}
+
+export interface ConditionCatalogItem {
+  kind: ConditionKind;
+  label: string;
+  description: string;
+  roles: ConditionRole[];
+  defaultRole: ConditionRole;
+  summaryTemplate: string;
+  fields: ConditionField[];
+}
+
+export interface ConditionDisplayItem {
+  label: string;
+  value: string;
+  tone?: "bull" | "bear" | "neutral" | "warn";
+}
+
+export interface ConditionSnapshot {
+  kind: ConditionKind;
+  role: ConditionRole;
+  interval: string;
+  summary: string;
+  statusText: string;
+  display: ConditionDisplayItem[];
+  source?: string | null;
+  time?: number | null;
+  legacy?: boolean;
+}
+
+export interface MonitorConditionView {
+  id: number;
+  kind: ConditionKind;
+  role: ConditionRole;
+  interval: string;
+  params: Record<string, unknown>;
+  summary: string;
+  snapshot: ConditionSnapshot | null;
+}
+
+export interface MonitorSignalItem {
+  id: number;
+  monitor_id: number | null;
+  monitor_name: string | null;
+  symbol: string;
+  interval: string | null;
+  kind: string;
+  event_type: SignalEventType;
+  direction: "BULL" | "BEAR" | null;
+  price: number;
+  event_time: number;
+  primary_condition: string | null;
+  conditions: ConditionSnapshot[];
+  source: string | null;
+  threshold: number | null;
+  price_diff: number | null;
+  ema_diff: number | null;
+  trigger_met: number;
+  push_state: "PENDING" | "SENT" | "FAILED" | "SKIPPED";
+  push_error: string | null;
+  reason: string | null;
+  payload: Record<string, unknown> | null;
+  created_at: number;
+}
+
+export interface MonitorItem {
+  id: number;
+  name: string;
+  symbol: string;
+  interval: string;
+  enabled: number;
+  wechat_enabled: number;
+  sound_enabled: number;
+  last_price: number | null;
+  last_price_time: number | null;
+  last_processed_close_time: number;
+  last_attempt_at: number | null;
+  last_success_at: number | null;
+  last_error: string | null;
+  last_error_at: number | null;
+  source: "OKX" | "BINANCE" | "MIXED" | null;
+  source_note: string | null;
+  snapshot: {
+    price?: number | null;
+    conditions?: ConditionSnapshot[];
+    updatedAt?: number;
+  } | null;
+  pending: boolean;
+  conditions: MonitorConditionView[];
+  last_signal: MonitorSignalItem | null;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface SaveConditionInput {
+  kind: ConditionKind;
+  role: ConditionRole;
+  interval: string;
+  params: Record<string, unknown>;
+}
+
+export interface SaveMonitorPayload {
+  name: string;
+  symbol: string;
+  interval: string;
+  enabled: boolean;
+  wechat_enabled: boolean;
+  sound_enabled: boolean;
+  conditions: SaveConditionInput[];
+}

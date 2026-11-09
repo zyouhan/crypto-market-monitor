@@ -1,11 +1,7 @@
 import { Router } from "express";
 
-import type {
-  SignalEventType,
-  StrategyKind
-} from "../../db/types";
-import { getSignals } from "../../db/repo";
-import { isStrategyKind } from "../../strategies/registry";
+import type { SignalEventType } from "../../db/types";
+import { getSignals } from "../../db/monitor-repo";
 import { failure, success } from "../middleware";
 
 export const signalsRouter: Router = Router();
@@ -27,21 +23,17 @@ function isEventType(
   );
 }
 
-function parseJsonObject(
+function parseJson(
   value: string | null
-): Record<string, unknown> {
+): unknown {
   if (!value) {
-    return {};
+    return null;
   }
 
   try {
-    const parsed = JSON.parse(value) as unknown;
-
-    return typeof parsed === "object" && parsed !== null
-      ? (parsed as Record<string, unknown>)
-      : {};
+    return JSON.parse(value) as unknown;
   } catch {
-    return {};
+    return null;
   }
 }
 
@@ -53,7 +45,6 @@ signalsRouter.get("/", (req, res) => {
     Math.max(Math.floor(limitValue) || 50, 1),
     200
   );
-
   const offset = Math.max(
     Math.floor(offsetValue) || 0,
     0
@@ -63,16 +54,24 @@ signalsRouter.get("/", (req, res) => {
     typeof req.query.symbol === "string"
       ? req.query.symbol.trim().toUpperCase()
       : "";
-
-  const kindRaw = req.query.kind;
+  const interval =
+    typeof req.query.interval === "string"
+      ? req.query.interval.trim()
+      : "";
+  const monitorRaw = req.query.monitor_id;
   const eventTypeRaw = req.query.event_type;
   const triggeredRaw = req.query.triggered;
 
-  const triggeredOnly =
-    triggeredRaw === "1" || triggeredRaw === "true";
+  const monitorId =
+    typeof monitorRaw === "string" && monitorRaw.trim()
+      ? Number(monitorRaw)
+      : undefined;
 
-  if (kindRaw !== undefined && !isStrategyKind(kindRaw)) {
-    res.status(400).json(failure("未知的策略类型"));
+  if (
+    monitorId !== undefined &&
+    (!Number.isInteger(monitorId) || monitorId <= 0)
+  ) {
+    res.status(400).json(failure("监控项 ID 不正确"));
     return;
   }
 
@@ -88,12 +87,15 @@ signalsRouter.get("/", (req, res) => {
     limit,
     offset,
     symbol: symbol || undefined,
-    kind: kindRaw as StrategyKind | undefined,
-    eventType: eventTypeRaw as SignalEventType | undefined,
-    triggeredOnly
+    interval: interval || undefined,
+    monitorId,
+    eventType: eventTypeRaw as string | undefined,
+    triggeredOnly:
+      triggeredRaw === "1" || triggeredRaw === "true"
   }).map((row) => ({
     ...row,
-    payload: parseJsonObject(row.payload)
+    conditions: parseJson(row.conditions),
+    payload: parseJson(row.payload)
   }));
 
   res.json(success({ items, limit, offset }));

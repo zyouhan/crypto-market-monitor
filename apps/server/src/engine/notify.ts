@@ -1,12 +1,12 @@
 import https from "node:https";
 
 import type {
-  SignalDirection,
-  SignalEventType,
-  StrategyKind
+  MonitorRecord,
+  MonitorSignalRecord,
+  SignalDirection
 } from "../db/types";
-
-import { formatTime } from "./time";
+import { updateSignalPush } from "../db/monitor-repo";
+import { isSignalFresh, formatTime } from "./time";
 
 const SENDKEY = process.env.SERVERCHAN_SENDKEY || "";
 
@@ -18,27 +18,30 @@ interface ServerChanResponse {
   error?: string;
 }
 
-export interface NotifiableSignal {
-  symbol: string;
-  kind: StrategyKind;
-  event_type: SignalEventType;
-  direction: SignalDirection | null;
-  price: number;
-  event_time: number;
-  threshold: number | null;
-  price_diff: number | null;
-  ema_diff: number | null;
-  payload: Record<string, unknown> | null;
+interface SignalConditionSnapshot {
+  kind?: string;
+  role?: string;
+  interval?: string;
+  summary?: string;
+  statusText?: string;
 }
 
 export function isServerchanConfigured(): boolean {
   return Boolean(SENDKEY);
 }
 
-function asNumber(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value)
-    ? value
-    : null;
+function directionLabel(
+  direction: SignalDirection | null
+): string {
+  if (direction === "BULL") {
+    return "看涨/做多";
+  }
+
+  if (direction === "BEAR") {
+    return "看跌/做空";
+  }
+
+  return "方向未知";
 }
 
 function formatNumber(
@@ -54,178 +57,155 @@ function formatNumber(
   });
 }
 
-function crossName(eventType: SignalEventType): string {
-  if (eventType === "TREND_GOLDEN") {
-    return "金叉";
+function parseConditions(
+  raw: string | null
+): SignalConditionSnapshot[] {
+  if (!raw) {
+    return [];
   }
 
-  if (eventType === "TREND_DEATH") {
-    return "死叉";
-  }
+  try {
+    const parsed = JSON.parse(raw) as unknown;
 
-  return "交叉";
+    return Array.isArray(parsed)
+      ? (parsed as SignalConditionSnapshot[])
+      : [];
+  } catch {
+    return [];
+  }
 }
 
-function trendName(direction: SignalDirection | null): string {
-  if (direction === "BULL") {
-    return "看涨等待";
-  }
-
-  if (direction === "BEAR") {
-    return "看跌等待";
-  }
-
-  return "中性";
-}
-
-/**
- * 组装通知标题与正文。
- */
-export function buildSignalMessage(
-  signal: NotifiableSignal,
-  interval: string
+export function buildMonitorMessage(
+  signal: MonitorSignalRecord,
+  monitor: MonitorRecord
 ): { title: string; description: string } {
-  const payload = signal.payload ?? {};
+  const title = `[监控] ${signal.symbol} ${
+    signal.monitor_name ?? monitor.name
+  } ${directionLabel(signal.direction)}`;
 
-  if (signal.kind === "EMA_TREND") {
-    const fast = asNumber(payload.fast);
-    const slow = asNumber(payload.slow);
-    const threshold = signal.threshold;
+  const conditions = parseConditions(signal.conditions);
 
-    if (signal.event_type === "TREND_INVALIDATED") {
-      const baselineEma = asNumber(payload.baselineEma);
-      const currentEma = asNumber(payload.currentEma);
-      const deviation = asNumber(payload.deviation);
+  const conditionLines =
+    conditions.length > 0
+      ? conditions.map((condition) => {
+          const interval = condition.interval
+            ? `[${condition.interval}] `
+            : "";
 
-      const title = `[趋势] ${signal.symbol} 等待失效`;
-
-      const description = [
-        `交易标的：${signal.symbol}`,
-        `K 线周期：${interval}`,
-        `信号类型：${trendName(
-          signal.direction
-        )}已失效，暂停入场`,
-        `EMA 参数：${formatNumber(fast, 0)} / ${formatNumber(slow, 0)}`,
-        `基准交叉 EMA：${formatNumber(baselineEma)}`,
-        `当前 EMA：${formatNumber(currentEma)}`,
-        `反向偏离：${formatNumber(deviation)}（阈值 ${formatNumber(
-          threshold
-        )}）`,
-        `失效时间：${formatTime(signal.event_time)}`
-      ].join("\n\n");
-
-      return { title, description };
-    }
-
-    const previousEma = asNumber(payload.previousEma);
-    const crossEma = asNumber(payload.crossEma);
-
-    const title = `[趋势] ${signal.symbol} EMA ${crossName(
-      signal.event_type
-    )}确认`;
-
-    const description = [
-      `交易标的：${signal.symbol}`,
-      `K 线周期：${interval}`,
-      `信号类型：${crossName(signal.event_type)}确认（趋势转为${trendName(
-        signal.direction
-      )}）`,
-      `EMA 参数：${formatNumber(fast, 0)} / ${formatNumber(slow, 0)}`,
-      `EMA 距离：${formatNumber(signal.ema_diff)}（阈值 ${formatNumber(
-        threshold
-      )}）`,
-      `基准交叉 EMA：${formatNumber(previousEma)}`,
-      `本次交叉 EMA：${formatNumber(crossEma)}`,
-      `交叉价格：${formatNumber(signal.price)}`,
-      `价格差（参考）：${formatNumber(signal.price_diff)}`,
-      `交叉时间：${formatTime(signal.event_time)}`
-    ].join("\n\n");
-
-    return { title, description };
-  }
-
-  const isLong = signal.event_type === "ENTRY_LONG";
-
-  if (signal.kind === "KDJ_TIMING") {
-    const j = asNumber(payload.j);
-    const previousJ = asNumber(payload.previousJ);
-    const k = asNumber(payload.k);
-    const d = asNumber(payload.d);
-    const threshold = isLong
-      ? asNumber(payload.oversold)
-      : asNumber(payload.overbought);
-
-    const condition = isLong
-      ? `J ${formatNumber(j, 2)} < ${formatNumber(
-          threshold,
-          2
-        )}`
-      : `J ${formatNumber(j, 2)} > ${formatNumber(
-          threshold,
-          2
-        )}`;
-
-    return {
-      title: `[简易J] ${signal.symbol} ${
-        isLong ? "超卖做多" : "超买做空"
-      }提示`,
-      description: [
-        `交易标的：${signal.symbol}`,
-        `K 线周期：${interval}`,
-        `信号类型：简易 J 值${
-          isLong ? "超卖做多" : "超买做空"
-        }提示`,
-        `触发条件：${condition}（前值 ${formatNumber(
-          previousJ,
-          2
-        )}）`,
-        `K / D：${formatNumber(k, 2)} / ${formatNumber(d, 2)}`,
-        `触发价格：${formatNumber(signal.price)}`,
-        `触发时间：${formatTime(signal.event_time)}`,
-        "策略说明：固定 KDJ 9/3/3，仅监控 J 值穿越阈值，不参考 EMA 趋势"
-      ].join("\n\n")
-    };
-  }
-
-  const title = `[入场] ${signal.symbol} KDJ ${
-    isLong ? "做多" : "做空"
-  }信号`;
-
-  const j = asNumber(payload.j);
-  const previousJ = asNumber(payload.previousJ);
-  const k = asNumber(payload.k);
-  const d = asNumber(payload.d);
-  const threshold = isLong
-    ? asNumber(payload.oversold)
-    : asNumber(payload.overbought);
-
-  const condition = isLong
-    ? `J ${formatNumber(j, 2)} < ${formatNumber(threshold, 2)}`
-    : `J ${formatNumber(j, 2)} > ${formatNumber(threshold, 2)}`;
+          return `${interval}${condition.role === "filter" ? "过滤" : "触发"} · ${
+            condition.summary ?? condition.kind ?? "--"
+          }${condition.statusText ? `：${condition.statusText}` : ""}`;
+        })
+      : ["--"];
 
   const description = [
     `交易标的：${signal.symbol}`,
-    `K 线周期：${interval}`,
-    `信号类型：KDJ ${isLong ? "超卖做多" : "超买做空"}入场`,
-    `当前趋势：${trendName(signal.direction)}`,
-    `KDJ 参数：${formatNumber(asNumber(payload.period), 0)},${formatNumber(
-      asNumber(payload.kSmooth),
-      0
-    )},${formatNumber(asNumber(payload.dSmooth), 0)}`,
-    `触发条件：${condition}（前值 ${formatNumber(previousJ, 2)}）`,
-    `K / D：${formatNumber(k, 2)} / ${formatNumber(d, 2)}`,
+    `入场周期：${signal.interval ?? monitor.interval}`,
+    `监控项：${signal.monitor_name ?? monitor.name}`,
+    `方向：${directionLabel(signal.direction)}`,
     `触发价格：${formatNumber(signal.price)}`,
-    `触发时间：${formatTime(signal.event_time)}`
+    `触发时间：${formatTime(signal.event_time)}`,
+    `数据源：${signal.source ?? monitor.source ?? "--"}`,
+    ...conditionLines
   ].join("\n\n");
 
   return { title, description };
 }
 
 /**
- * 发送 Server酱微信通知。
- *
- * 未配置 SendKey 时直接报错，由调用方决定如何记录错误。
+ * 微信通知闸门：新鲜度 → 全局开关 → 监控项开关 → SendKey。
  */
+export async function dispatchMonitorNotification(
+  signal: MonitorSignalRecord,
+  monitor: MonitorRecord,
+  globalNotifyEnabled: boolean
+): Promise<boolean> {
+  if (signal.trigger_met !== 1) {
+    return false;
+  }
+
+  if (!isSignalFresh(signal.event_time, monitor.interval)) {
+    updateSignalPush({
+      id: signal.id,
+      pushState: "SKIPPED",
+      pushError: null,
+      reason: "stale_signal_suppressed"
+    });
+    return false;
+  }
+
+  if (!globalNotifyEnabled) {
+    updateSignalPush({
+      id: signal.id,
+      pushState: "SKIPPED",
+      pushError: null,
+      reason: "global_notification_disabled"
+    });
+    return false;
+  }
+
+  if (monitor.wechat_enabled !== 1) {
+    updateSignalPush({
+      id: signal.id,
+      pushState: "SKIPPED",
+      pushError: null,
+      reason: "monitor_notification_disabled"
+    });
+    return false;
+  }
+
+  if (!isServerchanConfigured()) {
+    updateSignalPush({
+      id: signal.id,
+      pushState: "SKIPPED",
+      pushError: null,
+      reason: "serverchan_sendkey_missing"
+    });
+    return false;
+  }
+
+  const message = buildMonitorMessage(signal, monitor);
+
+  try {
+    await sendWechatNotification(
+      message.title,
+      message.description
+    );
+
+    updateSignalPush({
+      id: signal.id,
+      pushState: "SENT",
+      pushError: null,
+      reason: null
+    });
+
+    console.log(
+      `[Worker] 通知已发送: ${message.title}（${formatTime(
+        signal.event_time
+      )}）`
+    );
+
+    return true;
+  } catch (error) {
+    const text =
+      error instanceof Error ? error.message : String(error);
+
+    updateSignalPush({
+      id: signal.id,
+      pushState: "FAILED",
+      pushError: text.slice(0, 300),
+      reason: "notification_failed"
+    });
+
+    console.error(
+      `[Worker] 通知失败: ${signal.symbol} ${monitor.name}`,
+      text
+    );
+
+    return false;
+  }
+}
+
 export async function sendWechatNotification(
   title: string,
   description: string
@@ -258,11 +238,9 @@ export async function sendWechatNotification(
         let responseBody = "";
 
         response.setEncoding("utf8");
-
         response.on("data", (chunk: string) => {
           responseBody += chunk;
         });
-
         response.on("end", () => {
           const statusCode = response.statusCode || 0;
 
@@ -310,7 +288,6 @@ export async function sendWechatNotification(
     });
 
     request.on("error", reject);
-
     request.write(body);
     request.end();
   });
