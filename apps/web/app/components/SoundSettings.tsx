@@ -107,7 +107,7 @@ export function SoundSettings({
         </span>
       </div>
 
-      <div className="sound-controls">
+      <div className="sound-controls-row">
         <label className="toggle-chip">
           <input
             type="checkbox"
@@ -121,45 +121,43 @@ export function SoundSettings({
           </span>
           <span>启用声音提醒</span>
         </label>
-      </div>
 
-      <div className="sound-type-grid">
-        {SOUND_TYPES.map((type) => (
-          <div className="sound-type-card" key={type.key}>
-            <label
-              className={`toggle-chip ${
-                value.enabled ? "" : "disabled"
-              }`}
-            >
-              <input
-                type="checkbox"
-                checked={value[type.key]}
-                disabled={!value.enabled}
-                onChange={(event) =>
-                  update({
-                    [type.key]: event.target.checked
-                  })
-                }
-              />
-              <span className="toggle-track">
-                <span className="toggle-thumb" />
-              </span>
-              <span>{type.label}</span>
-            </label>
+        <div className="sound-type-strip">
+          {SOUND_TYPES.map((type) => (
+            <div className="sound-type-item" key={type.key}>
+              <label
+                className={`toggle-chip ${
+                  value.enabled ? "" : "disabled"
+                }`}
+                title={type.description}
+              >
+                <input
+                  type="checkbox"
+                  checked={value[type.key]}
+                  disabled={!value.enabled}
+                  onChange={(event) =>
+                    update({
+                      [type.key]: event.target.checked
+                    })
+                  }
+                />
+                <span className="toggle-track">
+                  <span className="toggle-thumb" />
+                </span>
+                <span>{type.label}</span>
+              </label>
 
-            <div className="sound-type-meta">
-              {type.description}
+              <button
+                type="button"
+                className="button small sound-preview"
+                title={`试听${type.label}`}
+                onClick={() => preview(type.kind)}
+              >
+                试听
+              </button>
             </div>
-
-            <button
-              type="button"
-              className="button small"
-              onClick={() => preview(type.kind)}
-            >
-              试听
-            </button>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       <div className="panel-subtitle sound-hint">
