@@ -221,21 +221,83 @@ curl -fsS http://127.0.0.1/api/health
 |---|---|---|
 | `DEPLOY_HOST` | 是 | 服务器 IP 或域名 |
 | `DEPLOY_USER` | 是 | SSH 用户名 |
-| `DEPLOY_SSH_KEY` | 是 | CI 登录服务器的私钥全文 |
+| `DEPLOY_SSH_KEY` | 是* | CI 登录服务器的私钥全文 |
+| `DEPLOY_SSH_KEY_B64` | 是* | 私钥文件的 Base64，推荐使用，避免换行被破坏 |
 | `DEPLOY_PORT` | 否 | SSH 端口，默认 `22` |
 | `DEPLOY_PATH` | 否 | 项目路径，默认 `/opt/crypto-market-monitor` |
 | `DEPLOY_KNOWN_HOSTS` | 否 | 服务器 host key；不填则工作流使用 `ssh-keyscan` |
+
+\* `DEPLOY_SSH_KEY` 和 `DEPLOY_SSH_KEY_B64` 二选一。
 
 生成 CI 登录密钥：
 
 ```bash
 ssh-keygen -t ed25519 -C "crypto-market-monitor-ci" -f ~/.ssh/crypto-monitor-ci
 cat ~/.ssh/crypto-monitor-ci.pub >> ~/.ssh/authorized_keys
+chmod 700 ~/.ssh
 chmod 600 ~/.ssh/authorized_keys
-cat ~/.ssh/crypto-monitor-ci
 ```
 
-把最后输出的私钥内容填入 `DEPLOY_SSH_KEY`。
+推荐把私钥转成 Base64 后填入 `DEPLOY_SSH_KEY_B64`。
+
+Linux：
+
+```bash
+base64 -w0 ~/.ssh/crypto-monitor-ci
+```
+
+macOS：
+
+```bash
+base64 < ~/.ssh/crypto-monitor-ci | tr -d '\n'
+```
+
+Windows PowerShell：
+
+```powershell
+[Convert]::ToBase64String(
+  [IO.File]::ReadAllBytes("$HOME\.ssh\crypto-monitor-ci")
+)
+```
+
+也可以直接填私钥原文到 `DEPLOY_SSH_KEY`，工作流会兼容字面量 `\n` 和 CRLF，并在使用前校验私钥格式、打印指纹。
+
+### SSH 报错排查
+
+如果日志出现：
+
+```text
+Load key ... error in libcrypto
+```
+
+说明私钥内容无法解析，常见原因是 Secret 中的换行被破坏、填成了 `.pub` 公钥、私钥有 passphrase，或使用了 PuTTY `.ppk` 格式。优先改用 `DEPLOY_SSH_KEY_B64`，并在本地验证：
+
+```bash
+ssh-keygen -y -f ~/.ssh/crypto-monitor-ci
+```
+
+能输出公钥才说明私钥格式正确。
+
+如果出现：
+
+```text
+Permission denied (publickey)
+```
+
+说明密钥格式正确，但服务器不接受这把公钥。检查：
+
+```bash
+whoami
+grep "crypto-market-monitor-ci" ~/.ssh/authorized_keys
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/authorized_keys
+```
+
+并在本地直接测试：
+
+```bash
+ssh -i ~/.ssh/crypto-monitor-ci -p 22 <DEPLOY_USER>@<DEPLOY_HOST>
+```
 
 服务器拉代码的 GitHub 权限单独配置，例如生成只读 Deploy Key：
 

@@ -22,14 +22,48 @@ jobs:
       - name: Prepare SSH
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_KEY_B64: ${{ secrets.DEPLOY_SSH_KEY_B64 }}
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
         run: |
           set -euo pipefail
           install -m 700 -d "$HOME/.ssh"
-          printf '%s\n' "$DEPLOY_SSH_KEY" > "$HOME/.ssh/deploy_key"
-          chmod 600 "$HOME/.ssh/deploy_key"
+          umask 077
+
+          KEY_FILE="$HOME/.ssh/deploy_key"
+
+          if [ -n "${DEPLOY_SSH_KEY_B64:-}" ]; then
+            printf '%s' "$DEPLOY_SSH_KEY_B64" | base64 -d > "$KEY_FILE"
+          else
+            if [ -z "${DEPLOY_SSH_KEY:-}" ]; then
+              echo "DEPLOY_SSH_KEY / DEPLOY_SSH_KEY_B64 未配置" >&2
+              exit 1
+            fi
+
+            # 兼容 GitHub Secret 中出现的字面量 \n 和 Windows CRLF
+            printf '%s' "$DEPLOY_SSH_KEY" \
+              | sed -e 's/\\n/\n/g' -e 's/\r$//' \
+              > "$KEY_FILE"
+            sed -i -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$KEY_FILE"
+
+            # 确保文件以换行结尾
+            if [ "$(tail -c 1 "$KEY_FILE" | wc -l)" -eq 0 ]; then
+              printf '\n' >> "$KEY_FILE"
+            fi
+          fi
+
+          chmod 600 "$KEY_FILE"
+
+          if ! ssh-keygen -y -P "" -f "$KEY_FILE" > "$HOME/.ssh/deploy_key.pub" 2> "$HOME/.ssh/key-error.log"; then
+            echo "私钥无法解析，请检查 DEPLOY_SSH_KEY 内容：" >&2
+            cat "$HOME/.ssh/key-error.log" >&2
+            exit 1
+          fi
+
+          chmod 600 "$HOME/.ssh/deploy_key.pub"
+          echo "已加载部署密钥："
+          ssh-keygen -lf "$HOME/.ssh/deploy_key.pub"
 
           if [ -n "${DEPLOY_KNOWN_HOSTS:-}" ]; then
             printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
