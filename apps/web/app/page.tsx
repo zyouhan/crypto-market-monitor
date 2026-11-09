@@ -229,7 +229,7 @@ export default function HomePage() {
 
     const timer = window.setInterval(() => {
       void refresh();
-    }, hasPending ? 3000 : 15000);
+    }, 15000);
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
@@ -250,7 +250,21 @@ export default function HomePage() {
         handleVisibilityChange
       );
     };
-  }, [authenticated, loadDashboard, hasPending]);
+  }, [authenticated, loadDashboard]);
+
+  // pending 时单独快速轮询，但不要重建上面的 15 秒轮询；
+  // 否则点击“立即请求”后的第一次 GET 会立刻清掉 pending，造成闪动。
+  useEffect(() => {
+    if (!authenticated || !hasPending) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      void loadDashboard();
+    }, 1500);
+
+    return () => window.clearInterval(timer);
+  }, [authenticated, hasPending, loadDashboard]);
 
   useEffect(() => {
     if (toasts.length === 0) {

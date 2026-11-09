@@ -327,7 +327,7 @@ export function MonitorModal({
           <div>
             <div className="strategy-title">组合条件</div>
             <div className="strategy-desc">
-              触发条件定义入场时机；过滤条件在触发时同时检查。
+              多个触发条件必须在同一根入场 K 线同时发生；需要持续状态过滤时，请把条件设为过滤条件。
             </div>
           </div>
 
