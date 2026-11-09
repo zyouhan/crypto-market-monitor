@@ -8,7 +8,9 @@ export type SignalEventType =
   | "TREND_DEATH"
   | "TREND_INVALIDATED"
   | "ENTRY_LONG"
-  | "ENTRY_SHORT";
+  | "ENTRY_SHORT"
+  | "VOLUME_SPIKE"
+  | "PRICE_LEVEL";
 
 export interface EmaParams {
   fast: number;
@@ -109,7 +111,11 @@ export interface SaveSymbolPayload {
   strategies: SaveStrategyInput[];
 }
 
-export type ConditionKind = "EMA_CROSS" | "KDJ_EXTREME";
+export type ConditionKind =
+  | "EMA_CROSS"
+  | "KDJ_EXTREME"
+  | "VOLUME_SPIKE"
+  | "PRICE_LEVEL";
 
 export type ConditionRole = "trigger" | "filter";
 

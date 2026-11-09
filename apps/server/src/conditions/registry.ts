@@ -2,6 +2,8 @@ import type { ConditionKind } from "../db/types";
 
 import { emaCrossDefinition } from "./ema-cross";
 import { kdjExtremeDefinition } from "./kdj-extreme";
+import { priceLevelDefinition } from "./price-level";
+import { volumeSpikeDefinition } from "./volume-spike";
 import type { ConditionDefinition } from "./types";
 
 export const CONDITION_DEFINITIONS: Record<
@@ -9,7 +11,9 @@ export const CONDITION_DEFINITIONS: Record<
   ConditionDefinition
 > = {
   EMA_CROSS: emaCrossDefinition,
-  KDJ_EXTREME: kdjExtremeDefinition
+  KDJ_EXTREME: kdjExtremeDefinition,
+  VOLUME_SPIKE: volumeSpikeDefinition,
+  PRICE_LEVEL: priceLevelDefinition
 };
 
 export function isConditionKind(

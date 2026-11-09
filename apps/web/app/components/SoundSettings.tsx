@@ -15,7 +15,12 @@ interface SoundSettingsProps {
 const SOUND_TYPES: Array<{
   key: keyof Pick<
     SoundAlertSettings,
-    "entryLong" | "entryShort" | "golden" | "death"
+    | "entryLong"
+    | "entryShort"
+    | "golden"
+    | "death"
+    | "volume"
+    | "level"
   >;
   kind: SoundSignalKind;
   label: string;
@@ -44,6 +49,18 @@ const SOUND_TYPES: Array<{
     kind: "death",
     label: "死叉",
     description: "低沉交叉音"
+  },
+  {
+    key: "volume",
+    kind: "volume",
+    label: "放量",
+    description: "连续量能音"
+  },
+  {
+    key: "level",
+    kind: "level",
+    label: "到价",
+    description: "价位提示音"
   }
 ];
 
@@ -72,12 +89,16 @@ export function SoundSettings({
       !value.entryLong &&
       !value.entryShort &&
       !value.golden &&
-      !value.death
+      !value.death &&
+      !value.volume &&
+      !value.level
     ) {
       next.entryLong = true;
       next.entryShort = true;
       next.golden = true;
       next.death = true;
+      next.volume = true;
+      next.level = true;
     }
 
     onChange(next);

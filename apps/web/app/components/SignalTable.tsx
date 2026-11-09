@@ -196,6 +196,8 @@ export function SignalTable({
           <option value="TREND_DEATH">死叉确认</option>
           <option value="ENTRY_LONG">做多入场</option>
           <option value="ENTRY_SHORT">做空入场</option>
+          <option value="VOLUME_SPIKE">成交量放量</option>
+          <option value="PRICE_LEVEL">到达价位</option>
           <option value="TREND_INVALIDATED">等待失效</option>
         </select>
       </div>

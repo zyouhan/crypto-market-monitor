@@ -2,7 +2,9 @@ export type SoundSignalKind =
   | "entry-long"
   | "entry-short"
   | "golden"
-  | "death";
+  | "death"
+  | "volume"
+  | "level";
 
 export interface SoundAlertSettings {
   enabled: boolean;
@@ -10,6 +12,8 @@ export interface SoundAlertSettings {
   entryShort: boolean;
   golden: boolean;
   death: boolean;
+  volume: boolean;
+  level: boolean;
 }
 
 export const DEFAULT_SOUND_ALERT_SETTINGS: SoundAlertSettings = {
@@ -17,7 +21,9 @@ export const DEFAULT_SOUND_ALERT_SETTINGS: SoundAlertSettings = {
   entryLong: true,
   entryShort: true,
   golden: true,
-  death: true
+  death: true,
+  volume: true,
+  level: true
 };
 
 const STORAGE_KEY = "crypto-market-monitor:sound-alerts";
@@ -49,7 +55,9 @@ export function loadSoundAlertSettings(): SoundAlertSettings {
       entryShort:
         parsed.entryShort ?? parsed.entry ?? true,
       golden: parsed.golden ?? parsed.cross ?? true,
-      death: parsed.death ?? parsed.cross ?? true
+      death: parsed.death ?? parsed.cross ?? true,
+      volume: parsed.volume ?? true,
+      level: parsed.level ?? true
     };
   } catch {
     return { ...DEFAULT_SOUND_ALERT_SETTINGS };
@@ -90,6 +98,10 @@ export function getSoundAlertKind(
       return settings.golden ? "golden" : null;
     case "TREND_DEATH":
       return settings.death ? "death" : null;
+    case "VOLUME_SPIKE":
+      return settings.volume ? "volume" : null;
+    case "PRICE_LEVEL":
+      return settings.level ? "level" : null;
     default:
       return null;
   }
@@ -99,7 +111,9 @@ const TONES: Record<SoundSignalKind, number[]> = {
   "entry-long": [660, 880, 1100],
   "entry-short": [880, 700, 520],
   golden: [880, 1100, 1320],
-  death: [440, 330, 220]
+  death: [440, 330, 220],
+  volume: [740, 740, 980],
+  level: [620, 820]
 };
 
 let audioContext: AudioContext | null = null;

@@ -41,7 +41,9 @@ const EVENT_TYPES: SignalEventType[] = [
   "TREND_DEATH",
   "TREND_INVALIDATED",
   "ENTRY_LONG",
-  "ENTRY_SHORT"
+  "ENTRY_SHORT",
+  "VOLUME_SPIKE",
+  "PRICE_LEVEL"
 ];
 
 function isEventType(

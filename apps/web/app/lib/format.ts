@@ -137,6 +137,10 @@ export function eventTypeLabel(eventType: string): string {
       return "做多入场";
     case "ENTRY_SHORT":
       return "做空入场";
+    case "VOLUME_SPIKE":
+      return "成交量放量";
+    case "PRICE_LEVEL":
+      return "到达价位";
     default:
       return eventType;
   }
@@ -209,7 +213,9 @@ export function isAlertSignal(signal: {
     signal.event_type === "TREND_GOLDEN" ||
     signal.event_type === "TREND_DEATH" ||
     signal.event_type === "ENTRY_LONG" ||
-    signal.event_type === "ENTRY_SHORT"
+    signal.event_type === "ENTRY_SHORT" ||
+    signal.event_type === "VOLUME_SPIKE" ||
+    signal.event_type === "PRICE_LEVEL"
   );
 }
 

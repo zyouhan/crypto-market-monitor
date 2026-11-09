@@ -9,7 +9,11 @@ export type StrategyKind =
   | "KDJ_ENTRY"
   | "KDJ_TIMING";
 
-export type ConditionKind = "EMA_CROSS" | "KDJ_EXTREME";
+export type ConditionKind =
+  | "EMA_CROSS"
+  | "KDJ_EXTREME"
+  | "VOLUME_SPIKE"
+  | "PRICE_LEVEL";
 
 export type ConditionRole = "trigger" | "filter";
 
@@ -122,7 +126,9 @@ export type SignalEventType =
   | "TREND_DEATH"
   | "TREND_INVALIDATED"
   | "ENTRY_LONG"
-  | "ENTRY_SHORT";
+  | "ENTRY_SHORT"
+  | "VOLUME_SPIKE"
+  | "PRICE_LEVEL";
 
 export type SignalDirection = "BULL" | "BEAR";
 

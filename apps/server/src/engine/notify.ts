@@ -44,6 +44,27 @@ function directionLabel(
   return "方向未知";
 }
 
+function displayDirection(
+  signal: MonitorSignalRecord
+): string {
+  if (
+    signal.event_type === "VOLUME_SPIKE" ||
+    signal.event_type === "PRICE_LEVEL"
+  ) {
+    if (signal.direction === "BULL") {
+      return "向上";
+    }
+
+    if (signal.direction === "BEAR") {
+      return "向下";
+    }
+
+    return "方向未知";
+  }
+
+  return directionLabel(signal.direction);
+}
+
 function formatNumber(
   value: number | null | undefined,
   digits = 8
@@ -81,7 +102,7 @@ export function buildMonitorMessage(
 ): { title: string; description: string } {
   const title = `[监控] ${signal.symbol} ${
     signal.monitor_name ?? monitor.name
-  } ${directionLabel(signal.direction)}`;
+  } ${displayDirection(signal)}`;
 
   const conditions = parseConditions(signal.conditions);
 
@@ -102,7 +123,7 @@ export function buildMonitorMessage(
     `交易标的：${signal.symbol}`,
     `入场周期：${signal.interval ?? monitor.interval}`,
     `监控项：${signal.monitor_name ?? monitor.name}`,
-    `方向：${directionLabel(signal.direction)}`,
+    `方向：${displayDirection(signal)}`,
     `触发价格：${formatNumber(signal.price)}`,
     `触发时间：${formatTime(signal.event_time)}`,
     `数据源：${signal.source ?? monitor.source ?? "--"}`,
