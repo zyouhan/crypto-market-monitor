@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Crypto Market Monitor">
+  <rect width="64" height="64" rx="14" fill="#0b111a"/>
+  <circle cx="32" cy="32" r="23" fill="#f5bd4f"/>
+  <circle cx="32" cy="32" r="19.5" fill="none" stroke="#0b111a" stroke-opacity=".12" stroke-width="1"/>
+  <path
+    d="M25 18v28 M25 18h9.5a7 7 0 0 1 0 14H25 M25 32h11a7 7 0 0 1 0 14H25"
+    fill="none"
+    stroke="#0b111a"
+    stroke-width="4.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M29 14v4 M36 14v4 M29 46v4 M36 46v4"
+    fill="none"
+    stroke="#0b111a"
+    stroke-width="3"
+    stroke-linecap="round"
+  />
+</svg>
