@@ -66,7 +66,18 @@ jobs:
           chmod 600 "$KEY_FILE"
 
           echo "密钥来源: $KEY_SOURCE"
+          echo "密钥大小: $(wc -c < "$KEY_FILE") 字节"
+          echo "密钥行数: $(wc -l < "$KEY_FILE")"
+          echo "密钥 SHA256: $(sha256sum "$KEY_FILE" | cut -d' ' -f1)"
           echo "密钥首行: $(head -n 1 "$KEY_FILE" 2>/dev/null || true)"
+          echo "密钥末行: $(tail -n 1 "$KEY_FILE" 2>/dev/null || true)"
+
+          if [ "$(grep -c '^-----BEGIN ' "$KEY_FILE" 2>/dev/null || true)" -ne 1 ] \
+            || [ "$(grep -c '^-----END ' "$KEY_FILE" 2>/dev/null || true)" -ne 1 ]; then
+            echo "私钥内容不完整：未找到唯一的 BEGIN/END 标记。" >&2
+            echo "通常是从终端复制时漏掉了字符或换行。" >&2
+            exit 1
+          fi
 
           case "$(head -n 1 "$KEY_FILE" 2>/dev/null || true)" in
             "-----BEGIN "*)

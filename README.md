@@ -229,6 +229,8 @@ curl -fsS http://127.0.0.1/api/health
 
 \* `DEPLOY_SSH_KEY` 和 `DEPLOY_SSH_KEY_B64` 二选一。
 
+注意：workflow 声明了 `environment: production`，如果 `production` 环境 Secret 和 Repository Secret 同名，**Environment Secret 会覆盖 Repository Secret**。更新 Secret 后如果仍读到旧值，检查这两个位置是否都配置了同名项，删掉旧的那一份。
+
 生成 CI 登录密钥：
 
 ```bash
