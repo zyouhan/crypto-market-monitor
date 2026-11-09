@@ -36,7 +36,13 @@ import type {
   SignalStats
 } from "./types";
 
-type MonitorCategory = "all" | "ema" | "combo" | "kdj";
+type MonitorCategory =
+  | "all"
+  | "ema"
+  | "combo"
+  | "kdj"
+  | "volume"
+  | "level";
 
 function monitorCategory(monitor: MonitorItem): Exclude<
   MonitorCategory,
@@ -48,6 +54,20 @@ function monitorCategory(monitor: MonitorItem): Exclude<
   const hasKdj = monitor.conditions.some(
     (condition) => condition.kind === "KDJ_EXTREME"
   );
+  const hasVolume = monitor.conditions.some(
+    (condition) => condition.kind === "VOLUME_SPIKE"
+  );
+  const hasLevel = monitor.conditions.some(
+    (condition) => condition.kind === "PRICE_LEVEL"
+  );
+
+  if (hasVolume) {
+    return "volume";
+  }
+
+  if (hasLevel) {
+    return "level";
+  }
 
   if (hasEma && hasKdj) {
     return "combo";
@@ -204,7 +224,9 @@ export default function HomePage() {
       all: monitors.length,
       ema: 0,
       combo: 0,
-      kdj: 0
+      kdj: 0,
+      volume: 0,
+      level: 0
     };
 
     for (const monitor of monitors) {
@@ -646,7 +668,9 @@ export default function HomePage() {
             ["all", "全部", categoryCounts.all],
             ["ema", "EMA 趋势", categoryCounts.ema],
             ["combo", "趋势 + KDJ 入场", categoryCounts.combo],
-            ["kdj", "J 极值", categoryCounts.kdj]
+            ["kdj", "J 极值", categoryCounts.kdj],
+            ["volume", "成交量", categoryCounts.volume],
+            ["level", "压力支撑", categoryCounts.level]
           ] as const
         ).map(([key, label, count]) => (
           <button
