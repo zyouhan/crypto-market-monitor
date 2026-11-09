@@ -248,17 +248,6 @@ function prepareConditions(
     triggers[0].interval
   );
 
-  for (const condition of conditions) {
-    if (
-      getIntervalDuration(condition.interval) <
-      getIntervalDuration(interval)
-    ) {
-      throw new Error(
-        `条件周期不能低于最小触发周期 ${interval}`
-      );
-    }
-  }
-
   const seen = new Set<string>();
 
   for (const condition of conditions) {

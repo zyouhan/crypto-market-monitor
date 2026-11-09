@@ -135,23 +135,11 @@ export function MonitorModal({
     index: number,
     next: ConditionDraft
   ): void {
-    setConditions((current) => {
-      const updated = current.map(
-        (condition, currentIndex) =>
-          currentIndex === index ? next : condition
-      );
-      const nextBase = baseIntervalFor(
-        updated,
-        initialInterval
-      );
-
-      return updated.map((condition) =>
-        intervalIndex(condition.interval) <
-        intervalIndex(nextBase)
-          ? { ...condition, interval: nextBase }
-          : condition
-      );
-    });
+    setConditions((current) =>
+      current.map((condition, currentIndex) =>
+        currentIndex === index ? next : condition
+      )
+    );
   }
 
   function removeCondition(index: number): void {
@@ -198,18 +186,6 @@ export function MonitorModal({
     ) {
       setLocalError("至少保留一个触发条件");
       return;
-    }
-
-    for (const condition of conditions) {
-      if (
-        intervalIndex(condition.interval) <
-        intervalIndex(baseInterval)
-      ) {
-        setLocalError(
-          `条件周期不能低于最小触发周期 ${baseInterval}`
-        );
-        return;
-      }
     }
 
     const payload: SaveMonitorPayload = {
@@ -392,7 +368,7 @@ export function MonitorModal({
           </div>
 
           <div className="section-help">
-            检查周期自动取所有触发条件中的最小周期；每个条件可以使用自己的 K 线周期，但不得低于检查周期。例如 EMA 15m + KDJ 5m 时，检查周期自动为 5m。
+            检查周期自动取所有触发条件中的最小周期；每个条件可自由选择自己的 K 线周期。过滤条件使用更低周期时，会取检查时点最近一根已收盘数据。
           </div>
 
           <div className="condition-add">
@@ -436,11 +412,7 @@ export function MonitorModal({
               key={`${condition.kind}-${condition.role}-${index}`}
               value={condition}
               catalog={catalog}
-              intervals={INTERVALS.filter(
-                (value) =>
-                  intervalIndex(value) >=
-                  intervalIndex(baseInterval)
-              )}
+              intervals={INTERVALS}
               onChange={(next) =>
                 updateCondition(index, next)
               }
