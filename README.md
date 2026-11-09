@@ -172,15 +172,99 @@ npm run build
 
 ## 部署
 
-仍使用 `docker-compose.yml` 的 `monitor-data` 数据卷。升级时执行：
+仍使用 `docker-compose.yml` 的 `monitor-data` 数据卷。不要执行 `docker compose down -v`，否则会删除数据库卷。
+
+### 一键部署脚本
+
+服务器上进入项目目录后执行：
+
+```bash
+cd /opt/crypto-market-monitor
+./scripts/deploy.sh
+```
+
+脚本会依次完成：
+
+1. 部署锁，避免并发部署；
+2. 检查工作区是否有已跟踪文件改动；
+3. 备份数据库；
+4. `git pull --ff-only origin main`；
+5. `docker compose build`；
+6. `docker compose up -d --remove-orphans`；
+7. 轮询 `/api/health`，最多等待约 3 分钟；
+8. 失败时打印容器状态、server 日志和回滚命令。
+
+也可以手动分步执行：
 
 ```bash
 ./scripts/backup-db.sh
-git pull
-docker compose up -d --build
+git status
+git pull --ff-only
+docker compose build
+docker compose up -d
+docker compose logs --tail=100 server
+curl -fsS http://127.0.0.1/api/health
 ```
 
-不要执行 `docker compose down -v`，否则会删除数据库卷。
+### GitHub Actions 自动部署
+
+推送 `main` 后，`.github/workflows/deploy.yml` 会通过 SSH 登录服务器执行 `scripts/deploy.sh`，并校验服务器实际部署的 commit 与本次工作流 commit 一致。
+
+前置条件：
+
+- 服务器项目目录固定为 `/opt/crypto-market-monitor`，或通过 `DEPLOY_PATH` 指定；
+- 服务器上 `git pull` 能非交互执行，例如已配置 GitHub Deploy Key；
+- 服务器安装 Docker、Docker Compose、curl、flock；
+- 仓库 Settings → Secrets and variables → Actions 添加：
+
+| Secret | 必填 | 说明 |
+|---|---|---|
+| `DEPLOY_HOST` | 是 | 服务器 IP 或域名 |
+| `DEPLOY_USER` | 是 | SSH 用户名 |
+| `DEPLOY_SSH_KEY` | 是 | CI 登录服务器的私钥全文 |
+| `DEPLOY_PORT` | 否 | SSH 端口，默认 `22` |
+| `DEPLOY_PATH` | 否 | 项目路径，默认 `/opt/crypto-market-monitor` |
+| `DEPLOY_KNOWN_HOSTS` | 否 | 服务器 host key；不填则工作流使用 `ssh-keyscan` |
+
+生成 CI 登录密钥：
+
+```bash
+ssh-keygen -t ed25519 -C "crypto-market-monitor-ci" -f ~/.ssh/crypto-monitor-ci
+cat ~/.ssh/crypto-monitor-ci.pub >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+cat ~/.ssh/crypto-monitor-ci
+```
+
+把最后输出的私钥内容填入 `DEPLOY_SSH_KEY`。
+
+服务器拉代码的 GitHub 权限单独配置，例如生成只读 Deploy Key：
+
+```bash
+ssh-keygen -t ed25519 -C "crypto-market-monitor-server" -f ~/.ssh/crypto-market-monitor-git
+cat ~/.ssh/crypto-market-monitor-git.pub
+```
+
+把公钥添加到 GitHub 仓库 Settings → Deploy keys，并在服务器 `~/.ssh/config` 中为 `github.com` 指定该私钥，确保：
+
+```bash
+git -C /opt/crypto-market-monitor fetch origin main
+```
+
+可以非交互执行。
+
+如需人工审批后再部署，可在 GitHub 仓库 Settings → Environments 创建 `production` 环境并配置 Required reviewers。
+
+### 回滚
+
+脚本失败时不会自动回滚数据库迁移，会打印部署前 commit。代码回滚：
+
+```bash
+git reset --hard <部署前-commit>
+docker compose build
+docker compose up -d
+```
+
+数据库回滚需要结合 `data/archive/` 和 `backups/` 中的备份人工处理。
 
 ## 说明
 
