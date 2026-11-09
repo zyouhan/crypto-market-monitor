@@ -65,6 +65,28 @@ function defaultConditions(
   ];
 }
 
+function baseIntervalFor(
+  conditions: ConditionDraft[],
+  fallback: string
+): string {
+  const triggers = conditions.filter(
+    (condition) => condition.role === "trigger"
+  );
+
+  if (triggers.length === 0) {
+    return fallback;
+  }
+
+  return triggers.reduce(
+    (fastest, condition) =>
+      intervalIndex(condition.interval) <
+      intervalIndex(fastest)
+        ? condition.interval
+        : fastest,
+    triggers[0].interval
+  );
+}
+
 export function MonitorModal({
   item,
   catalog,
@@ -79,7 +101,6 @@ export function MonitorModal({
     item?.name ?? ""
   );
   const [symbol, setSymbol] = useState(item?.symbol ?? "");
-  const [interval, setIntervalValue] = useState(initialInterval);
   const [enabled, setEnabled] = useState(
     item ? item.enabled === 1 : true
   );
@@ -105,29 +126,32 @@ export function MonitorModal({
   const [localError, setLocalError] = useState("");
 
   const isEditing = item !== null;
-
-  function changeBaseInterval(next: string): void {
-    setIntervalValue(next);
-
-    setConditions((current) =>
-      current.map((condition) =>
-        intervalIndex(condition.interval) <
-        intervalIndex(next)
-          ? { ...condition, interval: next }
-          : condition
-      )
-    );
-  }
+  const baseInterval = baseIntervalFor(
+    conditions,
+    initialInterval
+  );
 
   function updateCondition(
     index: number,
     next: ConditionDraft
   ): void {
-    setConditions((current) =>
-      current.map((condition, currentIndex) =>
-        currentIndex === index ? next : condition
-      )
-    );
+    setConditions((current) => {
+      const updated = current.map(
+        (condition, currentIndex) =>
+          currentIndex === index ? next : condition
+      );
+      const nextBase = baseIntervalFor(
+        updated,
+        initialInterval
+      );
+
+      return updated.map((condition) =>
+        intervalIndex(condition.interval) <
+        intervalIndex(nextBase)
+          ? { ...condition, interval: nextBase }
+          : condition
+      );
+    });
   }
 
   function removeCondition(index: number): void {
@@ -147,7 +171,7 @@ export function MonitorModal({
 
     setConditions((current) => [
       ...current,
-      createDefaultCondition(definition, interval, role)
+      createDefaultCondition(definition, baseInterval, role)
     ]);
   }
 
@@ -179,19 +203,21 @@ export function MonitorModal({
     for (const condition of conditions) {
       if (
         intervalIndex(condition.interval) <
-        intervalIndex(interval)
+        intervalIndex(baseInterval)
       ) {
         setLocalError(
-          "条件周期不能低于入场/调度周期"
+          `条件周期不能低于最小触发周期 ${baseInterval}`
         );
         return;
       }
     }
 
     const payload: SaveMonitorPayload = {
-      name: name.trim() || `${normalizedSymbol} ${interval} 监控`,
+      name:
+        name.trim() ||
+        `${normalizedSymbol} ${baseInterval} 监控`,
       symbol: normalizedSymbol,
-      interval,
+      interval: baseInterval,
       enabled,
       wechat_enabled: wechatEnabled,
       sound_enabled: soundEnabled,
@@ -294,19 +320,11 @@ export function MonitorModal({
             </div>
 
             <div className="form-field">
-              <label>入场周期</label>
-              <select
-                value={interval}
-                onChange={(event) =>
-                  changeBaseInterval(event.target.value)
-                }
-              >
-                {INTERVALS.map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
+              <label>检查周期（自动）</label>
+              <div className="auto-field">
+                <strong>{baseInterval}</strong>
+                <span>取所有触发条件中的最小周期</span>
+              </div>
             </div>
           </div>
         </section>
@@ -374,7 +392,7 @@ export function MonitorModal({
           </div>
 
           <div className="section-help">
-            多个触发条件必须在同一根入场 K 线同时发生；每个条件可以选择自己的 K 线周期，但不得低于入场周期。例如 EMA 15m + KDJ 5m 时，入场周期选 5m。
+            检查周期自动取所有触发条件中的最小周期；每个条件可以使用自己的 K 线周期，但不得低于检查周期。例如 EMA 15m + KDJ 5m 时，检查周期自动为 5m。
           </div>
 
           <div className="condition-add">
@@ -421,7 +439,7 @@ export function MonitorModal({
               intervals={INTERVALS.filter(
                 (value) =>
                   intervalIndex(value) >=
-                  intervalIndex(interval)
+                  intervalIndex(baseInterval)
               )}
               onChange={(next) =>
                 updateCondition(index, next)

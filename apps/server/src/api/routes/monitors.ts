@@ -90,7 +90,7 @@ function readFlag(
 
 function normalizeConditionInput(
   value: unknown,
-  baseInterval: string,
+  fallbackInterval: string,
   klineLimit: number
 ): {
   kind: ConditionKind;
@@ -113,19 +113,10 @@ function normalizeConditionInput(
   const interval =
     typeof value.interval === "string" && value.interval.trim()
       ? value.interval.trim()
-      : baseInterval;
+      : fallbackInterval;
 
   if (!isValidInterval(interval)) {
     throw new Error(`不支持的 K 线周期: ${interval}`);
-  }
-
-  if (
-    getIntervalDuration(interval) <
-      getIntervalDuration(baseInterval)
-  ) {
-    throw new Error(
-      "条件周期不能低于入场/调度周期"
-    );
   }
 
   const definition = getConditionDefinition(value.kind);
@@ -217,29 +208,60 @@ monitorsRouter.get("/:id", (req, res) => {
 
 function prepareConditions(
   body: Record<string, unknown>,
-  interval: string
-): Array<{
-  kind: ConditionKind;
-  role: ConditionRole;
+  fallbackInterval: string
+): {
+  conditions: Array<{
+    kind: ConditionKind;
+    role: ConditionRole;
+    interval: string;
+    params: Record<string, unknown>;
+  }>;
   interval: string;
-  params: Record<string, unknown>;
-}> {
+} {
   if (!Array.isArray(body.conditions)) {
     throw new Error("conditions 必须为数组");
   }
 
   const klineLimit = getKlineLimit();
-  const result = body.conditions.map((value) =>
-    normalizeConditionInput(value, interval, klineLimit)
+  const conditions = body.conditions.map((value) =>
+    normalizeConditionInput(
+      value,
+      fallbackInterval,
+      klineLimit
+    )
   );
 
-  if (!result.some((condition) => condition.role === "trigger")) {
+  const triggers = conditions.filter(
+    (condition) => condition.role === "trigger"
+  );
+
+  if (triggers.length === 0) {
     throw new Error("至少需要一个触发条件");
+  }
+
+  const interval = triggers.reduce(
+    (fastest, condition) =>
+      getIntervalDuration(condition.interval) <
+      getIntervalDuration(fastest)
+        ? condition.interval
+        : fastest,
+    triggers[0].interval
+  );
+
+  for (const condition of conditions) {
+    if (
+      getIntervalDuration(condition.interval) <
+      getIntervalDuration(interval)
+    ) {
+      throw new Error(
+        `条件周期不能低于最小触发周期 ${interval}`
+      );
+    }
   }
 
   const seen = new Set<string>();
 
-  for (const condition of result) {
+  for (const condition of conditions) {
     const key = `${condition.kind}|${condition.interval}|${condition.role}`;
 
     if (seen.has(key)) {
@@ -249,7 +271,7 @@ function prepareConditions(
     seen.add(key);
   }
 
-  return result;
+  return { conditions, interval };
 }
 
 function insertConditionRows(
@@ -279,23 +301,23 @@ monitorsRouter.post("/", (req, res) => {
     typeof body.symbol === "string"
       ? body.symbol.trim().toUpperCase()
       : "";
-  const interval =
-    typeof body.interval === "string"
+  const fallbackInterval =
+    typeof body.interval === "string" &&
+    isValidInterval(body.interval.trim())
       ? body.interval.trim()
-      : "";
+      : "1m";
 
   if (!isValidSymbol(symbol)) {
     res.status(400).json(failure("交易标的格式不正确"));
     return;
   }
 
-  if (!isValidInterval(interval)) {
-    res.status(400).json(failure("不支持的 K 线周期"));
-    return;
-  }
-
   try {
-    const conditions = prepareConditions(body, interval);
+    const prepared = prepareConditions(
+      body,
+      fallbackInterval
+    );
+    const interval = prepared.interval;
     const name =
       typeof body.name === "string" && body.name.trim()
         ? body.name.trim().slice(0, 120)
@@ -323,7 +345,7 @@ monitorsRouter.post("/", (req, res) => {
         wechatEnabled,
         soundEnabled
       });
-      insertConditionRows(id, conditions);
+      insertConditionRows(id, prepared.conditions);
     });
 
     transaction();
@@ -361,18 +383,19 @@ monitorsRouter.put("/:id", (req, res) => {
   }
 
   const body = req.body ?? {};
-  const interval =
-    typeof body.interval === "string"
+  const fallbackInterval =
+    typeof body.interval === "string" &&
+    isValidInterval(body.interval.trim())
       ? body.interval.trim()
       : existing.interval;
 
-  if (!isValidInterval(interval)) {
-    res.status(400).json(failure("不支持的 K 线周期"));
-    return;
-  }
-
   try {
-    const conditions = prepareConditions(body, interval);
+    const prepared = prepareConditions(
+      body,
+      fallbackInterval
+    );
+    const interval = prepared.interval;
+    const conditions = prepared.conditions;
     const name =
       typeof body.name === "string" && body.name.trim()
         ? body.name.trim().slice(0, 120)

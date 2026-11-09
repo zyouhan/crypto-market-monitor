@@ -367,6 +367,27 @@ td {
   border-color: var(--blue);
 }
 
+.auto-field {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-height: 39px;
+  padding: 8px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 7px;
+  background: #0d131d;
+}
+
+.auto-field strong {
+  color: var(--blue);
+  font-size: 14px;
+}
+
+.auto-field span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
 .form-actions {
   display: flex;
   gap: 10px;
