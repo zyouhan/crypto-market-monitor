@@ -17,7 +17,6 @@ export interface ConditionDraft {
 interface ConditionEditorProps {
   value: ConditionDraft;
   catalog: ConditionCatalogItem[];
-  baseInterval: string;
   intervals: string[];
   onChange: (value: ConditionDraft) => void;
   onRemove: () => void;
@@ -57,7 +56,6 @@ function fieldValue(
 export function ConditionEditor({
   value,
   catalog,
-  baseInterval,
   intervals,
   onChange,
   onRemove
@@ -69,6 +67,13 @@ export function ConditionEditor({
   if (!definition) {
     return null;
   }
+
+  const parameterFields = definition.fields.filter(
+    (field) => field.type !== "boolean"
+  );
+  const booleanFields = definition.fields.filter(
+    (field) => field.type === "boolean"
+  );
 
   function updateParams(
     key: string,
@@ -89,10 +94,6 @@ export function ConditionEditor({
 
         <strong>{definition.label}</strong>
 
-        <span className="condition-interval">
-          {value.interval}
-        </span>
-
         {value.role === "filter" ? (
           <select
             className="interval-inline"
@@ -111,8 +112,8 @@ export function ConditionEditor({
             ))}
           </select>
         ) : (
-          <span className="editor-locked">
-            入场周期 {baseInterval}
+          <span className="condition-interval">
+            {value.interval}
           </span>
         )}
 
@@ -130,27 +131,11 @@ export function ConditionEditor({
       </div>
 
       <div className="form-grid three">
-        {definition.fields.map((field) => (
+        {parameterFields.map((field) => (
           <div className="form-field" key={field.key}>
             <label>{field.label}</label>
 
-            {field.type === "boolean" ? (
-              <label className="switch-chip condition-check">
-                <input
-                  type="checkbox"
-                  checked={Boolean(
-                    fieldValue(value.params, field)
-                  )}
-                  onChange={(event) =>
-                    updateParams(
-                      field.key,
-                      event.target.checked
-                    )
-                  }
-                />
-                开启
-              </label>
-            ) : field.type === "select" ? (
+            {field.type === "select" ? (
               <select
                 value={String(fieldValue(value.params, field))}
                 onChange={(event) =>
@@ -188,6 +173,33 @@ export function ConditionEditor({
           </div>
         ))}
       </div>
+
+      {booleanFields.length > 0 && (
+        <div className="condition-boolean-row">
+          <span className="direction-row-label">方向</span>
+
+          {booleanFields.map((field) => (
+            <label className="toggle-chip" key={field.key}>
+              <input
+                type="checkbox"
+                checked={Boolean(
+                  fieldValue(value.params, field)
+                )}
+                onChange={(event) =>
+                  updateParams(
+                    field.key,
+                    event.target.checked
+                  )
+                }
+              />
+              <span className="toggle-track">
+                <span className="toggle-thumb" />
+              </span>
+              <span>{field.label}</span>
+            </label>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

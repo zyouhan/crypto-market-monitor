@@ -329,7 +329,7 @@ export function MonitorModal({
           </div>
 
           <div className="notification-toggle-row">
-            <label className="switch-chip">
+            <label className="toggle-chip">
               <input
                 type="checkbox"
                 checked={enabled}
@@ -337,10 +337,13 @@ export function MonitorModal({
                   setEnabled(event.target.checked)
                 }
               />
-              启用监控
+              <span className="toggle-track">
+                <span className="toggle-thumb" />
+              </span>
+              <span>启用监控</span>
             </label>
 
-            <label className="switch-chip">
+            <label className="toggle-chip">
               <input
                 type="checkbox"
                 checked={wechatEnabled}
@@ -348,10 +351,13 @@ export function MonitorModal({
                   setWechatEnabled(event.target.checked)
                 }
               />
-              微信通知
+              <span className="toggle-track">
+                <span className="toggle-thumb" />
+              </span>
+              <span>微信通知</span>
             </label>
 
-            <label className="switch-chip">
+            <label className="toggle-chip">
               <input
                 type="checkbox"
                 checked={soundEnabled}
@@ -359,7 +365,10 @@ export function MonitorModal({
                   setSoundEnabled(event.target.checked)
                 }
               />
-              声音提醒
+              <span className="toggle-track">
+                <span className="toggle-thumb" />
+              </span>
+              <span>声音提醒</span>
             </label>
 
             <span className="serverchan-note">
@@ -420,7 +429,6 @@ export function MonitorModal({
               key={`${condition.kind}-${condition.role}-${index}`}
               value={condition}
               catalog={catalog}
-              baseInterval={interval}
               intervals={INTERVALS.filter(
                 (value) =>
                   condition.role === "trigger" ||
