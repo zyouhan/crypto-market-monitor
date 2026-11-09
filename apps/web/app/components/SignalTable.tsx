@@ -24,7 +24,76 @@ function conditionLabel(kind: string | null): string {
     return "KDJ 极值";
   }
 
+  if (kind === "VOLUME_SPIKE") {
+    return "成交量放量";
+  }
+
+  if (kind === "PRICE_LEVEL") {
+    return "到达价位";
+  }
+
+  if (kind === "KDJ_TIMING") {
+    return "KDJ 极值（旧）";
+  }
+
+  if (kind === "KDJ_ENTRY") {
+    return "KDJ 入场（旧）";
+  }
+
+  if (kind === "EMA_TREND") {
+    return "EMA 交叉（旧）";
+  }
+
   return kind ?? "--";
+}
+
+function triggerDetail(signal: MonitorSignalItem): string {
+  const trigger = signal.conditions.find(
+    (condition) =>
+      condition.role === "trigger" &&
+      condition.kind === signal.primary_condition
+  );
+  const threshold =
+    signal.threshold === null
+      ? "--"
+      : formatPrice(signal.threshold);
+
+  if (
+    signal.primary_condition === "KDJ_EXTREME" ||
+    signal.primary_condition === "KDJ_ENTRY" ||
+    signal.primary_condition === "KDJ_TIMING"
+  ) {
+    if (signal.event_type === "ENTRY_LONG") {
+      return `超卖 J<${threshold} 做多`;
+    }
+
+    if (signal.event_type === "ENTRY_SHORT") {
+      return `超买 J>${threshold} 做空`;
+    }
+  }
+
+  if (
+    signal.primary_condition === "EMA_CROSS" ||
+    signal.primary_condition === "EMA_TREND"
+  ) {
+    if (signal.event_type === "TREND_GOLDEN") {
+      return `金叉 · ${trigger?.summary ?? "EMA"}`;
+    }
+
+    if (signal.event_type === "TREND_DEATH") {
+      return `死叉 · ${trigger?.summary ?? "EMA"}`;
+    }
+  }
+
+  if (signal.event_type === "VOLUME_SPIKE") {
+    return `放量 · ${trigger?.summary ?? "成交量"}`;
+  }
+
+  if (signal.event_type === "PRICE_LEVEL") {
+    return `到价 · ${trigger?.summary ?? "价位"}`;
+  }
+
+  return trigger?.summary ?? eventTypeLabel(signal.event_type);
 }
 
 function pushLabel(signal: MonitorSignalItem): string {
@@ -214,9 +283,9 @@ export function SignalTable({
                 <th>K 线</th>
                 <th>监控项</th>
                 <th>触发条件</th>
+                <th>触发详情</th>
                 <th>方向</th>
                 <th>价格</th>
-                <th>条件快照</th>
                 <th>通知</th>
               </tr>
             </thead>
@@ -230,6 +299,21 @@ export function SignalTable({
                   <td>{signal.monitor_name ?? "历史记录"}</td>
                   <td>{conditionLabel(signal.primary_condition)}</td>
                   <td
+                    className="signal-trigger-detail"
+                    title={signal.conditions
+                      .map(
+                        (condition) =>
+                          `[${condition.interval}] ${
+                            condition.role === "filter"
+                              ? "过滤"
+                              : "触发"
+                          } ${condition.summary}`
+                      )
+                      .join(" · ")}
+                  >
+                    {triggerDetail(signal)}
+                  </td>
+                  <td
                     className={
                       signal.direction === "BULL"
                         ? "type-golden"
@@ -241,29 +325,6 @@ export function SignalTable({
                     {directionLabel(signal.direction)}
                   </td>
                   <td>{formatPrice(signal.price)}</td>
-                  <td className="signal-conditions-cell">
-                    {signal.conditions.length === 0
-                      ? "--"
-                      : signal.conditions
-                          .map((condition) => {
-                            const interval =
-                              condition.interval ??
-                              signal.interval ??
-                              "--";
-                            const summary =
-                              condition.summary ??
-                              conditionLabel(condition.kind);
-
-                            return `[${interval}] ${
-                              condition.role === "filter"
-                                ? "过滤"
-                                : "触发"
-                            } ${summary}${
-                              condition.legacy ? "（历史）" : ""
-                            }`;
-                          })
-                          .join(" · ")}
-                  </td>
                   <td
                     className={
                       signal.push_state === "FAILED"

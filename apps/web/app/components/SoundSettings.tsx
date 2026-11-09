@@ -170,11 +170,29 @@ export function SoundSettings({
 
               <button
                 type="button"
-                className="button small sound-preview"
+                className="icon-button sound-preview-icon"
+                aria-label={`试听${type.label}`}
                 title={`试听${type.label}`}
                 onClick={() => preview(type.kind)}
               >
-                试听
+                <svg
+                  viewBox="0 0 24 24"
+                  width="14"
+                  height="14"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M4 9v6h4l5 4V5L8 9H4z"
+                    fill="currentColor"
+                  />
+                  <path
+                    d="M16 8.5a5 5 0 010 7M18.5 6a8.5 8.5 0 010 12"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                  />
+                </svg>
               </button>
             </div>
           ))}

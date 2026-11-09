@@ -693,7 +693,7 @@ export default function HomePage() {
           <div>
             <div className="panel-title">信号记录</div>
             <div className="panel-subtitle">
-              每个监控项独立记录触发结果与条件快照
+              每个监控项独立记录触发条件与触发详情
             </div>
           </div>
         </div>
