@@ -32,31 +32,55 @@ jobs:
           umask 077
 
           KEY_FILE="$HOME/.ssh/deploy_key"
+          KEY_SOURCE=""
 
           if [ -n "${DEPLOY_SSH_KEY_B64:-}" ]; then
-            printf '%s' "$DEPLOY_SSH_KEY_B64" | base64 -d > "$KEY_FILE"
+            KEY_SOURCE="DEPLOY_SSH_KEY_B64"
+            if ! printf '%s' "$DEPLOY_SSH_KEY_B64" \
+              | base64 -d > "$KEY_FILE" 2> "$HOME/.ssh/b64-error.log"; then
+              echo "DEPLOY_SSH_KEY_B64 不是合法的 Base64：" >&2
+              cat "$HOME/.ssh/b64-error.log" >&2
+              exit 1
+            fi
           else
             if [ -z "${DEPLOY_SSH_KEY:-}" ]; then
               echo "DEPLOY_SSH_KEY / DEPLOY_SSH_KEY_B64 未配置" >&2
               exit 1
             fi
 
+            KEY_SOURCE="DEPLOY_SSH_KEY"
+
             # 兼容 GitHub Secret 中出现的字面量 \n 和 Windows CRLF
             printf '%s' "$DEPLOY_SSH_KEY" \
               | sed -e 's/\\n/\n/g' -e 's/\r$//' \
               > "$KEY_FILE"
             sed -i -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$KEY_FILE"
+            sed -i '/./,$!d' "$KEY_FILE"
 
             # 确保文件以换行结尾
-            if [ "$(tail -c 1 "$KEY_FILE" | wc -l)" -eq 0 ]; then
+            if [ -s "$KEY_FILE" ] && [ "$(tail -c 1 "$KEY_FILE" | wc -l)" -eq 0 ]; then
               printf '\n' >> "$KEY_FILE"
             fi
           fi
 
           chmod 600 "$KEY_FILE"
 
+          echo "密钥来源: $KEY_SOURCE"
+          echo "密钥首行: $(head -n 1 "$KEY_FILE" 2>/dev/null || true)"
+
+          case "$(head -n 1 "$KEY_FILE" 2>/dev/null || true)" in
+            "-----BEGIN "*)
+              ;;
+            *)
+              echo "密钥首行不是 PEM/OpenSSH 私钥头。" >&2
+              echo "常见原因：把 Base64 填到了 DEPLOY_SSH_KEY，或填入了 .pub 公钥。" >&2
+              echo "使用 Base64 时请填 DEPLOY_SSH_KEY_B64；不要加引号、提示符或说明文字。" >&2
+              exit 1
+              ;;
+          esac
+
           if ! ssh-keygen -y -P "" -f "$KEY_FILE" > "$HOME/.ssh/deploy_key.pub" 2> "$HOME/.ssh/key-error.log"; then
-            echo "私钥无法解析，请检查 DEPLOY_SSH_KEY 内容：" >&2
+            echo "私钥无法解析，请检查 $KEY_SOURCE 内容：" >&2
             cat "$HOME/.ssh/key-error.log" >&2
             exit 1
           fi

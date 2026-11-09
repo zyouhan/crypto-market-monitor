@@ -240,6 +240,14 @@ chmod 600 ~/.ssh/authorized_keys
 
 推荐把私钥转成 Base64 后填入 `DEPLOY_SSH_KEY_B64`。
 
+私钥在服务器上生成即可，不要求本机有私钥文件。PowerShell 命令只是 Windows 本地文件转 Base64 的写法；如果私钥只在服务器上，直接执行：
+
+```bash
+base64 -w0 ~/.ssh/crypto-monitor-ci
+```
+
+把输出填入 `DEPLOY_SSH_KEY_B64`。不要把 Base64 字符串填到 `DEPLOY_SSH_KEY`，后者需要私钥原文。
+
 Linux：
 
 ```bash
