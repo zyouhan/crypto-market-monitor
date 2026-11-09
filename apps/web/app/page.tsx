@@ -29,6 +29,7 @@ import {
 } from "./lib/sound";
 import type {
   ConditionCatalogItem,
+  ConditionKind,
   MonitorItem,
   MonitorSignalItem,
   SaveMonitorPayload,
@@ -36,48 +37,23 @@ import type {
   SignalStats
 } from "./types";
 
-type MonitorCategory =
-  | "all"
-  | "ema"
-  | "combo"
-  | "kdj"
-  | "volume"
-  | "level";
+type MonitorCategory = "all" | ConditionKind;
 
-function monitorCategory(monitor: MonitorItem): Exclude<
-  MonitorCategory,
-  "all"
-> {
-  const hasEma = monitor.conditions.some(
-    (condition) => condition.kind === "EMA_CROSS"
-  );
-  const hasKdj = monitor.conditions.some(
-    (condition) => condition.kind === "KDJ_EXTREME"
-  );
-  const hasVolume = monitor.conditions.some(
-    (condition) => condition.kind === "VOLUME_SPIKE"
-  );
-  const hasLevel = monitor.conditions.some(
-    (condition) => condition.kind === "PRICE_LEVEL"
+const TRIGGER_TAB_LABELS: Record<ConditionKind, string> = {
+  EMA_CROSS: "EMA 交叉",
+  KDJ_EXTREME: "KDJ 极值",
+  VOLUME_SPIKE: "成交量",
+  PRICE_LEVEL: "压力支撑"
+};
+
+function monitorCategory(
+  monitor: MonitorItem
+): ConditionKind | null {
+  const trigger = monitor.conditions.find(
+    (condition) => condition.role === "trigger"
   );
 
-  if (hasVolume) {
-    return "volume";
-  }
-
-  if (hasLevel) {
-    return "level";
-  }
-
-  if (hasEma && hasKdj) {
-    return "combo";
-  }
-
-  if (hasEma) {
-    return "ema";
-  }
-
-  return "kdj";
+  return trigger?.kind ?? null;
 }
 
 export default function HomePage() {
@@ -221,20 +197,23 @@ export default function HomePage() {
 
   const categoryCounts = useMemo(() => {
     const counts = {
-      all: monitors.length,
-      ema: 0,
-      combo: 0,
-      kdj: 0,
-      volume: 0,
-      level: 0
-    };
+      all: monitors.length
+    } as Record<MonitorCategory, number>;
+
+    for (const definition of catalog) {
+      counts[definition.kind] = 0;
+    }
 
     for (const monitor of monitors) {
-      counts[monitorCategory(monitor)] += 1;
+      const kind = monitorCategory(monitor);
+
+      if (kind) {
+        counts[kind] = (counts[kind] ?? 0) + 1;
+      }
     }
 
     return counts;
-  }, [monitors]);
+  }, [monitors, catalog]);
 
   const filteredMonitors = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -663,16 +642,20 @@ export default function HomePage() {
       </div>
 
       <nav className="monitor-tabs" aria-label="监控项分类">
-        {(
-          [
-            ["all", "全部", categoryCounts.all],
-            ["ema", "EMA 趋势", categoryCounts.ema],
-            ["combo", "趋势 + KDJ 入场", categoryCounts.combo],
-            ["kdj", "J 极值", categoryCounts.kdj],
-            ["volume", "成交量", categoryCounts.volume],
-            ["level", "压力支撑", categoryCounts.level]
-          ] as const
-        ).map(([key, label, count]) => (
+        {[
+          {
+            key: "all" as MonitorCategory,
+            label: "全部",
+            count: categoryCounts.all
+          },
+          ...catalog.map((definition) => ({
+            key: definition.kind as MonitorCategory,
+            label:
+              TRIGGER_TAB_LABELS[definition.kind] ??
+              definition.label,
+            count: categoryCounts[definition.kind] ?? 0
+          }))
+        ].map(({ key, label, count }) => (
           <button
             key={key}
             type="button"
