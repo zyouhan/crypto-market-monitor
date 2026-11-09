@@ -15,7 +15,6 @@ import { NotificationSettings } from "./components/NotificationSettings";
 import { SignalTable } from "./components/SignalTable";
 import { SignalToasts } from "./components/SignalToasts";
 import { SoundSettings } from "./components/SoundSettings";
-import { SummaryCards } from "./components/SummaryCards";
 import { api, errorMessage } from "./lib/api";
 import { isAlertSignal } from "./lib/format";
 import {
@@ -32,8 +31,33 @@ import type {
   MonitorItem,
   MonitorSignalItem,
   SaveMonitorPayload,
-  SettingsData
+  SettingsData,
+  SignalStats
 } from "./types";
+
+type MonitorCategory = "all" | "ema" | "combo" | "kdj";
+
+function monitorCategory(monitor: MonitorItem): Exclude<
+  MonitorCategory,
+  "all"
+> {
+  const hasEma = monitor.conditions.some(
+    (condition) => condition.kind === "EMA_CROSS"
+  );
+  const hasKdj = monitor.conditions.some(
+    (condition) => condition.kind === "KDJ_EXTREME"
+  );
+
+  if (hasEma && hasKdj) {
+    return "combo";
+  }
+
+  if (hasEma) {
+    return "ema";
+  }
+
+  return "kdj";
+}
 
 export default function HomePage() {
   const [authenticated, setAuthenticated] = useState(false);
@@ -49,6 +73,13 @@ export default function HomePage() {
     global_wechat_enabled: false,
     serverchan_configured: false
   });
+  const [stats, setStats] = useState<SignalStats>({
+    today: 0,
+    total: 0
+  });
+  const [search, setSearch] = useState("");
+  const [category, setCategory] =
+    useState<MonitorCategory>("all");
 
   const [toasts, setToasts] = useState<MonitorSignalItem[]>([]);
   const seenSignalIdsRef = useRef<Set<number> | null>(null);
@@ -74,7 +105,8 @@ export default function HomePage() {
       signalData,
       alertData,
       settingsData,
-      catalogData
+      catalogData,
+      statsData
     ] = await Promise.all([
       api<MonitorItem[]>("/api/monitors"),
       api<{ items: MonitorSignalItem[] }>(
@@ -84,7 +116,8 @@ export default function HomePage() {
         "/api/signals?limit=30&triggered=1"
       ),
       api<SettingsData>("/api/settings"),
-      api<ConditionCatalogItem[]>("/api/conditions")
+      api<ConditionCatalogItem[]>("/api/conditions"),
+      api<SignalStats>("/api/signals/stats")
     ]);
 
     setMonitors(monitorData);
@@ -92,6 +125,7 @@ export default function HomePage() {
     setAlertSignals(alertData.items);
     setSettings(settingsData);
     setCatalog(catalogData);
+    setStats(statsData);
 
     const alerts = alertData.items.filter(isAlertSignal);
     const monitorById = new Map(
@@ -151,6 +185,43 @@ export default function HomePage() {
 
     return map;
   }, [alertSignals]);
+
+  const categoryCounts = useMemo(() => {
+    const counts = {
+      all: monitors.length,
+      ema: 0,
+      combo: 0,
+      kdj: 0
+    };
+
+    for (const monitor of monitors) {
+      counts[monitorCategory(monitor)] += 1;
+    }
+
+    return counts;
+  }, [monitors]);
+
+  const filteredMonitors = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
+
+    return monitors.filter((monitor) => {
+      if (
+        category !== "all" &&
+        monitorCategory(monitor) !== category
+      ) {
+        return false;
+      }
+
+      if (!keyword) {
+        return true;
+      }
+
+      return (
+        monitor.name.toLowerCase().includes(keyword) ||
+        monitor.symbol.toLowerCase().includes(keyword)
+      );
+    });
+  }, [monitors, category, search]);
 
   const checkAuth = useCallback(async () => {
     try {
@@ -469,16 +540,31 @@ export default function HomePage() {
 
   return (
     <main className="page">
-      <header className="header">
+      <header className="page-top">
         <div className="brand">
           <h1>Crypto Market Monitor</h1>
-          <p>多指标组合 · 多周期确认 · OKX 优先</p>
+          <p>行情来源 OKX 优先 · Binance 备用</p>
         </div>
 
-        <div className="header-actions">
-          <span className="connection">● 服务运行中</span>
+        <div className="top-actions">
+          <label className="search-box">
+            <span aria-hidden="true">⌕</span>
+            <input
+              value={search}
+              placeholder="搜索标的 / 名称"
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </label>
+
+          <button
+            className="button primary"
+            onClick={openAddModal}
+          >
+            + 新建监控项
+          </button>
+
           <button className="button" onClick={handleLogout}>
-            退出登录
+            退出
           </button>
         </div>
       </header>
@@ -499,16 +585,56 @@ export default function HomePage() {
         </div>
       )}
 
-      <SummaryCards monitors={monitors} />
+      <div className="stats-line">
+        <span>
+          <strong>{monitors.length}</strong> 全部监控项
+        </span>
+        <span className="stat-running">
+          <strong>
+            {monitors.filter((item) => item.enabled === 1).length}
+          </strong>{" "}
+          运行中
+        </span>
+        <span>
+          <strong>{stats.today}</strong> 今日信号
+        </span>
+        <span className={monitors.some((item) => item.last_error) ? "stat-error" : ""}>
+          <strong>
+            {monitors.filter((item) => Boolean(item.last_error)).length}
+          </strong>{" "}
+          接口异常
+        </span>
+      </div>
+
+      <nav className="monitor-tabs" aria-label="监控项分类">
+        {(
+          [
+            ["all", "全部", categoryCounts.all],
+            ["ema", "EMA 趋势", categoryCounts.ema],
+            ["combo", "趋势 + KDJ 入场", categoryCounts.combo],
+            ["kdj", "J 极值", categoryCounts.kdj]
+          ] as const
+        ).map(([key, label, count]) => (
+          <button
+            key={key}
+            type="button"
+            className={`monitor-tab ${
+              category === key ? "active" : ""
+            }`}
+            onClick={() => setCategory(key)}
+          >
+            {label} <span>{count}</span>
+          </button>
+        ))}
+      </nav>
 
       <MonitorList
-        monitors={monitors}
+        monitors={filteredMonitors}
         latestSignals={latestAlertByMonitor}
         onToggle={(id, patch) => void toggleMonitor(id, patch)}
         onEdit={openEditModal}
         onDelete={(item) => void deleteMonitor(item)}
         onRefresh={(item) => void refreshMonitor(item)}
-        onAdd={openAddModal}
       />
 
       <NotificationSettings
@@ -556,6 +682,7 @@ export default function HomePage() {
           key={editing?.id ?? "new"}
           item={editing}
           catalog={catalog}
+          serverchanConfigured={settings.serverchan_configured}
           loading={loading}
           error={error}
           onClose={closeModal}

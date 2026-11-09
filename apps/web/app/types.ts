@@ -90,6 +90,11 @@ export interface SettingsData {
   serverchan_configured: boolean;
 }
 
+export interface SignalStats {
+  today: number;
+  total: number;
+}
+
 export interface SaveStrategyInput {
   kind: StrategyKind;
   enabled: boolean;

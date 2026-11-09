@@ -17,7 +17,6 @@ interface MonitorListProps {
   onEdit: (item: MonitorItem) => void;
   onDelete: (item: MonitorItem) => void;
   onRefresh: (item: MonitorItem) => void;
-  onAdd: () => void;
 }
 
 export function MonitorList({
@@ -26,42 +25,39 @@ export function MonitorList({
   onToggle,
   onEdit,
   onDelete,
-  onRefresh,
-  onAdd
+  onRefresh
 }: MonitorListProps) {
   return (
-    <section className="panel">
-      <div className="panel-header">
-        <div>
-          <div className="panel-title">监控项</div>
-          <div className="panel-subtitle">
-            一个监控项可组合多个指标，并分别指定触发周期和过滤周期
-          </div>
-        </div>
-
-        <button className="button primary" onClick={onAdd}>
-          + 新建监控项
-        </button>
-      </div>
-
+    <section className="panel monitor-panel">
       {monitors.length === 0 ? (
-        <div className="empty">暂无监控项，请先创建</div>
+        <div className="empty">没有匹配的监控项</div>
       ) : (
-        <div className="monitor-list">
-          {monitors.map((monitor) => (
-            <MonitorRow
-              key={monitor.id}
-              item={monitor}
-              latestSignal={
-                latestSignals.get(monitor.id) ??
-                monitor.last_signal
-              }
-              onToggle={onToggle}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onRefresh={onRefresh}
-            />
-          ))}
+        <div className="monitor-table">
+          <div className="monitor-table-head">
+            <span>监控项</span>
+            <span>策略条件</span>
+            <span>最新价</span>
+            <span>市场状态</span>
+            <span>最近信号</span>
+            <span>操作</span>
+          </div>
+
+          <div className="monitor-table-body">
+            {monitors.map((monitor) => (
+              <MonitorRow
+                key={monitor.id}
+                item={monitor}
+                latestSignal={
+                  latestSignals.get(monitor.id) ??
+                  monitor.last_signal
+                }
+                onToggle={onToggle}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onRefresh={onRefresh}
+              />
+            ))}
+          </div>
         </div>
       )}
     </section>

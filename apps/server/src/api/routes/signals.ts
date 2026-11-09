@@ -1,10 +1,40 @@
 import { Router } from "express";
 
 import type { SignalEventType } from "../../db/types";
+import { db } from "../../db";
 import { getSignals } from "../../db/monitor-repo";
 import { failure, success } from "../middleware";
 
 export const signalsRouter: Router = Router();
+
+signalsRouter.get("/stats", (_req, res) => {
+  const now = new Date();
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate()
+  ).getTime();
+
+  const today = db.prepare(`
+    SELECT COUNT(1) AS count
+    FROM signals
+    WHERE trigger_met = 1
+      AND event_time >= ?
+  `).get(startOfToday) as { count: number };
+
+  const total = db.prepare(`
+    SELECT COUNT(1) AS count
+    FROM signals
+    WHERE trigger_met = 1
+  `).get() as { count: number };
+
+  res.json(
+    success({
+      today: today.count,
+      total: total.count
+    })
+  );
+});
 
 const EVENT_TYPES: SignalEventType[] = [
   "TREND_GOLDEN",

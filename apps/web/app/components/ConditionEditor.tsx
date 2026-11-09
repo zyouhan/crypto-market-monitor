@@ -80,170 +80,113 @@ export function ConditionEditor({
     });
   }
 
-  function changeKind(kind: ConditionKind): void {
-    const nextDefinition = catalog.find(
-      (item) => item.kind === kind
-    );
-
-    if (!nextDefinition) {
-      return;
-    }
-
-    onChange({
-      kind,
-      role: value.role,
-      interval:
-        value.role === "trigger"
-          ? baseInterval
-          : value.interval,
-      params: defaultsFor(nextDefinition)
-    });
-  }
-
-  function changeRole(role: ConditionRole): void {
-    onChange({
-      ...value,
-      role,
-      interval:
-        role === "trigger" ? baseInterval : value.interval
-    });
-  }
-
   return (
-    <div className="strategy-block">
-      <div className="strategy-head">
-        <div className="strategy-heading">
-          <div className="strategy-title">
-            {definition.label}
-          </div>
-          <div className="strategy-desc">
-            {definition.description}
-          </div>
-        </div>
+    <div className="strategy-block condition-editor">
+      <div className="condition-card-head editor-head">
+        <span className={`row-role ${value.role}`}>
+          {value.role === "filter" ? "过滤条件" : "触发条件"}
+        </span>
+
+        <strong>{definition.label}</strong>
+
+        <span className="condition-interval">
+          {value.interval}
+        </span>
+
+        {value.role === "filter" ? (
+          <select
+            className="interval-inline"
+            value={value.interval}
+            onChange={(event) =>
+              onChange({
+                ...value,
+                interval: event.target.value
+              })
+            }
+          >
+            {intervals.map((interval) => (
+              <option key={interval} value={interval}>
+                {interval}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span className="editor-locked">
+            入场周期 {baseInterval}
+          </span>
+        )}
 
         <button
           type="button"
-          className="button small danger"
+          className="button small danger editor-remove"
           onClick={onRemove}
         >
-          移除
+          删除
         </button>
       </div>
 
-      <div className="strategy-body">
-        <div className="form-grid three">
-          <div className="form-field">
-            <label>条件类型</label>
-            <select
-              value={value.kind}
-              onChange={(event) =>
-                changeKind(event.target.value as ConditionKind)
-              }
-            >
-              {catalog.map((item) => (
-                <option key={item.kind} value={item.kind}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </div>
+      <div className="strategy-desc condition-editor-desc">
+        {definition.description}
+      </div>
 
-          <div className="form-field">
-            <label>条件角色</label>
-            <select
-              value={value.role}
-              onChange={(event) =>
-                changeRole(event.target.value as ConditionRole)
-              }
-            >
-              <option value="trigger">触发条件</option>
-              <option value="filter">过滤条件</option>
-            </select>
-          </div>
+      <div className="form-grid three">
+        {definition.fields.map((field) => (
+          <div className="form-field" key={field.key}>
+            <label>{field.label}</label>
 
-          <div className="form-field">
-            <label>条件周期</label>
-            <select
-              value={value.interval}
-              disabled={value.role === "trigger"}
-              onChange={(event) =>
-                onChange({
-                  ...value,
-                  interval: event.target.value
-                })
-              }
-            >
-              {intervals.map((interval) => (
-                <option key={interval} value={interval}>
-                  {interval}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="form-grid three">
-          {definition.fields.map((field) => (
-            <div className="form-field" key={field.key}>
-              <label>{field.label}</label>
-
-              {field.type === "boolean" ? (
-                <label className="switch-chip condition-check">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(
-                      fieldValue(value.params, field)
-                    )}
-                    onChange={(event) =>
-                      updateParams(
-                        field.key,
-                        event.target.checked
-                      )
-                    }
-                  />
-                  开启
-                </label>
-              ) : field.type === "select" ? (
-                <select
-                  value={String(fieldValue(value.params, field))}
-                  onChange={(event) =>
-                    updateParams(
-                      field.key,
-                      event.target.value
-                    )
-                  }
-                >
-                  {(field.options ?? []).map((option) => (
-                    <option
-                      key={option.value}
-                      value={option.value}
-                    >
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              ) : (
+            {field.type === "boolean" ? (
+              <label className="switch-chip condition-check">
                 <input
-                  type="number"
-                  min={field.min}
-                  max={field.max}
-                  step={field.step}
-                  value={Number(fieldValue(value.params, field))}
+                  type="checkbox"
+                  checked={Boolean(
+                    fieldValue(value.params, field)
+                  )}
                   onChange={(event) =>
                     updateParams(
                       field.key,
-                      Number(event.target.value)
+                      event.target.checked
                     )
                   }
                 />
-              )}
+                开启
+              </label>
+            ) : field.type === "select" ? (
+              <select
+                value={String(fieldValue(value.params, field))}
+                onChange={(event) =>
+                  updateParams(field.key, event.target.value)
+                }
+              >
+                {(field.options ?? []).map((option) => (
+                  <option
+                    key={option.value}
+                    value={option.value}
+                  >
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="number"
+                min={field.min}
+                max={field.max}
+                step={field.step}
+                value={Number(fieldValue(value.params, field))}
+                onChange={(event) =>
+                  updateParams(
+                    field.key,
+                    Number(event.target.value)
+                  )
+                }
+              />
+            )}
 
-              {field.help && (
-                <div className="field-help">{field.help}</div>
-              )}
-            </div>
-          ))}
-        </div>
+            {field.help && (
+              <div className="field-help">{field.help}</div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );

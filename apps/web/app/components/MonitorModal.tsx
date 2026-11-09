@@ -35,6 +35,7 @@ const INTERVALS = [
 interface MonitorModalProps {
   item: MonitorItem | null;
   catalog: ConditionCatalogItem[];
+  serverchanConfigured: boolean;
   loading: boolean;
   error: string;
   onClose: () => void;
@@ -67,6 +68,7 @@ function defaultConditions(
 export function MonitorModal({
   item,
   catalog,
+  serverchanConfigured,
   loading,
   error,
   onClose,
@@ -138,7 +140,7 @@ export function MonitorModal({
     );
   }
 
-  function addCondition(): void {
+  function addCondition(role: "trigger" | "filter"): void {
     const definition = catalog.find(
       (entry) => entry.kind === addKind
     );
@@ -147,17 +149,9 @@ export function MonitorModal({
       return;
     }
 
-    const hasTrigger = conditions.some(
-      (condition) => condition.role === "trigger"
-    );
-
     setConditions((current) => [
       ...current,
-      createDefaultCondition(
-        definition,
-        interval,
-        hasTrigger ? "filter" : "trigger"
-      )
+      createDefaultCondition(definition, interval, role)
     ]);
   }
 
@@ -227,6 +221,14 @@ export function MonitorModal({
     }
   }
 
+  const triggerCount = conditions.filter(
+    (condition) => condition.role === "trigger"
+  ).length;
+  const filterCount = conditions.filter(
+    (condition) => condition.role === "filter"
+  ).length;
+  const validationOk = triggerCount > 0;
+
   return (
     <div
       className="modal-backdrop"
@@ -236,10 +238,34 @@ export function MonitorModal({
         }
       }}
     >
-      <form className="modal" onSubmit={handleSubmit}>
-        <h2>
-          {isEditing ? "编辑监控项" : "新建监控项"}
-        </h2>
+      <form className="modal monitor-modal" onSubmit={handleSubmit}>
+        <div className="modal-title-row">
+          <h2>
+            {isEditing ? "编辑监控项" : "新建监控项"}
+          </h2>
+          <button
+            type="button"
+            className="modal-close"
+            aria-label="关闭"
+            onClick={onClose}
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="modal-steps">
+          <span className="modal-step active">
+            <b>1</b> 基本信息
+          </span>
+          <span className="modal-step-arrow">→</span>
+          <span className="modal-step">
+            <b>2</b> 通知方式
+          </span>
+          <span className="modal-step-arrow">→</span>
+          <span className="modal-step">
+            <b>3</b> 组合条件
+          </span>
+        </div>
 
         {(localError || error) && (
           <div className="message error">
@@ -247,88 +273,110 @@ export function MonitorModal({
           </div>
         )}
 
-        <div className="form-grid">
-          <div className="form-field">
-            <label>监控项名称</label>
-            <input
-              value={name}
-              placeholder="留空自动生成"
-              onChange={(event) => setName(event.target.value)}
-            />
+        <section className="form-section">
+          <div className="section-heading">
+            <span className="section-number">1</span>
+            <h3>基本信息</h3>
           </div>
 
-          <div className="form-field">
-            <label>交易标的</label>
-            <input
-              value={symbol}
-              disabled={isEditing}
-              placeholder="例如 BTCUSDT"
-              onChange={(event) =>
-                setSymbol(event.target.value.toUpperCase())
-              }
-              required
-            />
-          </div>
+          <div className="form-grid three">
+            <div className="form-field">
+              <label>监控项名称</label>
+              <input
+                value={name}
+                placeholder="留空自动生成，如 BTCUSDT 5m"
+                onChange={(event) =>
+                  setName(event.target.value)
+                }
+              />
+            </div>
 
-          <div className="form-field">
-            <label>入场周期</label>
-            <select
-              value={interval}
-              onChange={(event) =>
-                changeBaseInterval(event.target.value)
-              }
-            >
-              {INTERVALS.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div className="form-field">
+              <label>交易标的</label>
+              <input
+                value={symbol}
+                disabled={isEditing}
+                placeholder="例如 BTCUSDT"
+                onChange={(event) =>
+                  setSymbol(event.target.value.toUpperCase())
+                }
+                required
+              />
+            </div>
 
-          <div className="form-field">
-            <label>监控开关</label>
-            <div className="direction-options">
-              <label className="switch-chip">
-                <input
-                  type="checkbox"
-                  checked={enabled}
-                  onChange={(event) =>
-                    setEnabled(event.target.checked)
-                  }
-                />
-                启用监控
-              </label>
-              <label className="switch-chip">
-                <input
-                  type="checkbox"
-                  checked={wechatEnabled}
-                  onChange={(event) =>
-                    setWechatEnabled(event.target.checked)
-                  }
-                />
-                微信通知
-              </label>
-              <label className="switch-chip">
-                <input
-                  type="checkbox"
-                  checked={soundEnabled}
-                  onChange={(event) =>
-                    setSoundEnabled(event.target.checked)
-                  }
-                />
-                声音提醒
-              </label>
+            <div className="form-field">
+              <label>入场周期</label>
+              <select
+                value={interval}
+                onChange={(event) =>
+                  changeBaseInterval(event.target.value)
+                }
+              >
+                {INTERVALS.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div className="condition-builder-head">
-          <div>
-            <div className="strategy-title">组合条件</div>
-            <div className="strategy-desc">
-              多个触发条件必须在同一根入场 K 线同时发生；需要持续状态过滤时，请把条件设为过滤条件。
-            </div>
+        <section className="form-section">
+          <div className="section-heading">
+            <span className="section-number">2</span>
+            <h3>通知方式</h3>
+          </div>
+
+          <div className="notification-toggle-row">
+            <label className="switch-chip">
+              <input
+                type="checkbox"
+                checked={enabled}
+                onChange={(event) =>
+                  setEnabled(event.target.checked)
+                }
+              />
+              启用监控
+            </label>
+
+            <label className="switch-chip">
+              <input
+                type="checkbox"
+                checked={wechatEnabled}
+                onChange={(event) =>
+                  setWechatEnabled(event.target.checked)
+                }
+              />
+              微信通知
+            </label>
+
+            <label className="switch-chip">
+              <input
+                type="checkbox"
+                checked={soundEnabled}
+                onChange={(event) =>
+                  setSoundEnabled(event.target.checked)
+                }
+              />
+              声音提醒
+            </label>
+
+            <span className="serverchan-note">
+              Server酱 SendKey：
+              {serverchanConfigured ? "已配置" : "未配置"}
+            </span>
+          </div>
+        </section>
+
+        <section className="form-section">
+          <div className="section-heading">
+            <span className="section-number">3</span>
+            <h3>组合条件</h3>
+          </div>
+
+          <div className="section-help">
+            多个触发条件必须在同一根入场 K 线同时发生；需要持续状态过滤时，请把条件设为过滤条件。
           </div>
 
           <div className="condition-add">
@@ -349,51 +397,73 @@ export function MonitorModal({
                 </option>
               ))}
             </select>
+
             <button
               type="button"
               className="button small"
-              onClick={addCondition}
+              onClick={() => addCondition("trigger")}
             >
-              + 添加条件
+              + 添加为触发条件
+            </button>
+
+            <button
+              type="button"
+              className="button small"
+              onClick={() => addCondition("filter")}
+            >
+              + 添加为过滤条件
             </button>
           </div>
-        </div>
 
-        {conditions.map((condition, index) => (
-          <ConditionEditor
-            key={`${condition.kind}-${index}`}
-            value={condition}
-            catalog={catalog}
-            baseInterval={interval}
-            intervals={INTERVALS.filter(
-              (value) =>
-                condition.role === "trigger" ||
-                intervalIndex(value) >= intervalIndex(interval)
-            )}
-            onChange={(next) => updateCondition(index, next)}
-            onRemove={() => removeCondition(index)}
-          />
-        ))}
+          {conditions.map((condition, index) => (
+            <ConditionEditor
+              key={`${condition.kind}-${condition.role}-${index}`}
+              value={condition}
+              catalog={catalog}
+              baseInterval={interval}
+              intervals={INTERVALS.filter(
+                (value) =>
+                  condition.role === "trigger" ||
+                  intervalIndex(value) >= intervalIndex(interval)
+              )}
+              onChange={(next) =>
+                updateCondition(index, next)
+              }
+              onRemove={() => removeCondition(index)}
+            />
+          ))}
 
-        {conditions.length === 0 && (
-          <div className="empty">还没有条件，请先添加</div>
-        )}
+          {conditions.length === 0 && (
+            <div className="empty">还没有条件，请先添加</div>
+          )}
+        </section>
 
-        <div className="form-actions">
-          <button
-            type="button"
-            className="button"
-            onClick={onClose}
+        <div className="modal-footer">
+          <div
+            className={`condition-summary ${
+              validationOk ? "ok" : "error"
+            }`}
           >
-            取消
-          </button>
-          <button
-            type="submit"
-            className="button primary"
-            disabled={loading}
-          >
-            {loading ? "保存中..." : "保存"}
-          </button>
+            已含 {triggerCount} 个触发条件 + {filterCount} 个过滤条件
+            {validationOk ? "，校验通过" : "，至少需要一个触发条件"}
+          </div>
+
+          <div className="form-actions">
+            <button
+              type="button"
+              className="button"
+              onClick={onClose}
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              className="button primary"
+              disabled={loading}
+            >
+              {loading ? "保存中..." : "保存开启"}
+            </button>
+          </div>
         </div>
       </form>
     </div>
