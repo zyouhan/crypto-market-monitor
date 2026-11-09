@@ -1,13 +1,23 @@
+export type SoundSignalKind =
+  | "entry-long"
+  | "entry-short"
+  | "golden"
+  | "death";
+
 export interface SoundAlertSettings {
   enabled: boolean;
-  entry: boolean;
-  cross: boolean;
+  entryLong: boolean;
+  entryShort: boolean;
+  golden: boolean;
+  death: boolean;
 }
 
 export const DEFAULT_SOUND_ALERT_SETTINGS: SoundAlertSettings = {
   enabled: false,
-  entry: true,
-  cross: true
+  entryLong: true,
+  entryShort: true,
+  golden: true,
+  death: true
 };
 
 const STORAGE_KEY = "crypto-market-monitor:sound-alerts";
@@ -24,7 +34,9 @@ export function loadSoundAlertSettings(): SoundAlertSettings {
       return { ...DEFAULT_SOUND_ALERT_SETTINGS };
     }
 
-    const parsed = JSON.parse(raw) as Partial<SoundAlertSettings>;
+    const parsed = JSON.parse(raw) as Partial<
+      SoundAlertSettings & { entry?: boolean; cross?: boolean }
+    >;
 
     if (!parsed || typeof parsed !== "object") {
       return { ...DEFAULT_SOUND_ALERT_SETTINGS };
@@ -32,8 +44,12 @@ export function loadSoundAlertSettings(): SoundAlertSettings {
 
     return {
       enabled: parsed.enabled === true,
-      entry: parsed.entry !== false,
-      cross: parsed.cross !== false
+      entryLong:
+        parsed.entryLong ?? parsed.entry ?? true,
+      entryShort:
+        parsed.entryShort ?? parsed.entry ?? true,
+      golden: parsed.golden ?? parsed.cross ?? true,
+      death: parsed.death ?? parsed.cross ?? true
     };
   } catch {
     return { ...DEFAULT_SOUND_ALERT_SETTINGS };
@@ -53,32 +69,38 @@ export function saveSoundAlertSettings(
       JSON.stringify(settings)
     );
   } catch {
-    // localStorage 不可用时静默降级，不阻塞页面
+    // localStorage 不可用时静默降级
   }
 }
 
-export function isSoundAlertSignal(
+export function getSoundAlertKind(
   signal: { event_type: string },
   settings: SoundAlertSettings
-): boolean {
+): SoundSignalKind | null {
   if (!settings.enabled) {
-    return false;
+    return null;
   }
 
-  const isEntry =
-    signal.event_type === "ENTRY_LONG" ||
-    signal.event_type === "ENTRY_SHORT";
-
-  if (isEntry) {
-    return settings.entry;
+  switch (signal.event_type) {
+    case "ENTRY_LONG":
+      return settings.entryLong ? "entry-long" : null;
+    case "ENTRY_SHORT":
+      return settings.entryShort ? "entry-short" : null;
+    case "TREND_GOLDEN":
+      return settings.golden ? "golden" : null;
+    case "TREND_DEATH":
+      return settings.death ? "death" : null;
+    default:
+      return null;
   }
-
-  const isCross =
-    signal.event_type === "TREND_GOLDEN" ||
-    signal.event_type === "TREND_DEATH";
-
-  return isCross && settings.cross;
 }
+
+const TONES: Record<SoundSignalKind, number[]> = {
+  "entry-long": [660, 880, 1100],
+  "entry-short": [880, 700, 520],
+  golden: [880, 1100, 1320],
+  death: [440, 330, 220]
+};
 
 let audioContext: AudioContext | null = null;
 
@@ -98,9 +120,6 @@ function getAudioContext(): AudioContext | null {
   }
 }
 
-/**
- * 浏览器要求在用户手势中解锁音频，开关/试听时主动调用。
- */
 export function unlockAudio(): void {
   const context = getAudioContext();
 
@@ -113,53 +132,60 @@ export function unlockAudio(): void {
   }
 }
 
-function scheduleTripleBeep(context: AudioContext): void {
+function scheduleTones(
+  context: AudioContext,
+  frequencies: number[]
+): void {
   const start = context.currentTime + 0.02;
-  const offsets = [0, 0.2, 0.4];
+  const step = 0.16;
 
-  for (const offset of offsets) {
+  frequencies.forEach((frequency, index) => {
     const oscillator = context.createOscillator();
     const gain = context.createGain();
-    const at = start + offset;
+    const at = start + index * step;
 
     oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(880, at);
+    oscillator.frequency.setValueAtTime(frequency, at);
 
     gain.gain.setValueAtTime(0.0001, at);
-    gain.gain.exponentialRampToValueAtTime(0.22, at + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.13);
+    gain.gain.exponentialRampToValueAtTime(0.2, at + 0.015);
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      at + 0.12
+    );
 
     oscillator.connect(gain);
     gain.connect(context.destination);
-
     oscillator.start(at);
     oscillator.stop(at + 0.14);
-  }
+  });
 }
 
-/**
- * 三声短鸣“滴滴滴”。不依赖音频文件，直接使用 Web Audio 合成。
- */
-export function playTripleBeep(): void {
+export function playSignalSound(kind: SoundSignalKind): void {
   const context = getAudioContext();
 
   if (!context) {
     return;
   }
 
+  const play = () => {
+    if (context.state !== "closed") {
+      scheduleTones(context, TONES[kind]);
+    }
+  };
+
   if (context.state === "suspended") {
     void context
       .resume()
-      .then(() => {
-        if (context.state !== "closed") {
-          scheduleTripleBeep(context);
-        }
-      })
+      .then(play)
       .catch(() => undefined);
     return;
   }
 
-  if (context.state !== "closed") {
-    scheduleTripleBeep(context);
-  }
+  play();
+}
+
+/** 兼容旧的“滴滴滴”入口，默认使用做多入场音效。 */
+export function playTripleBeep(): void {
+  playSignalSound("entry-long");
 }

@@ -110,16 +110,12 @@ export function MonitorModal({
     setIntervalValue(next);
 
     setConditions((current) =>
-      current.map((condition) => {
-        if (condition.role === "trigger") {
-          return { ...condition, interval: next };
-        }
-
-        return intervalIndex(condition.interval) <
-          intervalIndex(next)
+      current.map((condition) =>
+        intervalIndex(condition.interval) <
+        intervalIndex(next)
           ? { ...condition, interval: next }
-          : condition;
-      })
+          : condition
+      )
     );
   }
 
@@ -182,19 +178,12 @@ export function MonitorModal({
 
     for (const condition of conditions) {
       if (
-        condition.role === "trigger" &&
-        condition.interval !== interval
-      ) {
-        setLocalError("触发条件必须使用入场周期");
-        return;
-      }
-
-      if (
-        condition.role === "filter" &&
         intervalIndex(condition.interval) <
-          intervalIndex(interval)
+        intervalIndex(interval)
       ) {
-        setLocalError("过滤条件周期不能低于入场周期");
+        setLocalError(
+          "条件周期不能低于入场/调度周期"
+        );
         return;
       }
     }
@@ -385,7 +374,7 @@ export function MonitorModal({
           </div>
 
           <div className="section-help">
-            多个触发条件必须在同一根入场 K 线同时发生；需要持续状态过滤时，请把条件设为过滤条件。
+            多个触发条件必须在同一根入场 K 线同时发生；每个条件可以选择自己的 K 线周期，但不得低于入场周期。例如 EMA 15m + KDJ 5m 时，入场周期选 5m。
           </div>
 
           <div className="condition-add">
@@ -431,8 +420,8 @@ export function MonitorModal({
               catalog={catalog}
               intervals={INTERVALS.filter(
                 (value) =>
-                  condition.role === "trigger" ||
-                  intervalIndex(value) >= intervalIndex(interval)
+                  intervalIndex(value) >=
+                  intervalIndex(interval)
               )}
               onChange={(next) =>
                 updateCondition(index, next)

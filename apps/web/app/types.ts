@@ -86,6 +86,7 @@ export interface SignalItem {
 }
 
 export interface SettingsData {
+  global_monitor_enabled: boolean;
   global_wechat_enabled: boolean;
   serverchan_configured: boolean;
 }

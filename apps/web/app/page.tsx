@@ -19,11 +19,12 @@ import { api, errorMessage } from "./lib/api";
 import { isAlertSignal } from "./lib/format";
 import {
   DEFAULT_SOUND_ALERT_SETTINGS,
-  isSoundAlertSignal,
+  getSoundAlertKind,
   loadSoundAlertSettings,
-  playTripleBeep,
+  playSignalSound,
   saveSoundAlertSettings,
   unlockAudio,
+  type SoundSignalKind,
   type SoundAlertSettings
 } from "./lib/sound";
 import type {
@@ -70,6 +71,7 @@ export default function HomePage() {
   >([]);
   const [catalog, setCatalog] = useState<ConditionCatalogItem[]>([]);
   const [settings, setSettings] = useState<SettingsData>({
+    global_monitor_enabled: true,
     global_wechat_enabled: false,
     serverchan_configured: false
   });
@@ -149,19 +151,30 @@ export default function HomePage() {
         seen.add(signal.id);
       }
 
-      const shouldBeep = fresh.some((signal) => {
+      let soundKind: SoundSignalKind | null = null;
+
+      for (const signal of fresh) {
         const monitor = signal.monitor_id
           ? monitorById.get(signal.monitor_id)
           : undefined;
 
-        return (
-          monitor?.sound_enabled === 1 &&
-          isSoundAlertSignal(signal, soundSettingsRef.current)
-        );
-      });
+        if (monitor?.sound_enabled !== 1) {
+          continue;
+        }
 
-      if (shouldBeep) {
-        playTripleBeep();
+        const kind = getSoundAlertKind(
+          signal,
+          soundSettingsRef.current
+        );
+
+        if (kind) {
+          soundKind = kind;
+          break;
+        }
+      }
+
+      if (soundKind) {
+        playSignalSound(soundKind);
       }
 
       setToasts((current) =>
@@ -494,6 +507,24 @@ export default function HomePage() {
     }
   }
 
+  async function handleGlobalMonitor(value: boolean) {
+    try {
+      await api("/api/settings", {
+        method: "PUT",
+        body: JSON.stringify({
+          global_monitor_enabled: value
+        })
+      });
+
+      setSettings((current) => ({
+        ...current,
+        global_monitor_enabled: value
+      }));
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
   async function handleGlobalNotify(value: boolean) {
     try {
       await api("/api/settings", {
@@ -604,6 +635,9 @@ export default function HomePage() {
           </strong>{" "}
           接口异常
         </span>
+        {!settings.global_monitor_enabled && (
+          <span className="global-paused">全局监控已暂停</span>
+        )}
       </div>
 
       <nav className="monitor-tabs" aria-label="监控项分类">
@@ -638,9 +672,15 @@ export default function HomePage() {
       />
 
       <NotificationSettings
+        globalMonitor={settings.global_monitor_enabled}
         globalNotify={settings.global_wechat_enabled}
         serverchanConfigured={settings.serverchan_configured}
-        onChange={(value) => void handleGlobalNotify(value)}
+        onMonitorChange={(value) =>
+          void handleGlobalMonitor(value)
+        }
+        onNotifyChange={(value) =>
+          void handleGlobalNotify(value)
+        }
       />
 
       <SoundSettings

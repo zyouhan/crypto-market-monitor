@@ -71,6 +71,11 @@ function seedSettings(database: Database.Database): void {
       : "false",
     now
   );
+
+  database.prepare(`
+    INSERT OR IGNORE INTO settings (key, value, updated_at)
+    VALUES (?, ?, ?)
+  `).run("global_monitor_enabled", "true", now);
 }
 
 function openDatabase(dbFile: string): Database.Database {

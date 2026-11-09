@@ -16,9 +16,12 @@ export const settingsRouter: Router = Router();
 settingsRouter.get("/", (_req, res) => {
   const globalWechatEnabled =
     getSetting("global_wechat_enabled") === "true";
+  const globalMonitorEnabled =
+    getSetting("global_monitor_enabled") !== "false";
 
   res.json(
     success({
+      global_monitor_enabled: globalMonitorEnabled,
       global_wechat_enabled: globalWechatEnabled,
       serverchan_configured: isServerchanConfigured()
     })
@@ -26,27 +29,61 @@ settingsRouter.get("/", (_req, res) => {
 });
 
 /**
- * 更新全局设置
+ * 更新全局设置（支持只更新其中一个开关）。
  */
 settingsRouter.put("/", (req, res) => {
-  const { global_wechat_enabled } = req.body ?? {};
+  const body = req.body ?? {};
+  const hasMonitor = body.global_monitor_enabled !== undefined;
+  const hasWechat = body.global_wechat_enabled !== undefined;
 
-  if (typeof global_wechat_enabled !== "boolean") {
+  if (!hasMonitor && !hasWechat) {
+    res.status(400).json(
+      failure("至少提供一个全局设置项")
+    );
+    return;
+  }
+
+  if (
+    hasMonitor &&
+    typeof body.global_monitor_enabled !== "boolean"
+  ) {
+    res.status(400).json(
+      failure("global_monitor_enabled 必须为布尔值")
+    );
+    return;
+  }
+
+  if (
+    hasWechat &&
+    typeof body.global_wechat_enabled !== "boolean"
+  ) {
     res.status(400).json(
       failure("global_wechat_enabled 必须为布尔值")
     );
     return;
   }
 
-  setSetting(
-    "global_wechat_enabled",
-    global_wechat_enabled ? "true" : "false"
-  );
+  if (hasMonitor) {
+    setSetting(
+      "global_monitor_enabled",
+      body.global_monitor_enabled ? "true" : "false"
+    );
+  }
+
+  if (hasWechat) {
+    setSetting(
+      "global_wechat_enabled",
+      body.global_wechat_enabled ? "true" : "false"
+    );
+  }
 
   res.json(
     success(
       {
-        global_wechat_enabled
+        global_monitor_enabled:
+          getSetting("global_monitor_enabled") !== "false",
+        global_wechat_enabled:
+          getSetting("global_wechat_enabled") === "true"
       },
       "全局设置已更新"
     )

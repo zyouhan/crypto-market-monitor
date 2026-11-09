@@ -94,28 +94,22 @@ export function ConditionEditor({
 
         <strong>{definition.label}</strong>
 
-        {value.role === "filter" ? (
-          <select
-            className="interval-inline"
-            value={value.interval}
-            onChange={(event) =>
-              onChange({
-                ...value,
-                interval: event.target.value
-              })
-            }
-          >
-            {intervals.map((interval) => (
-              <option key={interval} value={interval}>
-                {interval}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <span className="condition-interval">
-            {value.interval}
-          </span>
-        )}
+        <select
+          className="interval-inline"
+          value={value.interval}
+          onChange={(event) =>
+            onChange({
+              ...value,
+              interval: event.target.value
+            })
+          }
+        >
+          {intervals.map((interval) => (
+            <option key={interval} value={interval}>
+              {interval}
+            </option>
+          ))}
+        </select>
 
         <button
           type="button"

@@ -512,6 +512,18 @@ async function runMonitorCycle(forceIds?: number[]): Promise<void> {
   const startedAt = Date.now();
 
   try {
+    const globalMonitorEnabled =
+      getSetting("global_monitor_enabled") !== "false";
+
+    if (
+      !globalMonitorEnabled &&
+      (!forceIds || forceIds.length === 0)
+    ) {
+      health.lastDueMonitors = 0;
+      health.lastError = null;
+      return;
+    }
+
     const monitors =
       forceIds && forceIds.length > 0
         ? forceIds

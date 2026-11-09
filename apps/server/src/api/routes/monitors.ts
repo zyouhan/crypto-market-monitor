@@ -120,18 +120,12 @@ function normalizeConditionInput(
   }
 
   if (
-    value.role === "trigger" &&
-    interval !== baseInterval
-  ) {
-    throw new Error("触发条件必须使用入场周期");
-  }
-
-  if (
-    value.role === "filter" &&
     getIntervalDuration(interval) <
       getIntervalDuration(baseInterval)
   ) {
-    throw new Error("过滤条件周期不能低于入场周期");
+    throw new Error(
+      "条件周期不能低于入场/调度周期"
+    );
   }
 
   const definition = getConditionDefinition(value.kind);
