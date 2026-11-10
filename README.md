@@ -142,6 +142,8 @@ KDJ 入场信号会创建 `stop_watches` 止损观察：
 
 当前只在监控项启用且 Worker 正常运行时检查；手工平仓不会自动取消观察。
 
+止损观察会记录最大有利波动 MFE 和最大不利波动 MAE（以初始风险 R 为单位），用于评估入场后走势质量。
+
 监控项展开详情中提供「标记已平仓」，会取消该监控项所有活动中的止损观察，避免人工平仓后继续收到旧仓位的止损提醒。
 
 同时提供「记录正T」「记录反T」按钮，将人工 T 操作写入 `trade_actions`。当前仅记录操作，不自动判断 T 点。
@@ -193,10 +195,11 @@ PROXY_URL=
 
 ## 数据库迁移
 
-当前 `PRAGMA user_version = 7`。
+当前 `PRAGMA user_version = 8`。
 
 - v6 增加 `stop_watches` 止损观察；
 - v7 增加 `trade_actions` 人工 T/清仓记录；
+- v8 增加止损观察的 MFE / MAE 进度；
 - v4 → v5 前会自动备份到 `data/archive/v4-<时间戳>/`；
 - 旧的 `symbols` / `strategies` / `strategy_states` / `signals_v4` 保留用于回滚；
 - 旧策略迁移规则：

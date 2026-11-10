@@ -17,6 +17,7 @@ import {
   updateMonitorError,
   updateMonitorProgress,
   updateMonitorSnapshot,
+  updateStopWatchProgress,
   type StopWatchRecord
 } from "../db/monitor-repo";
 import {
@@ -272,6 +273,64 @@ export function findStopHit(
   }
 
   return null;
+}
+
+export function stopProgress(
+  watch: StopWatchRecord,
+  klines: Kline[]
+): {
+  maxPrice: number | null;
+  minPrice: number | null;
+  maxFavorableR: number;
+  maxAdverseR: number;
+  lastCheckedTime: number | null;
+} {
+  const risk = Math.abs(watch.entry_price - watch.stop_price);
+  let maxPrice = watch.max_price;
+  let minPrice = watch.min_price;
+  let maxFavorableR = watch.max_favorable_r;
+  let maxAdverseR = watch.max_adverse_r;
+  let lastCheckedTime = watch.last_checked_time;
+
+  for (const kline of klines) {
+    if (kline.closeTime <= watch.entry_time) {
+      continue;
+    }
+
+    maxPrice =
+      maxPrice === null
+        ? kline.high
+        : Math.max(maxPrice, kline.high);
+    minPrice =
+      minPrice === null
+        ? kline.low
+        : Math.min(minPrice, kline.low);
+    lastCheckedTime = kline.closeTime;
+
+    if (risk <= 0) {
+      continue;
+    }
+
+    const favorableR =
+      watch.direction === "BULL"
+        ? (kline.high - watch.entry_price) / risk
+        : (watch.entry_price - kline.low) / risk;
+    const adverseR =
+      watch.direction === "BULL"
+        ? (watch.entry_price - kline.low) / risk
+        : (kline.high - watch.entry_price) / risk;
+
+    maxFavorableR = Math.max(maxFavorableR, favorableR);
+    maxAdverseR = Math.max(maxAdverseR, adverseR);
+  }
+
+  return {
+    maxPrice,
+    minPrice,
+    maxFavorableR,
+    maxAdverseR,
+    lastCheckedTime
+  };
 }
 
 function stopHitRecord(
@@ -592,6 +651,19 @@ async function runMonitor(
   const stopTransaction = db.transaction(() => {
     for (const watch of getActiveStopWatches(monitor.id)) {
       const hitKline = findStopHit(watch, newBaseKlines);
+      const hitIndex = hitKline
+        ? newBaseKlines.indexOf(hitKline)
+        : -1;
+      const progressKlines =
+        hitIndex >= 0
+          ? newBaseKlines.slice(0, hitIndex + 1)
+          : newBaseKlines;
+      const progress = stopProgress(watch, progressKlines);
+
+      updateStopWatchProgress({
+        id: watch.id,
+        ...progress
+      });
 
       if (!hitKline) {
         continue;

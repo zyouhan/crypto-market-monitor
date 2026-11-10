@@ -465,6 +465,30 @@ function copyLegacySignals(database: Database.Database): void {
   }
 }
 
+export function ensureStopWatchProgressColumns(
+  database: Database.Database
+): void {
+  if (!tableExists(database, "stop_watches")) {
+    return;
+  }
+
+  const columns = [
+    ["max_price", "REAL"],
+    ["min_price", "REAL"],
+    ["max_favorable_r", "REAL NOT NULL DEFAULT 0"],
+    ["max_adverse_r", "REAL NOT NULL DEFAULT 0"],
+    ["last_checked_time", "INTEGER"]
+  ] as const;
+
+  for (const [column, definition] of columns) {
+    if (!hasColumn(database, "stop_watches", column)) {
+      database.exec(
+        `ALTER TABLE stop_watches ADD COLUMN ${column} ${definition}`
+      );
+    }
+  }
+}
+
 export function migrateToV5(
   database: Database.Database,
   dbFile: string,
@@ -472,6 +496,7 @@ export function migrateToV5(
 ): void {
   if (version >= 5) {
     applySchema(database);
+    ensureStopWatchProgressColumns(database);
     return;
   }
 
@@ -495,13 +520,14 @@ export function migrateToV5(
   }
 
   applySchema(database);
+  ensureStopWatchProgressColumns(database);
 
   if (version > 0) {
     migrateLegacyMonitors(database);
     copyLegacySignals(database);
   }
 
-  database.pragma("user_version = 5");
+  database.pragma("user_version = 8");
 }
 
 function insertSeedMonitor(

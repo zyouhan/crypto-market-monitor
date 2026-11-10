@@ -17,6 +17,7 @@ import {
   getMonitorById,
   getMonitorConditions,
   getMonitors,
+  getActiveStopWatches,
   getRecentTradeActions,
   insertCondition,
   insertMonitor,
@@ -179,6 +180,7 @@ function buildMonitorView(monitor: MonitorRecord) {
       buildConditionView(condition, monitor, snapshot)
     ),
     trade_actions: getRecentTradeActions(monitor.id, 5),
+    active_stop_watch: getActiveStopWatches(monitor.id)[0] ?? null,
     last_signal: lastSignal
       ? {
           ...lastSignal,

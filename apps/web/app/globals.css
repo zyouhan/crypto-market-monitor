@@ -1318,6 +1318,28 @@ td {
   font-size: 10px;
 }
 
+.stop-progress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #0f1520;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.stop-progress .bull {
+  color: var(--green);
+}
+
+.stop-progress .bear {
+  color: var(--red);
+}
+
 .monitor-detail .condition-card {
   background: #0d131d;
 }

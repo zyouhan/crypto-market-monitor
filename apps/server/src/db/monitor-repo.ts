@@ -24,6 +24,11 @@ export interface StopWatchRecord {
   hit_at: number | null;
   hit_price: number | null;
   hit_signal_id: number | null;
+  max_price: number | null;
+  min_price: number | null;
+  max_favorable_r: number;
+  max_adverse_r: number;
+  last_checked_time: number | null;
 }
 
 export type TradeActionKind =
@@ -461,6 +466,33 @@ export function markStopWatchHit(input: {
     input.hitAt,
     input.hitPrice,
     input.hitSignalId,
+    input.id
+  );
+}
+
+export function updateStopWatchProgress(input: {
+  id: number;
+  maxPrice: number | null;
+  minPrice: number | null;
+  maxFavorableR: number;
+  maxAdverseR: number;
+  lastCheckedTime: number | null;
+}): void {
+  db.prepare(`
+    UPDATE stop_watches
+    SET
+      max_price = ?,
+      min_price = ?,
+      max_favorable_r = ?,
+      max_adverse_r = ?,
+      last_checked_time = ?
+    WHERE id = ? AND status = 'ACTIVE'
+  `).run(
+    input.maxPrice,
+    input.minPrice,
+    input.maxFavorableR,
+    input.maxAdverseR,
+    input.lastCheckedTime,
     input.id
   );
 }

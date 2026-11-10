@@ -365,6 +365,25 @@ export function MonitorRow({
             </div>
           )}
 
+          {item.active_stop_watch && (
+            <div className="stop-progress">
+              <span className="detail-label">止损观察</span>
+              <span>
+                入场 {formatPrice(item.active_stop_watch.entry_price)}
+              </span>
+              <span>
+                止损 {formatPrice(item.active_stop_watch.stop_price)}
+              </span>
+              <span className="bull">
+                最高 +{item.active_stop_watch.max_favorable_r.toFixed(2)}R
+              </span>
+              <span className="bear">
+                最大回撤 -
+                {item.active_stop_watch.max_adverse_r.toFixed(2)}R
+              </span>
+            </div>
+          )}
+
           <div className="detail-condition-grid">
             {item.conditions.map((condition) => (
               <div

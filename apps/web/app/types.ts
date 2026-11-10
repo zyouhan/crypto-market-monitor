@@ -209,6 +209,16 @@ export interface TradeActionItem {
   created_at: number;
 }
 
+export interface ActiveStopWatchItem {
+  id: number;
+  signal_id: number;
+  direction: "BULL" | "BEAR";
+  entry_price: number;
+  stop_price: number;
+  max_favorable_r: number;
+  max_adverse_r: number;
+}
+
 export interface MonitorItem {
   id: number;
   name: string;
@@ -234,6 +244,7 @@ export interface MonitorItem {
   pending: boolean;
   conditions: MonitorConditionView[];
   trade_actions?: TradeActionItem[];
+  active_stop_watch?: ActiveStopWatchItem | null;
   last_signal: MonitorSignalItem | null;
   created_at: number;
   updated_at: number;

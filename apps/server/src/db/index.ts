@@ -5,6 +5,7 @@ import Database from "better-sqlite3";
 
 import { PROJECT_ROOT } from "../config/paths";
 import {
+  ensureStopWatchProgressColumns,
   migrateToV5,
   seedDefaultMonitors
 } from "./migrate";
@@ -111,6 +112,8 @@ function openDatabase(dbFile: string): Database.Database {
   } else {
     applySchema(database);
   }
+
+  ensureStopWatchProgressColumns(database);
 
   seedSettings(database);
   seedDefaultMonitors(database);
