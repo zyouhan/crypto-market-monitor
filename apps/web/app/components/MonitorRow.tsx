@@ -60,6 +60,10 @@ function statusTags(item: MonitorItem): Tag[] {
     add("请求中", "pending");
   }
 
+  if (item.track_stats === 1) {
+    add("统计中", "neutral");
+  }
+
   if (item.last_error) {
     add("接口异常", "bear");
   }

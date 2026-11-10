@@ -1827,6 +1827,14 @@ td {
   gap: 9px;
 }
 
+.stats-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  margin-top: 12px;
+}
+
 .serverchan-note {
   color: var(--muted);
   font-size: 11px;
@@ -2218,6 +2226,110 @@ option {
 
 .preset-entry-heading {
   margin-top: 4px;
+}
+
+.strategy-stats-modal {
+  width: min(1100px, 96vw);
+  max-height: 88vh;
+  overflow-y: auto;
+}
+
+.strategy-stats-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.strategy-stats-summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #0f1520;
+}
+
+.strategy-stats-summary-card strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.strategy-stats-summary-card span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.strategy-stats-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.strategy-stats-search {
+  flex: 1;
+  max-width: 420px;
+}
+
+.strategy-stats-count {
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.strategy-stats-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.strategy-stats-pagination > div {
+  display: flex;
+  gap: 7px;
+}
+
+.table-empty {
+  color: var(--muted);
+  text-align: center;
+  padding: 20px 8px;
+}
+
+.danger-link {
+  border: 0;
+  background: transparent;
+  color: var(--red);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 4px;
+}
+
+.danger-link:disabled {
+  color: var(--muted);
+  cursor: wait;
+}
+
+@media (max-width: 900px) {
+  .strategy-stats-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .strategy-stats-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .strategy-stats-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 760px) {

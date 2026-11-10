@@ -338,6 +338,11 @@ monitorsRouter.post("/", (req, res) => {
       body.preset_name.trim()
         ? body.preset_name.trim().slice(0, 120)
         : null;
+    const trackStats = readFlag(
+      body.track_stats,
+      false,
+      "纳入策略统计"
+    );
 
     let id = 0;
 
@@ -350,7 +355,8 @@ monitorsRouter.post("/", (req, res) => {
         wechatEnabled,
         soundEnabled,
         presetId,
-        presetName
+        presetName,
+        trackStats
       });
       insertConditionRows(id, prepared.conditions);
     });
@@ -422,6 +428,11 @@ monitorsRouter.put("/:id", (req, res) => {
       existing.sound_enabled === 1,
       "声音提醒开关"
     );
+    const trackStats = readFlag(
+      body.track_stats,
+      existing.track_stats === 1,
+      "纳入策略统计"
+    );
 
     const oldSignature = JSON.stringify(
       getMonitorConditions(id).map((condition) => ({
@@ -443,7 +454,8 @@ monitorsRouter.put("/:id", (req, res) => {
         interval,
         enabled,
         wechatEnabled,
-        soundEnabled
+        soundEnabled,
+        trackStats
       });
       deleteMonitorConditions(id);
       insertConditionRows(id, conditions);
@@ -528,6 +540,11 @@ monitorsRouter.patch("/:id", (req, res) => {
       existing.sound_enabled === 1,
       "声音提醒开关"
     );
+    const trackStats = readFlag(
+      body.track_stats,
+      existing.track_stats === 1,
+      "纳入策略统计"
+    );
 
     updateMonitorFields({
       id,
@@ -535,7 +552,8 @@ monitorsRouter.patch("/:id", (req, res) => {
       interval: existing.interval,
       enabled,
       wechatEnabled,
-      soundEnabled
+      soundEnabled,
+      trackStats
     });
 
     const monitor = getMonitorById(id);

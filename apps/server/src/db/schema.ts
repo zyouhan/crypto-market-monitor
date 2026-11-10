@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
 
 /**
  * v5 表结构。
@@ -20,6 +20,7 @@ const V5_SCHEMA_SQL = `
     interval TEXT NOT NULL,
     preset_id TEXT,
     preset_name TEXT,
+    track_stats INTEGER NOT NULL DEFAULT 0,
 
     enabled INTEGER NOT NULL DEFAULT 1,
     wechat_enabled INTEGER NOT NULL DEFAULT 1,
@@ -82,6 +83,8 @@ const V5_SCHEMA_SQL = `
     monitor_name TEXT,
     preset_id TEXT,
     preset_name TEXT,
+    track_stats INTEGER NOT NULL DEFAULT 0,
+    stats_deleted INTEGER NOT NULL DEFAULT 0,
 
     symbol TEXT NOT NULL,
     interval TEXT,
@@ -125,6 +128,9 @@ const V5_SCHEMA_SQL = `
 
   CREATE INDEX IF NOT EXISTS idx_signals_created_at
     ON signals(created_at DESC);
+
+  CREATE INDEX IF NOT EXISTS idx_signals_stats
+    ON signals(track_stats, stats_deleted, event_type, event_time DESC);
 
   CREATE TABLE IF NOT EXISTS stop_watches (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

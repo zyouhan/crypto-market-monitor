@@ -115,6 +115,9 @@ export function MonitorModal({
   const [soundEnabled, setSoundEnabled] = useState(
     item ? item.sound_enabled === 1 : true
   );
+  const [trackStats, setTrackStats] = useState(
+    item ? item.track_stats === 1 : false
+  );
   const [conditions, setConditions] = useState<ConditionDraft[]>(
     item
       ? item.conditions.map((condition) => ({
@@ -150,6 +153,7 @@ export function MonitorModal({
     setSelectedPresetId(null);
     setPresetId(null);
     setPresetName(null);
+    setTrackStats(false);
   }
 
   function updateCondition(
@@ -199,6 +203,7 @@ export function MonitorModal({
     setSelectedPresetId(preset.id);
     setPresetId(preset.id);
     setPresetName(preset.defaultName);
+    setTrackStats(true);
     setLocalError("");
 
     if (
@@ -284,6 +289,7 @@ export function MonitorModal({
         sound_enabled: soundEnabled,
         preset_id: presetId,
         preset_name: presetName,
+        track_stats: trackStats,
         conditions: conditions.map((condition) => ({
           kind: condition.kind,
           role: condition.role,
@@ -472,6 +478,25 @@ export function MonitorModal({
                 <span>取所有触发条件中的最小周期</span>
               </div>
             </div>
+          </div>
+
+          <div className="stats-toggle-row">
+            <label className="toggle-chip">
+              <input
+                type="checkbox"
+                checked={trackStats}
+                onChange={(event) =>
+                  setTrackStats(event.target.checked)
+                }
+              />
+              <span className="toggle-track">
+                <span className="toggle-thumb" />
+              </span>
+              <span>纳入策略统计</span>
+            </label>
+            <span className="field-help">
+              选择预设会自动开启；修改条件后需重新确认是否继续统计
+            </span>
           </div>
         </section>
 

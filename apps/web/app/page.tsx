@@ -12,10 +12,10 @@ import { LoginCard } from "./components/LoginCard";
 import { MonitorList } from "./components/MonitorList";
 import { MonitorModal } from "./components/MonitorModal";
 import { NotificationSettings } from "./components/NotificationSettings";
-import { PresetEntryModal } from "./components/PresetEntryModal";
 import { SignalTable } from "./components/SignalTable";
 import { SignalToasts } from "./components/SignalToasts";
 import { SoundSettings } from "./components/SoundSettings";
+import { StrategyStatsModal } from "./components/StrategyStatsModal";
 import { api, errorMessage } from "./lib/api";
 import { isAlertSignal } from "./lib/format";
 import {
@@ -96,7 +96,7 @@ export default function HomePage() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<MonitorItem | null>(null);
-  const [presetEntryOpen, setPresetEntryOpen] = useState(false);
+  const [strategyStatsOpen, setStrategyStatsOpen] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -681,9 +681,9 @@ export default function HomePage() {
 
           <button
             className="button"
-            onClick={() => setPresetEntryOpen(true)}
+            onClick={() => setStrategyStatsOpen(true)}
           >
-            预设入场点
+            策略统计
           </button>
 
           <button
@@ -839,11 +839,10 @@ export default function HomePage() {
         />
       )}
 
-      {presetEntryOpen && (
-        <PresetEntryModal
-          stats={stats}
-          signals={signals}
-          onClose={() => setPresetEntryOpen(false)}
+      {strategyStatsOpen && (
+        <StrategyStatsModal
+          onClose={() => setStrategyStatsOpen(false)}
+          onChanged={loadDashboard}
         />
       )}
     </main>

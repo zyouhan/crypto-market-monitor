@@ -103,6 +103,7 @@ export function insertMonitor(input: {
   soundEnabled: number;
   presetId?: string | null;
   presetName?: string | null;
+  trackStats?: number;
 }): number {
   const now = Date.now();
 
@@ -113,18 +114,20 @@ export function insertMonitor(input: {
       interval,
       preset_id,
       preset_name,
+      track_stats,
       enabled,
       wechat_enabled,
       sound_enabled,
       created_at,
       updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     input.name,
     input.symbol,
     input.interval,
     input.presetId ?? null,
     input.presetName ?? null,
+    input.trackStats ?? 0,
     input.enabled,
     input.wechatEnabled,
     input.soundEnabled,
@@ -177,6 +180,7 @@ export function updateMonitorFields(input: {
   enabled: number;
   wechatEnabled: number;
   soundEnabled: number;
+  trackStats: number;
 }): void {
   db.prepare(`
     UPDATE monitors
@@ -186,6 +190,7 @@ export function updateMonitorFields(input: {
       enabled = ?,
       wechat_enabled = ?,
       sound_enabled = ?,
+      track_stats = ?,
       updated_at = ?
     WHERE id = ?
   `).run(
@@ -194,6 +199,7 @@ export function updateMonitorFields(input: {
     input.enabled,
     input.wechatEnabled,
     input.soundEnabled,
+    input.trackStats,
     Date.now(),
     input.id
   );
@@ -365,6 +371,8 @@ export function insertSignalIgnore(
       monitor_name,
       preset_id,
       preset_name,
+      track_stats,
+      stats_deleted,
       symbol,
       interval,
       kind,
@@ -383,12 +391,14 @@ export function insertSignalIgnore(
       reason,
       payload,
       created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     input.monitor_id,
     input.monitor_name,
     input.preset_id,
     input.preset_name,
+    input.track_stats,
+    input.stats_deleted,
     input.symbol,
     input.interval,
     input.kind,

@@ -112,6 +112,25 @@ export interface SignalStats {
   }>;
 }
 
+export interface StrategyStatsEntry {
+  id: number;
+  event_time: number;
+  symbol: string;
+  preset_id: string | null;
+  preset_name: string | null;
+  direction: "BULL" | "BEAR" | null;
+  price: number;
+  event_type: SignalEventType;
+  monitor_name: string | null;
+}
+
+export interface StrategyStatsPage {
+  items: StrategyStatsEntry[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export interface SaveStrategyInput {
   kind: StrategyKind;
   enabled: boolean;
@@ -240,6 +259,7 @@ export interface MonitorItem {
   interval: string;
   preset_id?: string | null;
   preset_name?: string | null;
+  track_stats: number;
   enabled: number;
   wechat_enabled: number;
   sound_enabled: number;
@@ -282,5 +302,6 @@ export interface SaveMonitorPayload {
   sound_enabled: boolean;
   preset_id?: string | null;
   preset_name?: string | null;
+  track_stats: boolean;
   conditions: SaveConditionInput[];
 }

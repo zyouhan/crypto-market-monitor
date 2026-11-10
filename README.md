@@ -180,7 +180,9 @@ KDJ 入场信号会创建 `stop_watches` 止损观察：
 | DELETE | `/api/monitors/:id` | 删除监控项，历史信号保留 |
 | POST | `/api/monitors/:id/refresh` | 单项立即请求，返回 pending |
 | GET | `/api/signals` | 信号记录，支持 `symbol/interval/monitor_id/event_type/triggered/limit/offset` |
-| GET | `/api/signals/stats` | 今日/累计信号，以及按预设分组的入场统计 |
+| GET | `/api/signals/stats` | 今日/累计信号，以及按预设分组的策略统计 |
+| GET | `/api/signals/stats/entries` | 策略统计明细，支持 `search/limit/offset` |
+| DELETE | `/api/signals/:id/stats` | 从策略统计中软删除一条记录 |
 | GET/PUT | `/api/settings` | 全局监控开关、全局微信通知开关 |
 
 ## 通知与控制
@@ -211,13 +213,14 @@ PROXY_URL=
 
 ## 数据库迁移
 
-当前 `PRAGMA user_version = 10`。
+当前 `PRAGMA user_version = 11`。
 
 - v6 增加 `stop_watches` 止损观察；
 - v7 增加 `trade_actions` 人工 T/清仓记录；
 - v8 增加止损观察的 MFE / MAE 进度；
 - v9 增加 1R / 回到入场价提醒标记；
 - v10 增加监控项和信号的 `preset_id` / `preset_name`；
+- v11 增加 `track_stats` 策略统计开关和 `stats_deleted` 软删除标记；
 - v4 → v5 前会自动备份到 `data/archive/v4-<时间戳>/`；
 - 旧的 `symbols` / `strategies` / `strategy_states` / `signals_v4` 保留用于回滚；
 - 旧策略迁移规则：
@@ -249,7 +252,9 @@ DEA 拐头有效期放宽到 20 根 15m，位置条件和 EMA 快线拐头成为
 
 预设支持批量标的：逗号或换行分隔，最多 20 个。多个标的默认关闭微信和声音，避免统计样本消耗 Server酱额度。
 
-监控项和信号会记录 `preset_id` / `preset_name`。首页通过「预设入场点」按钮打开弹框，查看预设统计和最近的入场信号；不在页面直接展开统计列表。
+监控项和信号会记录 `preset_id` / `preset_name`。新建监控时可以打开「纳入策略统计」开关；只有打开开关的监控入场信号会进入策略统计。选择预设会自动打开，修改条件后会自动关闭，需要手动重新确认。
+
+首页通过「策略统计」按钮打开弹框，查看预设汇总、搜索、分页明细，并可从统计中软删除记录；不在页面直接展开统计列表。
 
 当前阶段风险类信号（止损触发、达到 1R、回到入场价）只落库，不展示在信号记录，也不发送通知；后续再启用。
 

@@ -513,6 +513,39 @@ export function ensurePresetColumns(
   }
 }
 
+export function ensureStatsColumns(
+  database: Database.Database
+): void {
+  const targets = [
+    [
+      "monitors",
+      "track_stats",
+      "INTEGER NOT NULL DEFAULT 0"
+    ],
+    [
+      "signals",
+      "track_stats",
+      "INTEGER NOT NULL DEFAULT 0"
+    ],
+    [
+      "signals",
+      "stats_deleted",
+      "INTEGER NOT NULL DEFAULT 0"
+    ]
+  ] as const;
+
+  for (const [table, column, definition] of targets) {
+    if (
+      tableExists(database, table) &&
+      !hasColumn(database, table, column)
+    ) {
+      database.exec(
+        `ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`
+      );
+    }
+  }
+}
+
 export function migrateToV5(
   database: Database.Database,
   dbFile: string,
