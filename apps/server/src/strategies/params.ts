@@ -12,6 +12,7 @@ export interface KdjEntryParams {
   overbought: number;
   longEnabled: boolean;
   shortEnabled: boolean;
+  triggerMode?: "cross" | "reversal";
 }
 
 /**
@@ -46,7 +47,8 @@ export const DEFAULT_KDJ_PARAMS: KdjEntryParams = {
   oversold: 5,
   overbought: 85,
   longEnabled: true,
-  shortEnabled: true
+  shortEnabled: true,
+  triggerMode: "cross"
 };
 
 export const DEFAULT_KDJ_TIMING_PARAMS: KdjTimingParams = {
@@ -252,6 +254,9 @@ export function normalizeKdjParams(
     throw new ParamValidationError("超卖阈值必须小于超买阈值");
   }
 
+  const triggerMode =
+    raw.triggerMode === "reversal" ? "reversal" : "cross";
+
   return {
     period,
     kSmooth,
@@ -259,7 +264,8 @@ export function normalizeKdjParams(
     oversold,
     overbought,
     longEnabled,
-    shortEnabled
+    shortEnabled,
+    triggerMode
   };
 }
 

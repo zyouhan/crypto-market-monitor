@@ -79,10 +79,14 @@ signals              信号：监控项、条件快照、周期、方向、通�
 
 ### `KDJ_EXTREME`
 
-- 参数：`period`、`kSmooth`、`dSmooth`、`oversold`、`overbought`、`longEnabled`、`shortEnabled`；
-- 触发事件：J 下穿超卖 → 做多；J 上穿超买 → 做空；
+- 参数：`period`、`kSmooth`、`dSmooth`、`oversold`、`overbought`、`longEnabled`、`shortEnabled`、`triggerMode`；
+- `triggerMode`：
+  - `cross`：J 下穿超卖 → 做多；J 上穿超买 → 做空；
+  - `reversal`：J 在超卖区由下跌转为回升 → 做多；J 在超买区由上涨转为回落 → 做空；
 - 过滤状态：当前 J 低于超卖阈值（多头）或高于超买阈值（空头）；
-- 展示：J/K/D、超买/超卖状态、阈值。
+- 展示：J/K/D、超买/超卖状态、阈值、J钝化止损。
+
+`reversal` 更偏向拐点入场，`cross` 是原来的进入极值触发。
 
 ### `VOLUME_SPIKE`
 

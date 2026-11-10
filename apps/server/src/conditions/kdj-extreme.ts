@@ -182,6 +182,7 @@ function pointFrom(
   point: KdjPoint,
   params: KdjEntryParams,
   previousJ: number | null,
+  previousPreviousJ: number | null,
   stop: StopInfo | null
 ): ConditionPoint {
   const currentJ = point.j;
@@ -190,19 +191,44 @@ function pointFrom(
   let eventDirection: SignalDirection | null = null;
 
   if (previousJ !== null && currentJ !== null) {
-    const crossDown =
-      previousJ >= params.oversold &&
-      currentJ < params.oversold;
-    const crossUp =
-      previousJ <= params.overbought &&
-      currentJ > params.overbought;
+    const mode = params.triggerMode ?? "cross";
 
-    if (params.longEnabled && crossDown) {
-      eventType = "ENTRY_LONG";
-      eventDirection = "BULL";
-    } else if (params.shortEnabled && crossUp) {
-      eventType = "ENTRY_SHORT";
-      eventDirection = "BEAR";
+    if (mode === "reversal") {
+      const reversalLong =
+        params.longEnabled &&
+        previousJ < params.oversold &&
+        previousPreviousJ !== null &&
+        previousJ <= previousPreviousJ &&
+        currentJ > previousJ;
+      const reversalShort =
+        params.shortEnabled &&
+        previousJ > params.overbought &&
+        previousPreviousJ !== null &&
+        previousJ >= previousPreviousJ &&
+        currentJ < previousJ;
+
+      if (reversalLong) {
+        eventType = "ENTRY_LONG";
+        eventDirection = "BULL";
+      } else if (reversalShort) {
+        eventType = "ENTRY_SHORT";
+        eventDirection = "BEAR";
+      }
+    } else {
+      const crossDown =
+        previousJ >= params.oversold &&
+        currentJ < params.oversold;
+      const crossUp =
+        previousJ <= params.overbought &&
+        currentJ > params.overbought;
+
+      if (params.longEnabled && crossDown) {
+        eventType = "ENTRY_LONG";
+        eventDirection = "BULL";
+      } else if (params.shortEnabled && crossUp) {
+        eventType = "ENTRY_SHORT";
+        eventDirection = "BEAR";
+      }
     }
   }
 
@@ -292,9 +318,15 @@ function runKdjCondition(
   );
 
   if (input.warmup) {
+    const secondLast =
+      points.length >= 2
+        ? points[points.length - 2]
+        : null;
+
     return {
       state: {
         prevJ: last?.j ?? null,
+        prevPrevJ: secondLast?.j ?? null,
         latest
       },
       points: new Map(),
@@ -313,6 +345,10 @@ function runKdjCondition(
     typeof input.state.prevJ === "number"
       ? (input.state.prevJ as number)
       : null;
+  let previousPreviousJ: number | null =
+    typeof input.state.prevPrevJ === "number"
+      ? (input.state.prevPrevJ as number)
+      : null;
 
   if (previousJ === null) {
     const firstNew = input.newKlines[0];
@@ -324,6 +360,7 @@ function runKdjCondition(
 
       if (index > 0) {
         previousJ = points[index - 1]?.j ?? null;
+        previousPreviousJ = points[index - 2]?.j ?? null;
       }
     }
   }
@@ -344,15 +381,23 @@ function runKdjCondition(
 
     resultPoints.set(
       kline.closeTime,
-      pointFrom(point, params, previousJ, stop)
+      pointFrom(
+        point,
+        params,
+        previousJ,
+        previousPreviousJ,
+        stop
+      )
     );
 
+    previousPreviousJ = previousJ;
     previousJ = point.j;
   }
 
   return {
     state: {
       prevJ: previousJ,
+      prevPrevJ: previousPreviousJ,
       latest
     },
     points: resultPoints,
@@ -363,6 +408,10 @@ function runKdjCondition(
 
 function summary(params: KdjEntryParams): string {
   const pieces: string[] = [];
+  const mode =
+    params.triggerMode === "reversal"
+      ? "J拐头"
+      : "J下穿";
 
   if (params.longEnabled) {
     pieces.push(`J<${params.oversold} 做多`);
@@ -372,7 +421,7 @@ function summary(params: KdjEntryParams): string {
     pieces.push(`J>${params.overbought} 做空`);
   }
 
-  return `KDJ ${params.period}/${params.kSmooth}/${params.dSmooth} · ${
+  return `KDJ ${params.period}/${params.kSmooth}/${params.dSmooth} · ${mode} · ${
     pieces.length > 0 ? pieces.join(" / ") : "未选方向"
   }`;
 }
@@ -381,7 +430,7 @@ export const kdjExtremeDefinition: ConditionDefinition = {
   kind: "KDJ_EXTREME",
   label: "KDJ 极值",
   description:
-    "监控 J 值穿越超卖/超买阈值；可作为触发条件，也可作为过滤条件检查当前 J 区域。",
+    "监控 J 值进入超卖/超买区，或从极值拐头；可作为触发条件，也可作为过滤条件检查当前 J 区域。",
   roles: ["trigger", "filter"],
   defaultRole: "trigger",
   summaryTemplate:
@@ -427,6 +476,23 @@ export const kdjExtremeDefinition: ConditionDefinition = {
       max: 100,
       step: "any",
       defaultValue: DEFAULT_KDJ_PARAMS.overbought
+    },
+    {
+      key: "triggerMode",
+      label: "触发方式",
+      type: "select",
+      defaultValue: "cross",
+      options: [
+        {
+          value: "cross",
+          label: "进入极值（J 下穿/上穿）"
+        },
+        {
+          value: "reversal",
+          label: "极值后拐头（J 回升/回落）"
+        }
+      ],
+      help: "拐头模式更偏向拐点入场；进入极值模式会在跌破阈值时触发"
     },
     {
       key: "longEnabled",
