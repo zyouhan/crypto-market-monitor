@@ -438,6 +438,27 @@ export default function HomePage() {
     }
   }
 
+  async function closePosition(item: MonitorItem) {
+    if (
+      !window.confirm(
+        `确定将「${item.name}」标记为已平仓，并取消活动的止损观察吗？`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await api(`/api/monitors/${item.id}/close-position`, {
+        method: "POST"
+      });
+
+      await loadDashboard();
+      setMessage(`监控项「${item.name}」已标记平仓`);
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
   async function refreshMonitor(item: MonitorItem) {
     setMonitors((current) =>
       current.map((monitor) =>
@@ -678,6 +699,7 @@ export default function HomePage() {
         onEdit={openEditModal}
         onDelete={(item) => void deleteMonitor(item)}
         onRefresh={(item) => void refreshMonitor(item)}
+        onClosePosition={(item) => void closePosition(item)}
       />
 
       <NotificationSettings

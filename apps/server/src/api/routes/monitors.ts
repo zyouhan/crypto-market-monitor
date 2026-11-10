@@ -10,6 +10,7 @@ import {
   db
 } from "../../db";
 import {
+  cancelStopWatchesForMonitor,
   deleteMonitor,
   deleteMonitorConditions,
   getLastSignalByMonitor,
@@ -533,6 +534,30 @@ monitorsRouter.patch("/:id", (req, res) => {
       failure(error instanceof Error ? error.message : "更新失败")
     );
   }
+});
+
+monitorsRouter.post("/:id/close-position", (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!isPositiveInteger(id)) {
+    res.status(400).json(failure("监控项 ID 不正确"));
+    return;
+  }
+
+  const monitor = getMonitorById(id);
+
+  if (!monitor) {
+    res.status(404).json(failure("监控项不存在"));
+    return;
+  }
+
+  cancelStopWatchesForMonitor(id);
+  res.json(
+    success(
+      { monitor_id: id },
+      "已标记平仓并取消活动止损观察"
+    )
+  );
 });
 
 monitorsRouter.post("/:id/refresh", (req, res) => {

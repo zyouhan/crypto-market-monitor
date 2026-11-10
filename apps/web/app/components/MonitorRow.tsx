@@ -27,6 +27,7 @@ interface MonitorRowProps {
   onEdit: (item: MonitorItem) => void;
   onDelete: (item: MonitorItem) => void;
   onRefresh: (item: MonitorItem) => void;
+  onClosePosition: (item: MonitorItem) => void;
 }
 
 interface Tag {
@@ -138,7 +139,8 @@ export function MonitorRow({
   onToggle,
   onEdit,
   onDelete,
-  onRefresh
+  onRefresh,
+  onClosePosition
 }: MonitorRowProps) {
   const [expanded, setExpanded] = useState(false);
   const tags = statusTags(item, latestSignal);
@@ -309,6 +311,14 @@ export function MonitorRow({
               />
               声音
             </label>
+
+            <button
+              type="button"
+              className="button small"
+              onClick={() => onClosePosition(item)}
+            >
+              标记已平仓
+            </button>
           </div>
 
           <div className="detail-condition-grid">
