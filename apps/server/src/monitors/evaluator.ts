@@ -39,6 +39,7 @@ export interface MonitorSignalDraft {
     params: Record<string, unknown>;
   }>;
   threshold: number | null;
+  stopPrice: number | null;
   payload: Record<string, unknown>;
 }
 
@@ -171,6 +172,12 @@ export function evaluateMonitorSignals(input: {
     }
 
     const primary = triggerPoints[0];
+    const rawStop = primary.point.payload.stopPrice;
+    const stopPrice =
+      typeof rawStop === "number" &&
+      Number.isFinite(rawStop)
+        ? rawStop
+        : null;
     const conditions = input.runtimes.map((runtime) => {
       const point = findPoint(
         runtime,
@@ -191,9 +198,11 @@ export function evaluateMonitorSignals(input: {
       primaryCondition: primary.runtime.kind,
       conditions,
       threshold: primary.point.threshold,
+      stopPrice,
       payload: {
         conditions,
-        source: input.source
+        source: input.source,
+        stopPrice
       }
     });
   }

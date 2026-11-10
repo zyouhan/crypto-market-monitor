@@ -234,7 +234,10 @@ function toSignalRecord(
     trigger_met: 1,
     push_state: "PENDING" as const,
     reason: null,
-    payload: JSON.stringify(draft.payload),
+    payload: JSON.stringify({
+      ...draft.payload,
+      stopPrice: draft.stopPrice
+    }),
     created_at: Date.now()
   };
 }
