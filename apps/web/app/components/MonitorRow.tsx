@@ -63,6 +63,17 @@ function statusTags(
     add("请求中", "pending");
   }
 
+  if (item.active_stop_watch) {
+    add("止损观察中", "warn");
+
+    if (item.active_stop_watch.max_favorable_r > 0) {
+      add(
+        `最高 +${item.active_stop_watch.max_favorable_r.toFixed(2)}R`,
+        "bull"
+      );
+    }
+  }
+
   const stopPrice = latestSignal?.payload?.stopPrice;
 
   if (
