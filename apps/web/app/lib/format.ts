@@ -207,9 +207,8 @@ export function signalJValue(
 }
 
 /**
- * 需要在前端提示的触发性信号：
- * 金叉/死叉确认 + KDJ 做多/做空入场。
- * 未达阈值的记录与等待失效不进入提示。
+ * 需要在前端提示的触发性信号。
+ * 风险类提醒（止损、1R、回到入场价）暂时不向前端推送。
  */
 export function isAlertSignal(signal: {
   trigger_met: number;
@@ -227,10 +226,7 @@ export function isAlertSignal(signal: {
     signal.event_type === "VOLUME_SPIKE" ||
     signal.event_type === "PRICE_LEVEL" ||
     signal.event_type === "MACD_DEA_TURN" ||
-    signal.event_type === "ADX_TREND" ||
-    signal.event_type === "STOP_LOSS_HIT" ||
-    signal.event_type === "TRADE_1R" ||
-    signal.event_type === "TRADE_BREAKEVEN"
+    signal.event_type === "ADX_TREND"
   );
 }
 

@@ -20,12 +20,22 @@ signalsRouter.get("/stats", (_req, res) => {
     FROM signals
     WHERE trigger_met = 1
       AND event_time >= ?
+      AND event_type NOT IN (
+        'STOP_LOSS_HIT',
+        'TRADE_1R',
+        'TRADE_BREAKEVEN'
+      )
   `).get(startOfToday) as { count: number };
 
   const total = db.prepare(`
     SELECT COUNT(1) AS count
     FROM signals
     WHERE trigger_met = 1
+      AND event_type NOT IN (
+        'STOP_LOSS_HIT',
+        'TRADE_1R',
+        'TRADE_BREAKEVEN'
+      )
   `).get() as { count: number };
 
   const presetRows = db.prepare(`

@@ -12,11 +12,12 @@ import { LoginCard } from "./components/LoginCard";
 import { MonitorList } from "./components/MonitorList";
 import { MonitorModal } from "./components/MonitorModal";
 import { NotificationSettings } from "./components/NotificationSettings";
+import { PresetEntryModal } from "./components/PresetEntryModal";
 import { SignalTable } from "./components/SignalTable";
 import { SignalToasts } from "./components/SignalToasts";
 import { SoundSettings } from "./components/SoundSettings";
 import { api, errorMessage } from "./lib/api";
-import { formatTime, isAlertSignal } from "./lib/format";
+import { isAlertSignal } from "./lib/format";
 import {
   DEFAULT_SOUND_ALERT_SETTINGS,
   getSoundAlertKind,
@@ -94,6 +95,7 @@ export default function HomePage() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<MonitorItem | null>(null);
+  const [presetEntryOpen, setPresetEntryOpen] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -677,6 +679,13 @@ export default function HomePage() {
           </label>
 
           <button
+            className="button"
+            onClick={() => setPresetEntryOpen(true)}
+          >
+            预设入场点
+          </button>
+
+          <button
             className="button primary"
             onClick={openAddModal}
           >
@@ -728,41 +737,6 @@ export default function HomePage() {
           <span className="global-paused">全局监控已暂停</span>
         )}
       </div>
-
-      {(stats.by_preset?.filter(
-        (item) => item.monitors > 0 || item.total > 0
-      ).length ?? 0) > 0 && (
-        <section className="preset-stats">
-          <div className="preset-stats-head">
-            <span>预设组合</span>
-            <span>监控项</span>
-            <span>今日入场</span>
-            <span>累计入场</span>
-            <span>最近信号</span>
-          </div>
-
-          {stats.by_preset
-            ?.filter(
-              (item) => item.monitors > 0 || item.total > 0
-            )
-            .map((item) => (
-              <div
-                className="preset-stats-row"
-                key={item.preset_id}
-              >
-                <strong>{item.preset_name}</strong>
-                <span>{item.monitors}</span>
-                <span>{item.today}</span>
-                <span>{item.total}</span>
-                <span>
-                  {item.last_event_time
-                    ? formatTime(item.last_event_time)
-                    : "--"}
-                </span>
-              </div>
-            ))}
-        </section>
-      )}
 
       <nav className="monitor-tabs" aria-label="监控项分类">
         {[
@@ -861,6 +835,14 @@ export default function HomePage() {
           error={error}
           onClose={closeModal}
           onSave={handleSaveMonitor}
+        />
+      )}
+
+      {presetEntryOpen && (
+        <PresetEntryModal
+          stats={stats}
+          signals={signals}
+          onClose={() => setPresetEntryOpen(false)}
         />
       )}
     </main>

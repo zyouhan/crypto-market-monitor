@@ -194,6 +194,20 @@ export async function dispatchMonitorNotification(
     return false;
   }
 
+  if (
+    signal.event_type === "STOP_LOSS_HIT" ||
+    signal.event_type === "TRADE_1R" ||
+    signal.event_type === "TRADE_BREAKEVEN"
+  ) {
+    updateSignalPush({
+      id: signal.id,
+      pushState: "SKIPPED",
+      pushError: null,
+      reason: "risk_notification_disabled"
+    });
+    return false;
+  }
+
   if (!isSignalFresh(signal.event_time, monitor.interval)) {
     updateSignalPush({
       id: signal.id,

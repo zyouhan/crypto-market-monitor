@@ -39,10 +39,7 @@ interface Tag {
   tone: string;
 }
 
-function statusTags(
-  item: MonitorItem,
-  latestSignal: MonitorSignalItem | null
-): Tag[] {
+function statusTags(item: MonitorItem): Tag[] {
   const tags: Tag[] = [];
   const seen = new Set<string>();
 
@@ -61,57 +58,6 @@ function statusTags(
 
   if (item.pending) {
     add("请求中", "pending");
-  }
-
-  if (item.active_stop_watch) {
-    add("止损观察中", "warn");
-
-    if (item.active_stop_watch.max_favorable_r > 0) {
-      add(
-        `最高 +${item.active_stop_watch.max_favorable_r.toFixed(2)}R`,
-        "bull"
-      );
-    }
-  }
-
-  const stopPrice = latestSignal?.payload?.stopPrice;
-
-  if (
-    typeof stopPrice === "number" &&
-    Number.isFinite(stopPrice) &&
-    item.last_price !== null
-  ) {
-    const hit =
-      latestSignal?.direction === "BULL"
-        ? item.last_price <= stopPrice
-        : latestSignal?.direction === "BEAR"
-          ? item.last_price >= stopPrice
-          : false;
-
-    if (hit) {
-      add("止损已触及", "bear");
-    } else if (
-      latestSignal?.event_type === "ENTRY_LONG" ||
-      latestSignal?.event_type === "ENTRY_SHORT"
-    ) {
-      add(`止损 ${formatPrice(stopPrice)}`, "warn");
-
-      const pnl =
-        latestSignal.direction === "BULL"
-          ? ((item.last_price - latestSignal.price) /
-              latestSignal.price) *
-            100
-          : ((latestSignal.price - item.last_price) /
-              latestSignal.price) *
-            100;
-
-      if (Number.isFinite(pnl)) {
-        add(
-          `${pnl >= 0 ? "浮盈" : "浮亏"} ${Math.abs(pnl).toFixed(2)}%`,
-          pnl >= 0 ? "bull" : "bear"
-        );
-      }
-    }
   }
 
   if (item.last_error) {
@@ -159,7 +105,7 @@ export function MonitorRow({
   onTradeAction
 }: MonitorRowProps) {
   const [expanded, setExpanded] = useState(false);
-  const tags = statusTags(item, latestSignal);
+  const tags = statusTags(item);
 
   return (
     <article className={`monitor-row ${expanded ? "expanded" : ""}`}>

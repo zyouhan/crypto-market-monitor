@@ -179,6 +179,12 @@ function triggerDetail(signal: MonitorSignalItem): string {
   return trigger?.summary ?? eventTypeLabel(signal.event_type);
 }
 
+const HIDDEN_SIGNAL_TYPES = new Set([
+  "STOP_LOSS_HIT",
+  "TRADE_1R",
+  "TRADE_BREAKEVEN"
+]);
+
 function pushLabel(signal: MonitorSignalItem): string {
   if (signal.trigger_met !== 1) {
     return "未触发";
@@ -250,6 +256,10 @@ export function SignalTable({
   const filtered = useMemo(
     () =>
       signals.filter((signal) => {
+        if (HIDDEN_SIGNAL_TYPES.has(signal.event_type)) {
+          return false;
+        }
+
         if (
           symbolFilter !== "ALL" &&
           signal.symbol !== symbolFilter
@@ -352,9 +362,6 @@ export function SignalTable({
           <option value="PRICE_LEVEL">到达价位</option>
           <option value="MACD_DEA_TURN">MACD DEA 拐头</option>
           <option value="ADX_TREND">ADX 趋势</option>
-          <option value="STOP_LOSS_HIT">止损触发</option>
-          <option value="TRADE_1R">达到 1R</option>
-          <option value="TRADE_BREAKEVEN">回到入场价</option>
           <option value="TREND_INVALIDATED">等待失效</option>
         </select>
       </div>
