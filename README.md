@@ -103,11 +103,11 @@ signals              信号：监控项、条件快照、周期、方向、通�
 
 ### `MACD_DEA_TURN`
 
-- 参数：`fast`（默认 12）、`slow`（默认 26）、`signal`（默认 9）、`direction`（`up` / `down` / `both`）；
+- 参数：`fast`（默认 12）、`slow`（默认 26）、`signal`（默认 9）、`direction`（`up` / `down` / `both`）、`freshBars`（默认 3）；
 - 触发事件：DEA 由走平/下行转为上行，或由走平/上行转为下行；
-- 过滤状态：DEA 当前持续向上或持续向下；
-- 展示：DIF、DEA、MACD 柱、DEA 斜率状态；
-- 典型组合：5m KDJ 超卖触发 + 15m DEA 向上过滤。
+- 过滤状态：DEA 当前持续向上或持续向下，并且拐头发生在最近 `freshBars` 根内；
+- 展示：DIF、DEA、MACD 柱、DEA 斜率状态、拐头时效；
+- 典型组合：5m KDJ 超卖触发 + 15m DEA 向上过滤（3 根内有效）。
 
 ### KDJ 钝化止损参考
 

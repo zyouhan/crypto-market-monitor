@@ -64,9 +64,24 @@ function triggerDetail(signal: MonitorSignalItem): string {
   const stop = trigger?.display?.find(
     (item) => item.label === "J钝化止损"
   );
+  const numericStop =
+    typeof signal.payload?.stopPrice === "number" &&
+    Number.isFinite(signal.payload.stopPrice)
+      ? signal.payload.stopPrice
+      : null;
+  const riskPct =
+    numericStop !== null && signal.price > 0
+      ? (Math.abs(signal.price - numericStop) /
+          signal.price) *
+        100
+      : null;
   const stopSuffix =
     stop && stop.value !== "--"
-      ? ` · 止损 ${stop.value}`
+      ? ` · 止损 ${stop.value}${
+          riskPct !== null
+            ? ` · 风险 ${riskPct.toFixed(2)}%`
+            : ""
+        }`
       : "";
 
   if (

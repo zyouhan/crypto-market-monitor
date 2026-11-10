@@ -21,6 +21,12 @@ type DeaDirection = "up" | "down" | "both";
 
 interface DeaParams extends MacdParams {
   direction: DeaDirection;
+  freshBars: number;
+}
+
+interface TurnInfo {
+  direction: SignalDirection;
+  bars: number;
 }
 
 function readParams(raw: unknown): DeaParams {
@@ -39,16 +45,72 @@ function readParams(raw: unknown): DeaParams {
     input.direction === "both"
       ? input.direction
       : "up";
+  const freshBars = Number(input.freshBars ?? 3);
   const params: DeaParams = {
     fast,
     slow,
     signal,
-    direction
+    direction,
+    freshBars
   };
 
   validateMacdParams(params);
 
+  if (
+    !Number.isInteger(freshBars) ||
+    freshBars < 1 ||
+    freshBars > 50
+  ) {
+    throw new Error("DEA 拐头有效期必须在 1 到 50 根之间");
+  }
+
   return params;
+}
+
+function recentTurn(
+  points: MacdPoint[],
+  index: number,
+  params: DeaParams
+): TurnInfo | null {
+  const start = Math.max(2, index - params.freshBars);
+
+  for (let i = index; i >= start; i--) {
+    const current = points[i];
+    const previous = points[i - 1];
+    const previous2 = points[i - 2];
+
+    if (
+      !current ||
+      !previous ||
+      !previous2 ||
+      current.dea === null ||
+      previous.dea === null ||
+      previous2.dea === null
+    ) {
+      continue;
+    }
+
+    const turnedUp =
+      (params.direction === "up" ||
+        params.direction === "both") &&
+      previous.dea <= previous2.dea &&
+      current.dea > previous.dea;
+    const turnedDown =
+      (params.direction === "down" ||
+        params.direction === "both") &&
+      previous.dea >= previous2.dea &&
+      current.dea < previous.dea;
+
+    if (turnedUp) {
+      return { direction: "BULL", bars: index - i };
+    }
+
+    if (turnedDown) {
+      return { direction: "BEAR", bars: index - i };
+    }
+  }
+
+  return null;
 }
 
 function buildPoint(
@@ -64,52 +126,26 @@ function buildPoint(
   }
 
   const previous = points[index - 1] ?? null;
-  const previous2 = points[index - 2] ?? null;
+  const turn = recentTurn(points, index, params);
+  const hasSlope =
+    current.dea !== null &&
+    previous?.dea !== null &&
+    previous?.dea !== undefined;
+  const rising = hasSlope ? current.dea! > previous!.dea! : false;
+  const falling = hasSlope ? current.dea! < previous!.dea! : false;
 
   let eventDirection: SignalDirection | null = null;
   let activeDirection: SignalDirection | null = null;
 
-  if (
-    current.dea !== null &&
-    previous?.dea !== null &&
-    previous?.dea !== undefined
-  ) {
-    const rising = current.dea > previous.dea;
-    const falling = current.dea < previous.dea;
+  if (emitEvent && turn?.bars === 0) {
+    eventDirection = turn.direction;
+  }
 
-    if (params.direction === "up" && rising) {
+  if (turn) {
+    if (turn.direction === "BULL" && rising) {
       activeDirection = "BULL";
-    } else if (params.direction === "down" && falling) {
+    } else if (turn.direction === "BEAR" && falling) {
       activeDirection = "BEAR";
-    } else if (params.direction === "both") {
-      activeDirection = rising
-        ? "BULL"
-        : falling
-          ? "BEAR"
-          : null;
-    }
-
-    if (
-      emitEvent &&
-      previous2?.dea !== null &&
-      previous2?.dea !== undefined
-    ) {
-      const turnedUp =
-        (params.direction === "up" ||
-          params.direction === "both") &&
-        previous.dea <= previous2.dea &&
-        current.dea > previous.dea;
-      const turnedDown =
-        (params.direction === "down" ||
-          params.direction === "both") &&
-        previous.dea >= previous2.dea &&
-        current.dea < previous.dea;
-
-      if (turnedUp) {
-        eventDirection = "BULL";
-      } else if (turnedDown) {
-        eventDirection = "BEAR";
-      }
     }
   }
 
@@ -118,17 +154,19 @@ function buildPoint(
       ? "DEA 刚拐头向上"
       : "DEA 刚拐头向下"
     : activeDirection === "BULL"
-      ? "DEA 持续向上"
+      ? `DEA 向上（拐头第${(turn?.bars ?? 0) + 1}根）`
       : activeDirection === "BEAR"
-        ? "DEA 持续向下"
-        : current.dea !== null &&
-            previous?.dea !== null &&
-            previous?.dea !== undefined
-          ? current.dea === previous.dea
-            ? "DEA 走平"
+        ? `DEA 向下（拐头第${(turn?.bars ?? 0) + 1}根）`
+        : hasSlope
+          ? turn
+            ? `DEA ${rising ? "向上" : "向下"}，拐头后走弱`
             : params.direction === "up"
-              ? "DEA 向下，未满足向上"
-              : "DEA 向上，未满足向下"
+              ? rising
+                ? "DEA 向上，但拐头已过期"
+                : "DEA 向下，未满足向上"
+              : falling
+                ? "DEA 向下，但拐头已过期"
+                : "DEA 向上，未满足向下"
           : "等待 DEA 数据";
 
   const display: ConditionDisplayItem[] = [
@@ -162,6 +200,12 @@ function buildPoint(
     {
       label: "周期",
       value: `${params.fast}/${params.slow}/${params.signal}`
+    },
+    {
+      label: "拐头时效",
+      value: turn
+        ? `第${turn.bars + 1}根 / 有效期${params.freshBars}根`
+        : `有效期${params.freshBars}根内无拐头`
     }
   ];
 
@@ -176,6 +220,8 @@ function buildPoint(
       slow: params.slow,
       signal: params.signal,
       direction: params.direction,
+      freshBars: params.freshBars,
+      barsSinceTurn: turn?.bars ?? null,
       dif: current.dif,
       dea: current.dea,
       previousDea: previous?.dea ?? null,
@@ -300,6 +346,15 @@ export const macdDeaTurnDefinition: ConditionDefinition = {
         { value: "down", label: "向下拐头" },
         { value: "both", label: "上下均可" }
       ]
+    },
+    {
+      key: "freshBars",
+      label: "拐头有效期（根）",
+      type: "number",
+      min: 1,
+      max: 50,
+      defaultValue: 3,
+      help: "过滤条件只在这个根数内认为 DEA 拐头仍然有效"
     }
   ],
   normalizeParams(raw) {
@@ -314,7 +369,7 @@ export const macdDeaTurnDefinition: ConditionDefinition = {
           ? "上下"
           : "向上";
 
-    return `MACD ${value.fast}/${value.slow}/${value.signal} · DEA ${direction}拐头`;
+    return `MACD ${value.fast}/${value.slow}/${value.signal} · DEA ${direction}拐头 · ${value.freshBars}根内`;
   },
   run: runMacd
 };
