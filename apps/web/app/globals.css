@@ -1059,6 +1059,7 @@ td {
 .monitor-row-grid {
   display: grid;
   grid-template-columns:
+    34px
     minmax(190px, 1.25fr)
     minmax(220px, 1.45fr)
     100px
@@ -1067,6 +1068,61 @@ td {
     170px;
   gap: 12px;
   align-items: center;
+}
+
+.monitor-select-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.monitor-select-cell input {
+  accent-color: var(--blue);
+  cursor: pointer;
+}
+
+.batch-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: #122033;
+}
+
+.batch-toolbar strong {
+  color: var(--blue);
+  font-size: 12px;
+}
+
+.batch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+.batch-notify {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.batch-notify select {
+  height: 30px;
+  min-width: 138px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #0b111a;
+  color: var(--text);
+  font-size: 11px;
+  padding: 0 7px;
+}
+
+.monitor-row.selected {
+  background: #101d2d;
 }
 
 .monitor-table {

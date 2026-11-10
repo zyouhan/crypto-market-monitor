@@ -16,6 +16,8 @@ import type {
 interface MonitorRowProps {
   item: MonitorItem;
   latestSignal: MonitorSignalItem | null;
+  selected: boolean;
+  onSelect: (id: number, selected: boolean) => void;
   onToggle: (
     id: number,
     patch: {
@@ -101,6 +103,8 @@ function displayTone(
 export function MonitorRow({
   item,
   latestSignal,
+  selected,
+  onSelect,
   onToggle,
   onEdit,
   onDelete,
@@ -112,8 +116,23 @@ export function MonitorRow({
   const tags = statusTags(item);
 
   return (
-    <article className={`monitor-row ${expanded ? "expanded" : ""}`}>
+    <article
+      className={`monitor-row ${expanded ? "expanded" : ""} ${
+        selected ? "selected" : ""
+      }`}
+    >
       <div className="monitor-row-grid">
+        <div className="monitor-cell monitor-select-cell">
+          <input
+            type="checkbox"
+            aria-label={`选择 ${item.name}`}
+            checked={selected}
+            onChange={(event) =>
+              onSelect(item.id, event.target.checked)
+            }
+          />
+        </div>
+
         <div className="monitor-cell monitor-identity">
           <div className="monitor-name-line">
             <strong>{item.name}</strong>

@@ -512,6 +512,118 @@ export default function HomePage() {
     }
   }
 
+  async function batchRefreshMonitors(
+    ids: number[]
+  ): Promise<void> {
+    if (ids.length === 0) {
+      return;
+    }
+
+    setMonitors((current) =>
+      current.map((monitor) =>
+        ids.includes(monitor.id)
+          ? { ...monitor, pending: true }
+          : monitor
+      )
+    );
+
+    const results = await Promise.allSettled(
+      ids.map((id) =>
+        api(`/api/monitors/${id}/refresh`, {
+          method: "POST"
+        })
+      )
+    );
+    const failed = results.filter(
+      (result) => result.status === "rejected"
+    ).length;
+
+    if (failed > 0) {
+      setError(
+        `批量请求完成：成功 ${ids.length - failed} 个，失败 ${failed} 个`
+      );
+    } else {
+      setMessage(`已提交 ${ids.length} 个监控项的请求`);
+    }
+
+    window.setTimeout(() => {
+      void loadDashboard();
+    }, 1200);
+  }
+
+  async function batchDeleteMonitors(
+    ids: number[]
+  ): Promise<void> {
+    if (ids.length === 0) {
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `确定删除选中的 ${ids.length} 个监控项吗？`
+      )
+    ) {
+      return;
+    }
+
+    const results = await Promise.allSettled(
+      ids.map((id) =>
+        api(`/api/monitors/${id}`, {
+          method: "DELETE"
+        })
+      )
+    );
+    const failed = results.filter(
+      (result) => result.status === "rejected"
+    ).length;
+
+    await loadDashboard();
+
+    if (failed > 0) {
+      setError(
+        `批量删除完成：成功 ${ids.length - failed} 个，失败 ${failed} 个`
+      );
+    } else {
+      setMessage(`已删除 ${ids.length} 个监控项`);
+    }
+  }
+
+  async function batchNotifyMonitors(
+    ids: number[],
+    patch: {
+      wechat_enabled?: boolean;
+      sound_enabled?: boolean;
+    }
+  ): Promise<void> {
+    if (ids.length === 0) {
+      return;
+    }
+
+    const results = await Promise.allSettled(
+      ids.map((id) =>
+        api(`/api/monitors/${id}`, {
+          method: "PATCH",
+          body: JSON.stringify(patch)
+        })
+      )
+    );
+    const failed = results.filter(
+      (result) => result.status === "rejected"
+    ).length;
+
+    await loadDashboard();
+
+    if (failed > 0) {
+      setError(
+        `批量通知设置完成：成功 ${ids.length - failed} 个，失败 ${failed} 个`
+      );
+    } else {
+      setMessage(
+        `已更新 ${ids.length} 个监控项的通知方式`
+      );
+    }
+  }
+
   function openAddModal() {
     setEditing(null);
     setError("");
@@ -777,6 +889,11 @@ export default function HomePage() {
         onClosePosition={(item) => void closePosition(item)}
         onTradeAction={(item, action) =>
           void recordTradeAction(item, action)
+        }
+        onBatchRefresh={(ids) => batchRefreshMonitors(ids)}
+        onBatchDelete={(ids) => batchDeleteMonitors(ids)}
+        onBatchNotify={(ids, patch) =>
+          batchNotifyMonitors(ids, patch)
         }
       />
 
