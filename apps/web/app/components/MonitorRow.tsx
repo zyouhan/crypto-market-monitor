@@ -48,7 +48,7 @@ function statusTags(item: MonitorItem): Tag[] {
   }
 
   if (item.enabled !== 1) {
-    add("已停用", "neutral");
+    add("已停用", "bear");
   }
 
   if (item.pending) {
@@ -106,9 +106,6 @@ export function MonitorRow({
         <div className="monitor-cell monitor-identity">
           <div className="monitor-name-line">
             <strong>{item.name}</strong>
-            {item.enabled !== 1 && (
-              <span className="row-muted">已停用</span>
-            )}
           </div>
 
           <div className="monitor-meta-line">

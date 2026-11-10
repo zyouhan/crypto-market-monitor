@@ -1113,11 +1113,6 @@ td {
   font-size: 15px;
 }
 
-.row-muted {
-  color: var(--muted);
-  font-size: 10px;
-}
-
 .monitor-meta-line {
   display: flex;
   flex-wrap: wrap;
