@@ -72,10 +72,11 @@ signals              信号：监控项、条件快照、周期、方向、通�
 
 ### `EMA_CROSS`
 
-- 参数：`fast`、`slow`、`threshold`；
+- 参数：`fast`、`slow`、`threshold`、`priceSide`；
 - 触发事件：达到距离阈值的金叉 / 死叉；
 - 过滤状态：`BULL_WAITING` / `BEAR_WAITING`；
-- 展示：多空排列、最近交叉、交叉价、EMA 距离、阈值。
+- `priceSide` 可要求收盘价在慢线上方或下方，用于排除 DEA/EMA 仍向上但价格已经跌破均线的情况；
+- 展示：多空排列、最近交叉、交叉价、EMA 距离、阈值、价格位置。
 
 ### `KDJ_EXTREME`
 

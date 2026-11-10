@@ -2,6 +2,7 @@ export interface EmaTrendParams {
   fast: number;
   slow: number;
   threshold: number;
+  priceSide?: "none" | "above" | "below";
 }
 
 export interface KdjEntryParams {
@@ -37,7 +38,8 @@ export const KDJ_TIMING_D_SMOOTH = 3;
 export const DEFAULT_EMA_PARAMS: EmaTrendParams = {
   fast: 25,
   slow: 60,
-  threshold: 10
+  threshold: 10,
+  priceSide: "none"
 };
 
 export const DEFAULT_KDJ_PARAMS: KdjEntryParams = {
@@ -170,7 +172,12 @@ export function normalizeEmaParams(
     throw new ParamValidationError("EMA 距离阈值不能小于 0");
   }
 
-  return { fast, slow, threshold };
+  const priceSide =
+    raw.priceSide === "above" || raw.priceSide === "below"
+      ? raw.priceSide
+      : "none";
+
+  return { fast, slow, threshold, priceSide };
 }
 
 /**
