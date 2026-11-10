@@ -40,3 +40,11 @@ export interface MacdPoint {
   dea: number | null;
   histogram: number | null;
 }
+
+export interface AdxPoint {
+  time: number;
+  close: number;
+  adx: number | null;
+  plusDi: number | null;
+  minusDi: number | null;
+}

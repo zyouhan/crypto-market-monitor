@@ -45,6 +45,7 @@ const EVENT_TYPES: SignalEventType[] = [
   "VOLUME_SPIKE",
   "PRICE_LEVEL",
   "MACD_DEA_TURN",
+  "ADX_TREND",
   "STOP_LOSS_HIT"
 ];
 

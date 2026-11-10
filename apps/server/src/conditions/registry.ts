@@ -1,5 +1,6 @@
 import type { ConditionKind } from "../db/types";
 
+import { adxTrendDefinition } from "./adx-trend";
 import { emaCrossDefinition } from "./ema-cross";
 import { kdjExtremeDefinition } from "./kdj-extreme";
 import { macdDeaTurnDefinition } from "./macd-dea-turn";
@@ -15,7 +16,8 @@ export const CONDITION_DEFINITIONS: Record<
   KDJ_EXTREME: kdjExtremeDefinition,
   VOLUME_SPIKE: volumeSpikeDefinition,
   PRICE_LEVEL: priceLevelDefinition,
-  MACD_DEA_TURN: macdDeaTurnDefinition
+  MACD_DEA_TURN: macdDeaTurnDefinition,
+  ADX_TREND: adxTrendDefinition
 };
 
 export function isConditionKind(

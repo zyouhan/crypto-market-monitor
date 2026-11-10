@@ -14,7 +14,8 @@ export type ConditionKind =
   | "KDJ_EXTREME"
   | "VOLUME_SPIKE"
   | "PRICE_LEVEL"
-  | "MACD_DEA_TURN";
+  | "MACD_DEA_TURN"
+  | "ADX_TREND";
 
 export type ConditionRole = "trigger" | "filter";
 
@@ -131,6 +132,7 @@ export type SignalEventType =
   | "VOLUME_SPIKE"
   | "PRICE_LEVEL"
   | "MACD_DEA_TURN"
+  | "ADX_TREND"
   | "STOP_LOSS_HIT";
 
 export type SignalDirection = "BULL" | "BEAR";

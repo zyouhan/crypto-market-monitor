@@ -115,6 +115,14 @@ export function getSoundAlertKind(
           : null;
     case "STOP_LOSS_HIT":
       return settings.death ? "death" : null;
+    case "ADX_TREND":
+      return signal.direction === "BEAR"
+        ? settings.death
+          ? "death"
+          : null
+        : settings.golden
+          ? "golden"
+          : null;
     default:
       return null;
   }

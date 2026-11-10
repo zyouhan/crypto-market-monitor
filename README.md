@@ -114,6 +114,14 @@ signals              信号：监控项、条件快照、周期、方向、通�
 - 展示：DIF、DEA、MACD 柱、DEA 斜率状态、拐头时效；
 - 典型组合：5m KDJ 超卖触发 + 15m DEA 向上过滤（3 根内有效）。
 
+### `ADX_TREND`
+
+- 参数：`period`（默认 14）、`threshold`（默认 20）、`direction`（`bull` / `bear` / `both`）；
+- 过滤状态：ADX ≥ 阈值，且 +DI/-DI 方向匹配；
+- 触发事件：ADX 上穿阈值并出现方向；
+- 用于排除横盘：ADX 低于阈值时，不认为存在可交易趋势；
+- 展示：ADX、+DI、-DI、阈值。
+
 ### KDJ 钝化止损参考
 
 KDJ 条件会额外显示「J钝化止损」：

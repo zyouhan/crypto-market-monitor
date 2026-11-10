@@ -44,7 +44,8 @@ const TRIGGER_TAB_LABELS: Record<ConditionKind, string> = {
   KDJ_EXTREME: "KDJ 极值",
   VOLUME_SPIKE: "成交量",
   PRICE_LEVEL: "压力支撑",
-  MACD_DEA_TURN: "MACD"
+  MACD_DEA_TURN: "MACD",
+  ADX_TREND: "ADX"
 };
 
 function monitorCategory(

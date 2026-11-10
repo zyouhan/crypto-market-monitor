@@ -36,6 +36,10 @@ function conditionLabel(kind: string | null): string {
     return "MACD DEA";
   }
 
+  if (kind === "ADX_TREND") {
+    return "ADX 趋势";
+  }
+
   if (kind === "RISK") {
     return "风险控制";
   }
@@ -141,6 +145,12 @@ function triggerDetail(signal: MonitorSignalItem): string {
       typeof stopPrice === "number"
         ? formatPrice(stopPrice)
         : "--"
+    }`;
+  }
+
+  if (signal.event_type === "ADX_TREND") {
+    return `${signal.direction === "BULL" ? "多头趋势" : "空头趋势"} · ${
+      trigger?.summary ?? "ADX"
     }`;
   }
 
@@ -319,6 +329,7 @@ export function SignalTable({
           <option value="VOLUME_SPIKE">成交量放量</option>
           <option value="PRICE_LEVEL">到达价位</option>
           <option value="MACD_DEA_TURN">MACD DEA 拐头</option>
+          <option value="ADX_TREND">ADX 趋势</option>
           <option value="STOP_LOSS_HIT">止损触发</option>
           <option value="TREND_INVALIDATED">等待失效</option>
         </select>
