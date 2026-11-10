@@ -66,9 +66,9 @@ export const MONITOR_PRESETS: MonitorPreset[] = [
   makePreset(
     "long-basic",
     "多头拐点",
-    "5m KDJ 超卖拐头 + 15m DEA 向上",
+    "5m KDJ 超卖 + 15m DEA 向上",
     "long",
-    "5m KDJ 超卖拐头 + 15m DEA 向上",
+    "5m KDJ 超卖 + 15m DEA 向上",
     ["KDJ_EXTREME", "MACD_DEA_TURN"],
     (catalog) => {
       const kdj = makeCondition(
@@ -80,11 +80,11 @@ export const MONITOR_PRESETS: MonitorPreset[] = [
           period: 9,
           kSmooth: 3,
           dSmooth: 3,
-          oversold: 15,
+          oversold: 5,
           overbought: 85,
           longEnabled: true,
           shortEnabled: false,
-          triggerMode: "reversal"
+          triggerMode: "cross"
         }
       );
       const macd = makeCondition(
@@ -167,11 +167,11 @@ export const MONITOR_PRESETS: MonitorPreset[] = [
           period: 9,
           kSmooth: 3,
           dSmooth: 3,
-          oversold: 15,
+          oversold: 5,
           overbought: 85,
           longEnabled: true,
           shortEnabled: false,
-          triggerMode: "reversal"
+          triggerMode: "cross"
         }
       );
       const macd = makeCondition(

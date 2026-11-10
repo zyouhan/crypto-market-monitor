@@ -82,12 +82,12 @@ signals              信号：监控项、条件快照、周期、方向、通�
 
 - 参数：`period`、`kSmooth`、`dSmooth`、`oversold`、`overbought`、`longEnabled`、`shortEnabled`、`triggerMode`；
 - `triggerMode`：
-  - `cross`：J 下穿超卖 → 做多；J 上穿超买 → 做空；
+  - `cross`：J 首次进入超卖区 → 做多；首次进入超买区 → 做空；监控启动时如果 J 已在区域内，也会立即判定一次；
   - `reversal`：J 在超卖区由下跌转为回升 → 做多；J 在超买区由上涨转为回落 → 做空；
 - 过滤状态：当前 J 低于超卖阈值（多头）或高于超买阈值（空头）；
 - 展示：J/K/D、超买/超卖状态、阈值、J钝化止损。
 
-`reversal` 更偏向拐点入场，`cross` 是原来的进入极值触发。
+`reversal` 更偏向拐点入场，`cross` 是进入极值触发；同一段极值内只触发一次，J 离开区域后重新进入才会再次触发。
 
 > TradingView 没有内置 KDJ，只有 Stochastic；需要社区 Pine 脚本，或用 `J = 3K - 2D` 自行计算。
 
@@ -233,7 +233,7 @@ npm run build
 
 新建监控项提供 4 个入场预设：
 
-- 多头拐点：5m KDJ J<15 拐头 + 15m DEA 向上；
+- 多头拐点：5m KDJ J<5 进入极值 + 15m DEA 向上；
 - 空头拐点：5m KDJ J>85 + 15m DEA 向下；
 - 多头严格：额外要求 15m EMA 价格位置和 ADX 多头趋势；
 - 空头严格：额外要求 15m EMA 价格位置和 ADX 空头趋势。

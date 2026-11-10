@@ -415,7 +415,8 @@ function managementSignalRecord(
   };
 }
 
-async function runMonitor(  monitor: MonitorRecord,
+async function runMonitor(
+  monitor: MonitorRecord,
   cache: Map<string, Promise<MarketKlines>>,
   globalNotifyEnabled: boolean
 ): Promise<void> {
@@ -531,9 +532,11 @@ async function runMonitor(  monitor: MonitorRecord,
     stateUpdates.push({
       condition,
       result,
-      lastProcessedCloseTime:
-        klines[klines.length - 1]?.closeTime ??
-        condition.last_processed_close_time
+      lastProcessedCloseTime: warmup
+        ? (klines[klines.length - 2]?.closeTime ??
+          condition.last_processed_close_time)
+        : (klines[klines.length - 1]?.closeTime ??
+          condition.last_processed_close_time)
     });
   }
 
@@ -561,7 +564,9 @@ async function runMonitor(  monitor: MonitorRecord,
         id: monitor.id,
         lastPrice: latestBase.close,
         lastPriceTime: latestBase.closeTime,
-        lastProcessedCloseTime: latestBase.closeTime,
+        lastProcessedCloseTime:
+          baseKlines[baseKlines.length - 2]?.closeTime ??
+          latestBase.closeTime,
         source,
         sourceNote: note,
         snapshot,
