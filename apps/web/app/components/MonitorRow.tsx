@@ -34,7 +34,10 @@ interface Tag {
   tone: string;
 }
 
-function statusTags(item: MonitorItem): Tag[] {
+function statusTags(
+  item: MonitorItem,
+  latestSignal: MonitorSignalItem | null
+): Tag[] {
   const tags: Tag[] = [];
   const seen = new Set<string>();
 
@@ -53,6 +56,25 @@ function statusTags(item: MonitorItem): Tag[] {
 
   if (item.pending) {
     add("请求中", "pending");
+  }
+
+  const stopPrice = latestSignal?.payload?.stopPrice;
+
+  if (
+    typeof stopPrice === "number" &&
+    Number.isFinite(stopPrice) &&
+    item.last_price !== null
+  ) {
+    const hit =
+      latestSignal?.direction === "BULL"
+        ? item.last_price <= stopPrice
+        : latestSignal?.direction === "BEAR"
+          ? item.last_price >= stopPrice
+          : false;
+
+    if (hit) {
+      add("止损已触及", "bear");
+    }
   }
 
   if (item.last_error) {
@@ -98,7 +120,7 @@ export function MonitorRow({
   onRefresh
 }: MonitorRowProps) {
   const [expanded, setExpanded] = useState(false);
-  const tags = statusTags(item);
+  const tags = statusTags(item, latestSignal);
 
   return (
     <article className={`monitor-row ${expanded ? "expanded" : ""}`}>
