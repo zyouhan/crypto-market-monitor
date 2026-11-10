@@ -113,6 +113,8 @@ export function getSoundAlertKind(
         : settings.golden
           ? "golden"
           : null;
+    case "STOP_LOSS_HIT":
+      return settings.death ? "death" : null;
     default:
       return null;
   }

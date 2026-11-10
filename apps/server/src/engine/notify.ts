@@ -51,6 +51,10 @@ function directionLabel(
 function displayDirection(
   signal: MonitorSignalRecord
 ): string {
+  if (signal.event_type === "STOP_LOSS_HIT") {
+    return "止损触发";
+  }
+
   if (
     signal.event_type === "VOLUME_SPIKE" ||
     signal.event_type === "PRICE_LEVEL"
@@ -132,6 +136,9 @@ export function buildMonitorMessage(
         item.value !== "--"
     );
 
+  const isStopHit =
+    signal.event_type === "STOP_LOSS_HIT";
+
   const description = [
     `交易标的：${signal.symbol}`,
     `入场周期：${signal.interval ?? monitor.interval}`,
@@ -140,6 +147,12 @@ export function buildMonitorMessage(
     `触发价格：${formatNumber(signal.price)}`,
     `触发时间：${formatTime(signal.event_time)}`,
     `数据源：${signal.source ?? monitor.source ?? "--"}`,
+    ...(isStopHit
+      ? [
+          "事件：止损触发",
+          `止损价：${formatNumber(signal.price)}`
+        ]
+      : []),
     ...(stopReference
       ? [`止损参考：${stopReference.value}`]
       : []),

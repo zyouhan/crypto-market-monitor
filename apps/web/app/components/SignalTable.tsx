@@ -36,6 +36,10 @@ function conditionLabel(kind: string | null): string {
     return "MACD DEA";
   }
 
+  if (kind === "RISK") {
+    return "风险控制";
+  }
+
   if (kind === "KDJ_TIMING") {
     return "KDJ 极值（旧）";
   }
@@ -123,6 +127,21 @@ function triggerDetail(signal: MonitorSignalItem): string {
     return `${
       signal.direction === "BULL" ? "DEA 向上拐头" : "DEA 向下拐头"
     } · ${trigger?.summary ?? "MACD"}`;
+  }
+
+  if (signal.event_type === "STOP_LOSS_HIT") {
+    const entryPrice = signal.payload?.entryPrice;
+    const stopPrice = signal.payload?.stopPrice;
+
+    return `止损触发 · 入场 ${
+      typeof entryPrice === "number"
+        ? formatPrice(entryPrice)
+        : "--"
+    } · 止损 ${
+      typeof stopPrice === "number"
+        ? formatPrice(stopPrice)
+        : "--"
+    }`;
   }
 
   return trigger?.summary ?? eventTypeLabel(signal.event_type);
@@ -300,6 +319,7 @@ export function SignalTable({
           <option value="VOLUME_SPIKE">成交量放量</option>
           <option value="PRICE_LEVEL">到达价位</option>
           <option value="MACD_DEA_TURN">MACD DEA 拐头</option>
+          <option value="STOP_LOSS_HIT">止损触发</option>
           <option value="TREND_INVALIDATED">等待失效</option>
         </select>
       </div>

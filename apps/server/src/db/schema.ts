@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 /**
  * v5 表结构。
@@ -121,6 +121,36 @@ const V5_SCHEMA_SQL = `
 
   CREATE INDEX IF NOT EXISTS idx_signals_created_at
     ON signals(created_at DESC);
+
+  CREATE TABLE IF NOT EXISTS stop_watches (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    signal_id INTEGER NOT NULL UNIQUE,
+    monitor_id INTEGER,
+    interval TEXT,
+
+    direction TEXT NOT NULL,
+    entry_price REAL NOT NULL,
+    entry_time INTEGER NOT NULL,
+    stop_price REAL NOT NULL,
+
+    status TEXT NOT NULL DEFAULT 'ACTIVE',
+    created_at INTEGER NOT NULL,
+    hit_at INTEGER,
+    hit_price REAL,
+    hit_signal_id INTEGER,
+
+    FOREIGN KEY (signal_id)
+      REFERENCES signals(id)
+      ON DELETE CASCADE,
+
+    FOREIGN KEY (monitor_id)
+      REFERENCES monitors(id)
+      ON DELETE SET NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_stop_watches_monitor_status
+    ON stop_watches(monitor_id, status);
 
   CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,

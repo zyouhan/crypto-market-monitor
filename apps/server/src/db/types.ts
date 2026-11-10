@@ -130,7 +130,8 @@ export type SignalEventType =
   | "ENTRY_SHORT"
   | "VOLUME_SPIKE"
   | "PRICE_LEVEL"
-  | "MACD_DEA_TURN";
+  | "MACD_DEA_TURN"
+  | "STOP_LOSS_HIT";
 
 export type SignalDirection = "BULL" | "BEAR";
 

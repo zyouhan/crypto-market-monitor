@@ -6,8 +6,25 @@ import type {
   MonitorRecord,
   MonitorSignalRecord,
   NewMonitorSignalRecord,
-  PushState
+  PushState,
+  SignalDirection
 } from "./types";
+
+export interface StopWatchRecord {
+  id: number;
+  signal_id: number;
+  monitor_id: number | null;
+  interval: string | null;
+  direction: SignalDirection;
+  entry_price: number;
+  entry_time: number;
+  stop_price: number;
+  status: "ACTIVE" | "HIT" | "CANCELLED";
+  created_at: number;
+  hit_at: number | null;
+  hit_price: number | null;
+  hit_signal_id: number | null;
+}
 
 export function getMonitors(): MonitorRecord[] {
   return db.prepare(`
@@ -365,6 +382,82 @@ export function insertSignalIgnore(
   }
 
   return Number(result.lastInsertRowid);
+}
+
+export function createStopWatch(input: {
+  signalId: number;
+  monitorId: number;
+  interval: string;
+  direction: SignalDirection;
+  entryPrice: number;
+  entryTime: number;
+  stopPrice: number;
+}): void {
+  db.prepare(`
+    INSERT OR IGNORE INTO stop_watches (
+      signal_id,
+      monitor_id,
+      interval,
+      direction,
+      entry_price,
+      entry_time,
+      stop_price,
+      status,
+      created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?)
+  `).run(
+    input.signalId,
+    input.monitorId,
+    input.interval,
+    input.direction,
+    input.entryPrice,
+    input.entryTime,
+    input.stopPrice,
+    Date.now()
+  );
+}
+
+export function getActiveStopWatches(
+  monitorId: number
+): StopWatchRecord[] {
+  return db.prepare(`
+    SELECT *
+    FROM stop_watches
+    WHERE monitor_id = ? AND status = 'ACTIVE'
+    ORDER BY id ASC
+  `).all(monitorId) as StopWatchRecord[];
+}
+
+export function markStopWatchHit(input: {
+  id: number;
+  hitAt: number;
+  hitPrice: number;
+  hitSignalId: number;
+}): void {
+  db.prepare(`
+    UPDATE stop_watches
+    SET
+      status = 'HIT',
+      hit_at = ?,
+      hit_price = ?,
+      hit_signal_id = ?
+    WHERE id = ? AND status = 'ACTIVE'
+  `).run(
+    input.hitAt,
+    input.hitPrice,
+    input.hitSignalId,
+    input.id
+  );
+}
+
+export function cancelStopWatchesForMonitor(
+  monitorId: number
+): void {
+  db.prepare(`
+    UPDATE stop_watches
+    SET status = 'CANCELLED'
+    WHERE monitor_id = ? AND status = 'ACTIVE'
+  `).run(monitorId);
 }
 
 export function getSignalById(

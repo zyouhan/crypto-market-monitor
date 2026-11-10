@@ -143,6 +143,8 @@ export function eventTypeLabel(eventType: string): string {
       return "到达价位";
     case "MACD_DEA_TURN":
       return "MACD DEA 拐头";
+    case "STOP_LOSS_HIT":
+      return "止损触发";
     default:
       return eventType;
   }
@@ -218,7 +220,8 @@ export function isAlertSignal(signal: {
     signal.event_type === "ENTRY_SHORT" ||
     signal.event_type === "VOLUME_SPIKE" ||
     signal.event_type === "PRICE_LEVEL" ||
-    signal.event_type === "MACD_DEA_TURN"
+    signal.event_type === "MACD_DEA_TURN" ||
+    signal.event_type === "STOP_LOSS_HIT"
   );
 }
 

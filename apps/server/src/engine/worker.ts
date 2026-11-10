@@ -5,15 +5,19 @@ import type {
 } from "../db/types";
 import { db } from "../db";
 import {
+  createStopWatch,
+  getActiveStopWatches,
   getMonitorById,
   getMonitorConditions,
   getEnabledMonitors,
   getSignalById,
   insertSignalIgnore,
+  markStopWatchHit,
   updateConditionState,
   updateMonitorError,
   updateMonitorProgress,
-  updateMonitorSnapshot
+  updateMonitorSnapshot,
+  type StopWatchRecord
 } from "../db/monitor-repo";
 import {
   getConditionDefinition,
@@ -31,6 +35,7 @@ import type {
   ConditionRuntime,
   MonitorSignalDraft
 } from "../monitors/evaluator";
+import type { Kline } from "../indicators/types";
 import { getSetting } from "../db/repo";
 import { getNextCloseTime } from "./time";
 import { dispatchMonitorNotification } from "./notify";
@@ -237,6 +242,70 @@ function toSignalRecord(
     payload: JSON.stringify({
       ...draft.payload,
       stopPrice: draft.stopPrice
+    }),
+    created_at: Date.now()
+  };
+}
+
+export function findStopHit(
+  watch: StopWatchRecord,
+  newKlines: Kline[]
+): Kline | null {
+  for (const kline of newKlines) {
+    if (kline.closeTime <= watch.entry_time) {
+      continue;
+    }
+
+    if (
+      watch.direction === "BULL" &&
+      kline.low <= watch.stop_price
+    ) {
+      return kline;
+    }
+
+    if (
+      watch.direction === "BEAR" &&
+      kline.high >= watch.stop_price
+    ) {
+      return kline;
+    }
+  }
+
+  return null;
+}
+
+function stopHitRecord(
+  monitor: MonitorRecord,
+  watch: StopWatchRecord,
+  hitKline: Kline,
+  source: string | null
+) {
+  return {
+    monitor_id: monitor.id,
+    monitor_name: monitor.name,
+    symbol: monitor.symbol,
+    interval: monitor.interval,
+    kind: "RISK",
+    event_type: "STOP_LOSS_HIT" as const,
+    direction: watch.direction,
+    price: watch.stop_price,
+    event_time: hitKline.closeTime,
+    primary_condition: "RISK",
+    conditions: JSON.stringify([]),
+    source,
+    threshold: watch.stop_price,
+    price_diff: null,
+    ema_diff: null,
+    trigger_met: 1,
+    push_state: "PENDING" as const,
+    reason: null,
+    payload: JSON.stringify({
+      entrySignalId: watch.signal_id,
+      entryPrice: watch.entry_price,
+      stopPrice: watch.stop_price,
+      hitPrice: watch.stop_price,
+      hitHigh: hitKline.high,
+      hitLow: hitKline.low
     }),
     created_at: Date.now()
   };
@@ -474,6 +543,22 @@ async function runMonitor(
 
       if (inserted !== null) {
         insertedIds.push(inserted);
+
+        if (
+          draft.stopPrice !== null &&
+          (draft.eventType === "ENTRY_LONG" ||
+            draft.eventType === "ENTRY_SHORT")
+        ) {
+          createStopWatch({
+            signalId: inserted,
+            monitorId: monitor.id,
+            interval: monitor.interval,
+            direction: draft.direction,
+            entryPrice: draft.price,
+            entryTime: draft.eventTime,
+            stopPrice: draft.stopPrice
+          });
+        }
       }
     }
 
@@ -492,6 +577,46 @@ async function runMonitor(
   transaction();
 
   for (const id of insertedIds) {
+    const signal = getSignalById(id);
+
+    if (signal) {
+      await dispatchMonitorNotification(
+        signal,
+        monitor,
+        globalNotifyEnabled
+      );
+    }
+  }
+
+  const hitSignalIds: number[] = [];
+  const stopTransaction = db.transaction(() => {
+    for (const watch of getActiveStopWatches(monitor.id)) {
+      const hitKline = findStopHit(watch, newBaseKlines);
+
+      if (!hitKline) {
+        continue;
+      }
+
+      const inserted = insertSignalIgnore(
+        stopHitRecord(monitor, watch, hitKline, source)
+      );
+
+      markStopWatchHit({
+        id: watch.id,
+        hitAt: hitKline.closeTime,
+        hitPrice: watch.stop_price,
+        hitSignalId: inserted ?? 0
+      });
+
+      if (inserted !== null) {
+        hitSignalIds.push(inserted);
+      }
+    }
+  });
+
+  stopTransaction();
+
+  for (const id of hitSignalIds) {
     const signal = getSignalById(id);
 
     if (signal) {
