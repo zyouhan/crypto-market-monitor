@@ -147,6 +147,8 @@ export function eventTypeLabel(eventType: string): string {
       return "止损触发";
     case "ADX_TREND":
       return "ADX 趋势";
+    case "EMA_FAST_TURN":
+      return "EMA 快线拐头";
     case "TRADE_1R":
       return "达到 1R";
     case "TRADE_BREAKEVEN":
@@ -226,7 +228,8 @@ export function isAlertSignal(signal: {
     signal.event_type === "VOLUME_SPIKE" ||
     signal.event_type === "PRICE_LEVEL" ||
     signal.event_type === "MACD_DEA_TURN" ||
-    signal.event_type === "ADX_TREND"
+    signal.event_type === "ADX_TREND" ||
+    signal.event_type === "EMA_FAST_TURN"
   );
 }
 

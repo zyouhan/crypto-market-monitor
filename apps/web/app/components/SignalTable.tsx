@@ -40,6 +40,10 @@ function conditionLabel(kind: string | null): string {
     return "ADX 趋势";
   }
 
+  if (kind === "EMA_FAST_TURN") {
+    return "EMA 快线";
+  }
+
   if (kind === "RISK") {
     return "风险控制";
   }
@@ -152,6 +156,12 @@ function triggerDetail(signal: MonitorSignalItem): string {
     return `${signal.direction === "BULL" ? "多头趋势" : "空头趋势"} · ${
       trigger?.summary ?? "ADX"
     }`;
+  }
+
+  if (signal.event_type === "EMA_FAST_TURN") {
+    return `${
+      signal.direction === "BULL" ? "快线向上拐头" : "快线向下拐头"
+    } · ${trigger?.summary ?? "EMA"}`;
   }
 
   if (
@@ -362,6 +372,7 @@ export function SignalTable({
           <option value="PRICE_LEVEL">到达价位</option>
           <option value="MACD_DEA_TURN">MACD DEA 拐头</option>
           <option value="ADX_TREND">ADX 趋势</option>
+          <option value="EMA_FAST_TURN">EMA 快线拐头</option>
           <option value="TREND_INVALIDATED">等待失效</option>
         </select>
       </div>

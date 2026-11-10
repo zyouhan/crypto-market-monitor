@@ -93,6 +93,7 @@ const EVENT_TYPES: SignalEventType[] = [
   "PRICE_LEVEL",
   "MACD_DEA_TURN",
   "ADX_TREND",
+  "EMA_FAST_TURN",
   "STOP_LOSS_HIT",
   "TRADE_1R",
   "TRADE_BREAKEVEN"

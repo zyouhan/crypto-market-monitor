@@ -13,6 +13,7 @@ export type SignalEventType =
   | "PRICE_LEVEL"
   | "MACD_DEA_TURN"
   | "ADX_TREND"
+  | "EMA_FAST_TURN"
   | "STOP_LOSS_HIT"
   | "TRADE_1R"
   | "TRADE_BREAKEVEN";
@@ -130,7 +131,8 @@ export type ConditionKind =
   | "VOLUME_SPIKE"
   | "PRICE_LEVEL"
   | "MACD_DEA_TURN"
-  | "ADX_TREND";
+  | "ADX_TREND"
+  | "EMA_FAST_TURN";
 
 export type ConditionRole = "trigger" | "filter";
 
