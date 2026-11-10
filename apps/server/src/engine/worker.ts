@@ -12,6 +12,7 @@ import {
   getEnabledMonitors,
   getSignalById,
   insertSignalIgnore,
+  markStopWatchAlert,
   markStopWatchHit,
   updateConditionState,
   updateMonitorError,
@@ -370,8 +371,44 @@ function stopHitRecord(
   };
 }
 
-async function runMonitor(
+function managementSignalRecord(
   monitor: MonitorRecord,
+  watch: StopWatchRecord,
+  eventType: "TRADE_1R" | "TRADE_BREAKEVEN",
+  price: number,
+  eventTime: number,
+  source: string | null
+) {
+  return {
+    monitor_id: monitor.id,
+    monitor_name: monitor.name,
+    symbol: monitor.symbol,
+    interval: monitor.interval,
+    kind: "MANAGEMENT",
+    event_type: eventType,
+    direction: watch.direction,
+    price,
+    event_time: eventTime,
+    primary_condition: "RISK",
+    conditions: JSON.stringify([]),
+    source,
+    threshold: watch.stop_price,
+    price_diff: null,
+    ema_diff: null,
+    trigger_met: 1,
+    push_state: "PENDING" as const,
+    reason: null,
+    payload: JSON.stringify({
+      entrySignalId: watch.signal_id,
+      entryPrice: watch.entry_price,
+      stopPrice: watch.stop_price,
+      maxFavorableR: watch.max_favorable_r
+    }),
+    created_at: Date.now()
+  };
+}
+
+async function runMonitor(  monitor: MonitorRecord,
   cache: Map<string, Promise<MarketKlines>>,
   globalNotifyEnabled: boolean
 ): Promise<void> {
@@ -648,6 +685,7 @@ async function runMonitor(
   }
 
   const hitSignalIds: number[] = [];
+  const managementSignalIds: number[] = [];
   const stopTransaction = db.transaction(() => {
     for (const watch of getActiveStopWatches(monitor.id)) {
       const hitKline = findStopHit(watch, newBaseKlines);
@@ -659,11 +697,74 @@ async function runMonitor(
           ? newBaseKlines.slice(0, hitIndex + 1)
           : newBaseKlines;
       const progress = stopProgress(watch, progressKlines);
+      const lastChecked =
+        [...progressKlines]
+          .reverse()
+          .find(
+            (kline) => kline.closeTime > watch.entry_time
+          ) ?? null;
 
       updateStopWatchProgress({
         id: watch.id,
         ...progress
       });
+
+      if (lastChecked) {
+        const maxFavorableR = progress.maxFavorableR;
+
+        if (!watch.alerted_1r && maxFavorableR >= 1) {
+          const inserted = insertSignalIgnore(
+            managementSignalRecord(
+              monitor,
+              watch,
+              "TRADE_1R",
+              lastChecked.close,
+              lastChecked.closeTime,
+              source
+            )
+          );
+
+          markStopWatchAlert({
+            id: watch.id,
+            oneR: true
+          });
+
+          if (inserted !== null) {
+            managementSignalIds.push(inserted);
+          }
+        }
+
+        const atEntry =
+          watch.direction === "BULL"
+            ? lastChecked.close <= watch.entry_price
+            : lastChecked.close >= watch.entry_price;
+
+        if (
+          !watch.alerted_breakeven &&
+          (watch.alerted_1r === 1 || maxFavorableR >= 1) &&
+          atEntry
+        ) {
+          const inserted = insertSignalIgnore(
+            managementSignalRecord(
+              monitor,
+              watch,
+              "TRADE_BREAKEVEN",
+              lastChecked.close,
+              lastChecked.closeTime,
+              source
+            )
+          );
+
+          markStopWatchAlert({
+            id: watch.id,
+            breakeven: true
+          });
+
+          if (inserted !== null) {
+            managementSignalIds.push(inserted);
+          }
+        }
+      }
 
       if (!hitKline) {
         continue;
@@ -689,6 +790,18 @@ async function runMonitor(
   stopTransaction();
 
   for (const id of hitSignalIds) {
+    const signal = getSignalById(id);
+
+    if (signal) {
+      await dispatchMonitorNotification(
+        signal,
+        monitor,
+        globalNotifyEnabled
+      );
+    }
+  }
+
+  for (const id of managementSignalIds) {
     const signal = getSignalById(id);
 
     if (signal) {

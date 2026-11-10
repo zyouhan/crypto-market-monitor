@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 /**
  * v5 表结构。
@@ -145,6 +145,8 @@ const V5_SCHEMA_SQL = `
     max_favorable_r REAL NOT NULL DEFAULT 0,
     max_adverse_r REAL NOT NULL DEFAULT 0,
     last_checked_time INTEGER,
+    alerted_1r INTEGER NOT NULL DEFAULT 0,
+    alerted_breakeven INTEGER NOT NULL DEFAULT 0,
 
     FOREIGN KEY (signal_id)
       REFERENCES signals(id)

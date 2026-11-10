@@ -46,7 +46,9 @@ const EVENT_TYPES: SignalEventType[] = [
   "PRICE_LEVEL",
   "MACD_DEA_TURN",
   "ADX_TREND",
-  "STOP_LOSS_HIT"
+  "STOP_LOSS_HIT",
+  "TRADE_1R",
+  "TRADE_BREAKEVEN"
 ];
 
 function isEventType(

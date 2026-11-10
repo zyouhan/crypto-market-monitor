@@ -477,7 +477,9 @@ export function ensureStopWatchProgressColumns(
     ["min_price", "REAL"],
     ["max_favorable_r", "REAL NOT NULL DEFAULT 0"],
     ["max_adverse_r", "REAL NOT NULL DEFAULT 0"],
-    ["last_checked_time", "INTEGER"]
+    ["last_checked_time", "INTEGER"],
+    ["alerted_1r", "INTEGER NOT NULL DEFAULT 0"],
+    ["alerted_breakeven", "INTEGER NOT NULL DEFAULT 0"]
   ] as const;
 
   for (const [column, definition] of columns) {

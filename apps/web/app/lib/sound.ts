@@ -123,6 +123,15 @@ export function getSoundAlertKind(
         : settings.golden
           ? "golden"
           : null;
+    case "TRADE_1R":
+    case "TRADE_BREAKEVEN":
+      return signal.direction === "BEAR"
+        ? settings.death
+          ? "death"
+          : null
+        : settings.golden
+          ? "golden"
+          : null;
     default:
       return null;
   }

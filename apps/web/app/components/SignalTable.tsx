@@ -154,6 +154,28 @@ function triggerDetail(signal: MonitorSignalItem): string {
     }`;
   }
 
+  if (
+    signal.event_type === "TRADE_1R" ||
+    signal.event_type === "TRADE_BREAKEVEN"
+  ) {
+    const entryPrice = signal.payload?.entryPrice;
+    const stopPrice = signal.payload?.stopPrice;
+
+    return `${
+      signal.event_type === "TRADE_1R"
+        ? "达到 1R"
+        : "回到入场价"
+    } · 入场 ${
+      typeof entryPrice === "number"
+        ? formatPrice(entryPrice)
+        : "--"
+    } · 止损 ${
+      typeof stopPrice === "number"
+        ? formatPrice(stopPrice)
+        : "--"
+    }`;
+  }
+
   return trigger?.summary ?? eventTypeLabel(signal.event_type);
 }
 
@@ -331,6 +353,8 @@ export function SignalTable({
           <option value="MACD_DEA_TURN">MACD DEA 拐头</option>
           <option value="ADX_TREND">ADX 趋势</option>
           <option value="STOP_LOSS_HIT">止损触发</option>
+          <option value="TRADE_1R">达到 1R</option>
+          <option value="TRADE_BREAKEVEN">回到入场价</option>
           <option value="TREND_INVALIDATED">等待失效</option>
         </select>
       </div>

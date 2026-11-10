@@ -147,6 +147,10 @@ export function eventTypeLabel(eventType: string): string {
       return "止损触发";
     case "ADX_TREND":
       return "ADX 趋势";
+    case "TRADE_1R":
+      return "达到 1R";
+    case "TRADE_BREAKEVEN":
+      return "回到入场价";
     default:
       return eventType;
   }
@@ -224,7 +228,9 @@ export function isAlertSignal(signal: {
     signal.event_type === "PRICE_LEVEL" ||
     signal.event_type === "MACD_DEA_TURN" ||
     signal.event_type === "ADX_TREND" ||
-    signal.event_type === "STOP_LOSS_HIT"
+    signal.event_type === "STOP_LOSS_HIT" ||
+    signal.event_type === "TRADE_1R" ||
+    signal.event_type === "TRADE_BREAKEVEN"
   );
 }
 

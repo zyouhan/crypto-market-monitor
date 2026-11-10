@@ -55,6 +55,14 @@ function displayDirection(
     return "止损触发";
   }
 
+  if (signal.event_type === "TRADE_1R") {
+    return "达到1R";
+  }
+
+  if (signal.event_type === "TRADE_BREAKEVEN") {
+    return "回到入场价";
+  }
+
   if (
     signal.event_type === "VOLUME_SPIKE" ||
     signal.event_type === "PRICE_LEVEL"
@@ -138,6 +146,9 @@ export function buildMonitorMessage(
 
   const isStopHit =
     signal.event_type === "STOP_LOSS_HIT";
+  const isManagement =
+    signal.event_type === "TRADE_1R" ||
+    signal.event_type === "TRADE_BREAKEVEN";
 
   const description = [
     `交易标的：${signal.symbol}`,
@@ -151,6 +162,15 @@ export function buildMonitorMessage(
       ? [
           "事件：止损触发",
           `止损价：${formatNumber(signal.price)}`
+        ]
+      : []),
+    ...(isManagement
+      ? [
+          `事件：${
+            signal.event_type === "TRADE_1R"
+              ? "达到 1R"
+              : "回到入场价"
+          }`
         ]
       : []),
     ...(stopReference

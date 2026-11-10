@@ -29,6 +29,8 @@ export interface StopWatchRecord {
   max_favorable_r: number;
   max_adverse_r: number;
   last_checked_time: number | null;
+  alerted_1r: number;
+  alerted_breakeven: number;
 }
 
 export type TradeActionKind =
@@ -493,6 +495,24 @@ export function updateStopWatchProgress(input: {
     input.maxFavorableR,
     input.maxAdverseR,
     input.lastCheckedTime,
+    input.id
+  );
+}
+
+export function markStopWatchAlert(input: {
+  id: number;
+  oneR?: boolean;
+  breakeven?: boolean;
+}): void {
+  db.prepare(`
+    UPDATE stop_watches
+    SET
+      alerted_1r = MAX(alerted_1r, ?),
+      alerted_breakeven = MAX(alerted_breakeven, ?)
+    WHERE id = ?
+  `).run(
+    input.oneR ? 1 : 0,
+    input.breakeven ? 1 : 0,
     input.id
   );
 }
