@@ -24,7 +24,6 @@ interface DeaParams extends MacdParams {
   direction: DeaDirection;
   freshBars: number;
   zeroSide: ZeroSide;
-  minAbsDeaPct: number;
 }
 
 interface TurnInfo {
@@ -54,17 +53,13 @@ function readParams(raw: unknown): DeaParams {
     input.zeroSide === "negative"
       ? input.zeroSide
       : "any";
-  const minAbsDeaPct = Number(
-    input.minAbsDeaPct ?? 0
-  );
   const params: DeaParams = {
     fast,
     slow,
     signal,
     direction,
     freshBars,
-    zeroSide,
-    minAbsDeaPct
+    zeroSide
   };
 
   validateMacdParams(params);
@@ -77,22 +72,14 @@ function readParams(raw: unknown): DeaParams {
     throw new Error("DEA 拐头有效期必须在 1 到 50 根之间");
   }
 
-  if (
-    !Number.isFinite(minAbsDeaPct) ||
-    minAbsDeaPct < 0 ||
-    minAbsDeaPct > 20
-  ) {
-    throw new Error("DEA 距零轴百分比必须在 0 到 20 之间");
-  }
-
   return params;
 }
 
-function deaPositionAllowed(
+function deaSideAllowed(
   point: MacdPoint,
   params: DeaParams
 ): boolean {
-  if (point.dea === null || point.close <= 0) {
+  if (point.dea === null) {
     return false;
   }
 
@@ -110,10 +97,7 @@ function deaPositionAllowed(
     return false;
   }
 
-  return (
-    (Math.abs(point.dea) / point.close) * 100 >=
-    params.minAbsDeaPct
-  );
+  return true;
 }
 
 function recentTurn(
@@ -182,7 +166,7 @@ function buildPoint(
     previous?.dea !== undefined;
   const rising = hasSlope ? current.dea! > previous!.dea! : false;
   const falling = hasSlope ? current.dea! < previous!.dea! : false;
-  const positionAllowed = deaPositionAllowed(current, params);
+  const positionAllowed = deaSideAllowed(current, params);
 
   let eventDirection: SignalDirection | null = null;
   let activeDirection: SignalDirection | null = null;
@@ -215,7 +199,7 @@ function buildPoint(
           ? turn
             ? positionAllowed
               ? `DEA ${rising ? "向上" : "向下"}，拐头后走弱`
-              : `DEA ${rising ? "向上" : "向下"}，但距零轴不足`
+              : `DEA ${rising ? "向上" : "向下"}，但零轴位置不符`
             : params.direction === "up"
               ? rising
                 ? "DEA 向上，但拐头已过期"
@@ -256,12 +240,11 @@ function buildPoint(
     {
       label: "DEA 位置",
       value:
-        current.dea === null || current.close <= 0
+        current.dea === null
           ? "--"
-          : `${current.dea >= 0 ? "零轴上方" : "零轴下方"} · ${(
-              (Math.abs(current.dea) / current.close) *
-              100
-            ).toFixed(3)}%`,
+          : current.dea >= 0
+            ? "零轴上方"
+            : "零轴下方",
       tone:
         current.dea === null
           ? "neutral"
@@ -294,7 +277,6 @@ function buildPoint(
       direction: params.direction,
       freshBars: params.freshBars,
       zeroSide: params.zeroSide,
-      minAbsDeaPct: params.minAbsDeaPct,
       positionAllowed,
       barsSinceTurn: turn?.bars ?? null,
       dif: current.dif,
@@ -441,16 +423,6 @@ export const macdDeaTurnDefinition: ConditionDefinition = {
         { value: "positive", label: "零轴上方" },
         { value: "negative", label: "零轴下方" }
       ]
-    },
-    {
-      key: "minAbsDeaPct",
-      label: "DEA 距零轴（%）",
-      type: "number",
-      min: 0,
-      max: 20,
-      step: "any",
-      defaultValue: 0,
-      help: "|DEA| / 收盘价 × 100 的最小值，用于要求 DEA 远离零轴"
     }
   ],
   normalizeParams(raw) {
@@ -470,12 +442,8 @@ export const macdDeaTurnDefinition: ConditionDefinition = {
         : value.zeroSide === "negative"
           ? " · 零轴下"
           : "";
-    const distance =
-      value.minAbsDeaPct > 0
-        ? ` · |DEA|≥${value.minAbsDeaPct}%`
-        : "";
 
-    return `MACD ${value.fast}/${value.slow}/${value.signal} · DEA ${direction}拐头 · ${value.freshBars}根内${side}${distance}`;
+    return `MACD ${value.fast}/${value.slow}/${value.signal} · DEA ${direction}拐头 · ${value.freshBars}根内${side}`;
   },
   run: runMacd
 };

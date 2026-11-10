@@ -64,24 +64,24 @@ function makePreset(
 
 export const MONITOR_PRESETS: MonitorPreset[] = [
   makePreset(
-    "short-exhaustion",
-    "上涨衰竭（做空）",
-    "15m DEA 远离零轴向下 + EMA 快线拐头 + 5m J>85",
+    "short-dea-kdj",
+    "5m DEA + 1m KDJ（做空）",
+    "5m DEA 拐头向下第一根后，1m J>80 入场",
     "short",
-    "5m J>85 + 15m DEA/EMA 拐头向下",
-    ["KDJ_EXTREME", "MACD_DEA_TURN", "EMA_FAST_TURN"],
+    "5m DEA向下 + 1m J>80",
+    ["KDJ_EXTREME", "MACD_DEA_TURN"],
     (catalog) => {
       const kdj = makeCondition(
         catalog,
         "KDJ_EXTREME",
         "trigger",
-        "5m",
+        "1m",
         {
           period: 9,
           kSmooth: 3,
           dSmooth: 3,
-          oversold: 5,
-          overbought: 85,
+          oversold: 15,
+          overbought: 80,
           longEnabled: false,
           shortEnabled: true,
           triggerMode: "cross"
@@ -91,54 +91,39 @@ export const MONITOR_PRESETS: MonitorPreset[] = [
         catalog,
         "MACD_DEA_TURN",
         "filter",
-        "15m",
+        "5m",
         {
           fast: 12,
           slow: 26,
           signal: 9,
           direction: "down",
-          freshBars: 20,
-          zeroSide: "positive",
-          minAbsDeaPct: 0.05
-        }
-      );
-      const ema = makeCondition(
-        catalog,
-        "EMA_FAST_TURN",
-        "filter",
-        "15m",
-        {
-          fast: 25,
-          slow: 60,
-          turn: "down",
-          minSeparationPct: 0.5
+          freshBars: 12,
+          zeroSide: "any"
         }
       );
 
-      return kdj && macd && ema
-        ? [kdj, macd, ema]
-        : null;
+      return kdj && macd ? [kdj, macd] : null;
     }
   ),
   makePreset(
-    "long-exhaustion",
-    "下跌衰竭（做多）",
-    "15m DEA 远离零轴向上 + EMA 快线拐头 + 5m J<5",
+    "long-dea-kdj",
+    "5m DEA + 1m KDJ（做多）",
+    "5m DEA 拐头向上第一根后，1m J<15 入场",
     "long",
-    "5m J<5 + 15m DEA/EMA 拐头向上",
-    ["KDJ_EXTREME", "MACD_DEA_TURN", "EMA_FAST_TURN"],
+    "5m DEA向上 + 1m J<15",
+    ["KDJ_EXTREME", "MACD_DEA_TURN"],
     (catalog) => {
       const kdj = makeCondition(
         catalog,
         "KDJ_EXTREME",
         "trigger",
-        "5m",
+        "1m",
         {
           period: 9,
           kSmooth: 3,
           dSmooth: 3,
-          oversold: 5,
-          overbought: 85,
+          oversold: 15,
+          overbought: 80,
           longEnabled: true,
           shortEnabled: false,
           triggerMode: "cross"
@@ -148,33 +133,18 @@ export const MONITOR_PRESETS: MonitorPreset[] = [
         catalog,
         "MACD_DEA_TURN",
         "filter",
-        "15m",
+        "5m",
         {
           fast: 12,
           slow: 26,
           signal: 9,
           direction: "up",
-          freshBars: 20,
-          zeroSide: "negative",
-          minAbsDeaPct: 0.05
-        }
-      );
-      const ema = makeCondition(
-        catalog,
-        "EMA_FAST_TURN",
-        "filter",
-        "15m",
-        {
-          fast: 25,
-          slow: 60,
-          turn: "up",
-          minSeparationPct: 0.5
+          freshBars: 12,
+          zeroSide: "any"
         }
       );
 
-      return kdj && macd && ema
-        ? [kdj, macd, ema]
-        : null;
+      return kdj && macd ? [kdj, macd] : null;
     }
   )
 ];

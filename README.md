@@ -112,10 +112,9 @@ signals              信号：监控项、条件快照、周期、方向、通�
 
 ### `MACD_DEA_TURN`
 
-- 参数：`fast`（默认 12）、`slow`（默认 26）、`signal`（默认 9）、`direction`（`up` / `down` / `both`）、`freshBars`（默认 3）、`zeroSide`（`any` / `positive` / `negative`）、`minAbsDeaPct`；
+- 参数：`fast`（默认 12）、`slow`（默认 26）、`signal`（默认 9）、`direction`（`up` / `down` / `both`）、`freshBars`（默认 3）、`zeroSide`（`any` / `positive` / `negative`）；
 - 触发事件：DEA 由走平/下行转为上行，或由走平/上行转为下行；
-- 过滤状态：DEA 当前持续向上或持续向下，拐头发生在最近 `freshBars` 根内，并满足零轴位置和距离要求；
-- `minAbsDeaPct`：`|DEA| / 收盘价 × 100`，用于要求 DEA 远离零轴；
+- 过滤状态：DEA 当前持续向上或持续向下，拐头发生在最近 `freshBars` 根内，并满足零轴位置要求；
 - 展示：DIF、DEA、MACD 柱、DEA 位置、DEA 斜率状态、拐头时效。
 
 ### `EMA_FAST_TURN`
@@ -245,10 +244,10 @@ npm run build
 
 新建监控项提供 2 个入场预设：
 
-- 上涨衰竭（做空）：5m J>85 + 15m DEA 向下（DEA 在零轴上方且远离零轴）+ 15m EMA 快线拐头向下（快慢线保持分离）；
-- 下跌衰竭（做多）：5m J<5 + 15m DEA 向上（DEA 在零轴下方且远离零轴）+ 15m EMA 快线拐头向上（快慢线保持分离）。
+- 5m DEA + 1m KDJ（做空）：5m DEA 拐头向下的第一根之后，1m J>80 入场；
+- 5m DEA + 1m KDJ（做多）：5m DEA 拐头向上的第一根之后，1m J<15 入场。
 
-DEA 拐头有效期放宽到 20 根 15m，位置条件和 EMA 快线拐头成为主要过滤；避免只看拐头时效。
+DEA 拐头后的有效期默认 12 根 5m（约 1 小时），可在条件里调整；预设不再限制 DEA 距零轴距离。检查周期自动取触发条件，即 1m。
 
 预设支持批量标的：逗号或换行分隔，最多 20 个。多个标的默认关闭微信和声音，避免统计样本消耗 Server酱额度。
 
