@@ -349,11 +349,47 @@ export default function HomePage() {
       return;
     }
 
+    let cancelled = false;
+    let polling = false;
+
+    const refreshPending = async () => {
+      if (polling) {
+        return;
+      }
+
+      polling = true;
+
+      try {
+        const monitorData = await api<MonitorItem[]>(
+          "/api/monitors"
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        setMonitors(monitorData);
+
+        if (!monitorData.some((monitor) => monitor.pending)) {
+          await loadDashboard();
+        }
+      } catch {
+        // 轮询失败时保留当前界面，交给 15 秒全量轮询恢复
+      } finally {
+        polling = false;
+      }
+    };
+
+    void refreshPending();
+
     const timer = window.setInterval(() => {
-      void loadDashboard();
+      void refreshPending();
     }, 1500);
 
-    return () => window.clearInterval(timer);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
   }, [authenticated, hasPending, loadDashboard]);
 
   useEffect(() => {
@@ -503,9 +539,7 @@ export default function HomePage() {
         method: "POST"
       });
 
-      window.setTimeout(() => {
-        void loadDashboard();
-      }, 1200);
+      // pending 轮询只拉监控项列表，完成后自动做一次全量刷新。
     } catch (err) {
       setError(errorMessage(err));
       await loadDashboard();
@@ -545,10 +579,6 @@ export default function HomePage() {
     } else {
       setMessage(`已提交 ${ids.length} 个监控项的请求`);
     }
-
-    window.setTimeout(() => {
-      void loadDashboard();
-    }, 1200);
   }
 
   async function batchDeleteMonitors(
