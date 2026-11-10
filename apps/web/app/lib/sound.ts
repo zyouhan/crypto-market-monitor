@@ -82,7 +82,10 @@ export function saveSoundAlertSettings(
 }
 
 export function getSoundAlertKind(
-  signal: { event_type: string },
+  signal: {
+    event_type: string;
+    direction?: string | null;
+  },
   settings: SoundAlertSettings
 ): SoundSignalKind | null {
   if (!settings.enabled) {
@@ -102,6 +105,14 @@ export function getSoundAlertKind(
       return settings.volume ? "volume" : null;
     case "PRICE_LEVEL":
       return settings.level ? "level" : null;
+    case "MACD_DEA_TURN":
+      return signal.direction === "BEAR"
+        ? settings.death
+          ? "death"
+          : null
+        : settings.golden
+          ? "golden"
+          : null;
     default:
       return null;
   }

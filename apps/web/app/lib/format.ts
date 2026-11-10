@@ -141,6 +141,8 @@ export function eventTypeLabel(eventType: string): string {
       return "成交量放量";
     case "PRICE_LEVEL":
       return "到达价位";
+    case "MACD_DEA_TURN":
+      return "MACD DEA 拐头";
     default:
       return eventType;
   }
@@ -215,7 +217,8 @@ export function isAlertSignal(signal: {
     signal.event_type === "ENTRY_LONG" ||
     signal.event_type === "ENTRY_SHORT" ||
     signal.event_type === "VOLUME_SPIKE" ||
-    signal.event_type === "PRICE_LEVEL"
+    signal.event_type === "PRICE_LEVEL" ||
+    signal.event_type === "MACD_DEA_TURN"
   );
 }
 

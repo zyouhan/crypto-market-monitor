@@ -32,3 +32,11 @@ export interface KdjPoint {
   d: number | null;
   j: number | null;
 }
+
+export interface MacdPoint {
+  time: number;
+  close: number;
+  dif: number | null;
+  dea: number | null;
+  histogram: number | null;
+}

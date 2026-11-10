@@ -13,7 +13,8 @@ export type ConditionKind =
   | "EMA_CROSS"
   | "KDJ_EXTREME"
   | "VOLUME_SPIKE"
-  | "PRICE_LEVEL";
+  | "PRICE_LEVEL"
+  | "MACD_DEA_TURN";
 
 export type ConditionRole = "trigger" | "filter";
 
@@ -128,7 +129,8 @@ export type SignalEventType =
   | "ENTRY_LONG"
   | "ENTRY_SHORT"
   | "VOLUME_SPIKE"
-  | "PRICE_LEVEL";
+  | "PRICE_LEVEL"
+  | "MACD_DEA_TURN";
 
 export type SignalDirection = "BULL" | "BEAR";
 

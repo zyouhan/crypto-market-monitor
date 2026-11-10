@@ -24,6 +24,10 @@ interface SignalConditionSnapshot {
   interval?: string;
   summary?: string;
   statusText?: string;
+  display?: Array<{
+    label?: string;
+    value?: string;
+  }>;
 }
 
 export function isServerchanConfigured(): boolean {
@@ -119,6 +123,15 @@ export function buildMonitorMessage(
         })
       : ["--"];
 
+  const stopReference = conditions
+    .flatMap((condition) => condition.display ?? [])
+    .find(
+      (item) =>
+        item.label === "J钝化止损" &&
+        item.value &&
+        item.value !== "--"
+    );
+
   const description = [
     `交易标的：${signal.symbol}`,
     `入场周期：${signal.interval ?? monitor.interval}`,
@@ -127,6 +140,9 @@ export function buildMonitorMessage(
     `触发价格：${formatNumber(signal.price)}`,
     `触发时间：${formatTime(signal.event_time)}`,
     `数据源：${signal.source ?? monitor.source ?? "--"}`,
+    ...(stopReference
+      ? [`止损参考：${stopReference.value}`]
+      : []),
     ...conditionLines
   ].join("\n\n");
 

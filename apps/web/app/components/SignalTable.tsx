@@ -32,6 +32,10 @@ function conditionLabel(kind: string | null): string {
     return "到达价位";
   }
 
+  if (kind === "MACD_DEA_TURN") {
+    return "MACD DEA";
+  }
+
   if (kind === "KDJ_TIMING") {
     return "KDJ 极值（旧）";
   }
@@ -57,6 +61,13 @@ function triggerDetail(signal: MonitorSignalItem): string {
     signal.threshold === null
       ? "--"
       : formatPrice(signal.threshold);
+  const stop = trigger?.display?.find(
+    (item) => item.label === "J钝化止损"
+  );
+  const stopSuffix =
+    stop && stop.value !== "--"
+      ? ` · 止损 ${stop.value}`
+      : "";
 
   if (
     signal.primary_condition === "KDJ_EXTREME" ||
@@ -64,11 +75,11 @@ function triggerDetail(signal: MonitorSignalItem): string {
     signal.primary_condition === "KDJ_TIMING"
   ) {
     if (signal.event_type === "ENTRY_LONG") {
-      return `超卖 J<${threshold} 做多`;
+      return `超卖 J<${threshold} 做多${stopSuffix}`;
     }
 
     if (signal.event_type === "ENTRY_SHORT") {
-      return `超买 J>${threshold} 做空`;
+      return `超买 J>${threshold} 做空${stopSuffix}`;
     }
   }
 
@@ -91,6 +102,12 @@ function triggerDetail(signal: MonitorSignalItem): string {
 
   if (signal.event_type === "PRICE_LEVEL") {
     return `到价 · ${trigger?.summary ?? "价位"}`;
+  }
+
+  if (signal.event_type === "MACD_DEA_TURN") {
+    return `${
+      signal.direction === "BULL" ? "DEA 向上拐头" : "DEA 向下拐头"
+    } · ${trigger?.summary ?? "MACD"}`;
   }
 
   return trigger?.summary ?? eventTypeLabel(signal.event_type);
@@ -267,6 +284,7 @@ export function SignalTable({
           <option value="ENTRY_SHORT">做空入场</option>
           <option value="VOLUME_SPIKE">成交量放量</option>
           <option value="PRICE_LEVEL">到达价位</option>
+          <option value="MACD_DEA_TURN">MACD DEA 拐头</option>
           <option value="TREND_INVALIDATED">等待失效</option>
         </select>
       </div>

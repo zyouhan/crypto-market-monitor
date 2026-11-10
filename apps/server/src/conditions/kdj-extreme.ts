@@ -3,7 +3,7 @@ import type {
   SignalDirection
 } from "../db/types";
 import { calculateKDJ } from "../indicators/kdj";
-import type { KdjPoint } from "../indicators/types";
+import type { Kline, KdjPoint } from "../indicators/types";
 import {
   DEFAULT_KDJ_PARAMS,
   normalizeKdjParams,
@@ -73,9 +73,68 @@ function statusText(
   return "未启用方向";
 }
 
+interface StopInfo {
+  j: number;
+  price: number;
+}
+
+function buildStopMaps(
+  klines: Kline[],
+  points: KdjPoint[],
+  params: KdjEntryParams
+): {
+  long: Map<number, StopInfo>;
+  short: Map<number, StopInfo>;
+} {
+  const long = new Map<number, StopInfo>();
+  const short = new Map<number, StopInfo>();
+  let longStop: StopInfo | null = null;
+  let shortStop: StopInfo | null = null;
+
+  for (let index = 0; index < points.length; index++) {
+    const point = points[index];
+    const kline = klines[index];
+
+    if (!kline || point.j === null) {
+      longStop = null;
+      shortStop = null;
+      continue;
+    }
+
+    if (
+      params.longEnabled &&
+      point.j < params.oversold
+    ) {
+      if (!longStop || point.j < longStop.j) {
+        longStop = { j: point.j, price: kline.low };
+      }
+
+      long.set(point.time, longStop);
+    } else {
+      longStop = null;
+    }
+
+    if (
+      params.shortEnabled &&
+      point.j > params.overbought
+    ) {
+      if (!shortStop || point.j > shortStop.j) {
+        shortStop = { j: point.j, price: kline.high };
+      }
+
+      short.set(point.time, shortStop);
+    } else {
+      shortStop = null;
+    }
+  }
+
+  return { long, short };
+}
+
 function display(
   point: KdjPoint | null,
-  params: KdjEntryParams
+  params: KdjEntryParams,
+  stop: StopInfo | null
 ): ConditionDisplayItem[] {
   const isOversold =
     point?.j !== null &&
@@ -106,6 +165,15 @@ function display(
     {
       label: "阈值",
       value: `J<${params.oversold} 做多 · J>${params.overbought} 做空`
+    },
+    {
+      label: "J钝化止损",
+      value: stop
+        ? `${stop.price.toLocaleString("en-US", {
+            maximumFractionDigits: 8
+          })}（J=${stop.j.toFixed(2)}）`
+        : "--",
+      tone: stop ? "warn" : "neutral"
     }
   ];
 }
@@ -113,7 +181,8 @@ function display(
 function pointFrom(
   point: KdjPoint,
   params: KdjEntryParams,
-  previousJ: number | null
+  previousJ: number | null,
+  stop: StopInfo | null
 ): ConditionPoint {
   const currentJ = point.j;
 
@@ -159,15 +228,18 @@ function pointFrom(
       previousJ,
       k: point.k,
       d: point.d,
-      j: point.j
+      j: point.j,
+      stopPrice: stop?.price ?? null,
+      stopJ: stop?.j ?? null
     },
-    display: display(point, params)
+    display: display(point, params, stop)
   };
 }
 
 function latestConditionPoint(
   point: KdjPoint | null,
-  params: KdjEntryParams
+  params: KdjEntryParams,
+  stop: StopInfo | null
 ): ConditionPoint | null {
   if (!point) {
     return null;
@@ -189,9 +261,11 @@ function latestConditionPoint(
       overbought: params.overbought,
       k: point.k,
       d: point.d,
-      j: point.j
+      j: point.j,
+      stopPrice: stop?.price ?? null,
+      stopJ: stop?.j ?? null
     },
-    display: display(point, params)
+    display: display(point, params, stop)
   };
 }
 
@@ -200,8 +274,22 @@ function runKdjCondition(
 ): ConditionRunResult {
   const params = input.params as unknown as KdjEntryParams;
   const points = calculateKDJ(input.klines, params);
+  const stopMaps = buildStopMaps(
+    input.klines,
+    points,
+    params
+  );
   const last = latestPoint(points);
-  const latest = latestConditionPoint(last, params);
+  const lastStop = last
+    ? stopMaps.long.get(last.time) ??
+      stopMaps.short.get(last.time) ??
+      null
+    : null;
+  const latest = latestConditionPoint(
+    last,
+    params,
+    lastStop
+  );
 
   if (input.warmup) {
     return {
@@ -249,9 +337,14 @@ function runKdjCondition(
       continue;
     }
 
+    const stop =
+      stopMaps.long.get(point.time) ??
+      stopMaps.short.get(point.time) ??
+      null;
+
     resultPoints.set(
       kline.closeTime,
-      pointFrom(point, params, previousJ)
+      pointFrom(point, params, previousJ, stop)
     );
 
     previousJ = point.j;
