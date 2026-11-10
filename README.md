@@ -144,6 +144,8 @@ KDJ 入场信号会创建 `stop_watches` 止损观察：
 
 监控项展开详情中提供「标记已平仓」，会取消该监控项所有活动中的止损观察，避免人工平仓后继续收到旧仓位的止损提醒。
 
+同时提供「记录正T」「记录反T」按钮，将人工 T 操作写入 `trade_actions`。当前仅记录操作，不自动判断 T 点。
+
 未来新增其他指标时，只需增加条件定义和字段元数据，前端条件编辑器会自动渲染。
 
 ## API
@@ -191,8 +193,10 @@ PROXY_URL=
 
 ## 数据库迁移
 
-当前 `PRAGMA user_version = 5`。
+当前 `PRAGMA user_version = 7`。
 
+- v6 增加 `stop_watches` 止损观察；
+- v7 增加 `trade_actions` 人工 T/清仓记录；
 - v4 → v5 前会自动备份到 `data/archive/v4-<时间戳>/`；
 - 旧的 `symbols` / `strategies` / `strategy_states` / `signals_v4` 保留用于回滚；
 - 旧策略迁移规则：

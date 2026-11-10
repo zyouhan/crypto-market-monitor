@@ -28,6 +28,10 @@ interface MonitorRowProps {
   onDelete: (item: MonitorItem) => void;
   onRefresh: (item: MonitorItem) => void;
   onClosePosition: (item: MonitorItem) => void;
+  onTradeAction: (
+    item: MonitorItem,
+    action: "T_LONG" | "T_SHORT"
+  ) => void;
 }
 
 interface Tag {
@@ -140,7 +144,8 @@ export function MonitorRow({
   onEdit,
   onDelete,
   onRefresh,
-  onClosePosition
+  onClosePosition,
+  onTradeAction
 }: MonitorRowProps) {
   const [expanded, setExpanded] = useState(false);
   const tags = statusTags(item, latestSignal);
@@ -315,11 +320,50 @@ export function MonitorRow({
             <button
               type="button"
               className="button small"
+              onClick={() => onTradeAction(item, "T_LONG")}
+            >
+              记录正T
+            </button>
+
+            <button
+              type="button"
+              className="button small"
+              onClick={() => onTradeAction(item, "T_SHORT")}
+            >
+              记录反T
+            </button>
+
+            <button
+              type="button"
+              className="button small"
               onClick={() => onClosePosition(item)}
             >
               标记已平仓
             </button>
           </div>
+
+          {(item.trade_actions?.length ?? 0) > 0 && (
+            <div className="trade-action-history">
+              <span className="detail-label">最近 T / 平仓记录</span>
+
+              {item.trade_actions?.map((action) => (
+                <div
+                  className="trade-action-row"
+                  key={action.id}
+                >
+                  <strong>
+                    {action.action === "T_LONG"
+                      ? "正T"
+                      : action.action === "T_SHORT"
+                        ? "反T"
+                        : "清仓"}
+                  </strong>
+                  <span>{formatPrice(action.price)}</span>
+                  <span>{formatTime(action.created_at)}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="detail-condition-grid">
             {item.conditions.map((condition) => (

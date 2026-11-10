@@ -26,6 +26,21 @@ export interface StopWatchRecord {
   hit_signal_id: number | null;
 }
 
+export type TradeActionKind =
+  | "T_LONG"
+  | "T_SHORT"
+  | "CLOSE";
+
+export interface TradeActionRecord {
+  id: number;
+  monitor_id: number | null;
+  signal_id: number | null;
+  action: TradeActionKind;
+  price: number;
+  note: string | null;
+  created_at: number;
+}
+
 export function getMonitors(): MonitorRecord[] {
   return db.prepare(`
     SELECT *
@@ -458,6 +473,47 @@ export function cancelStopWatchesForMonitor(
     SET status = 'CANCELLED'
     WHERE monitor_id = ? AND status = 'ACTIVE'
   `).run(monitorId);
+}
+
+export function insertTradeAction(input: {
+  monitorId: number;
+  signalId: number | null;
+  action: TradeActionKind;
+  price: number;
+  note?: string | null;
+}): number {
+  const result = db.prepare(`
+    INSERT INTO trade_actions (
+      monitor_id,
+      signal_id,
+      action,
+      price,
+      note,
+      created_at
+    ) VALUES (?, ?, ?, ?, ?, ?)
+  `).run(
+    input.monitorId,
+    input.signalId,
+    input.action,
+    input.price,
+    input.note ?? null,
+    Date.now()
+  );
+
+  return Number(result.lastInsertRowid);
+}
+
+export function getRecentTradeActions(
+  monitorId: number,
+  limit = 20
+): TradeActionRecord[] {
+  return db.prepare(`
+    SELECT *
+    FROM trade_actions
+    WHERE monitor_id = ?
+    ORDER BY created_at DESC, id DESC
+    LIMIT ?
+  `).all(monitorId, limit) as TradeActionRecord[];
 }
 
 export function getSignalById(

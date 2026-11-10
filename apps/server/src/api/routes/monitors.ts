@@ -17,10 +17,13 @@ import {
   getMonitorById,
   getMonitorConditions,
   getMonitors,
+  getRecentTradeActions,
   insertCondition,
   insertMonitor,
+  insertTradeAction,
   resetMonitorState,
-  updateMonitorFields
+  updateMonitorFields,
+  type TradeActionKind
 } from "../../db/monitor-repo";
 import { getConditionDefinition, isConditionKind } from "../../conditions/registry";
 import {
@@ -175,6 +178,7 @@ function buildMonitorView(monitor: MonitorRecord) {
     conditions: getMonitorConditions(monitor.id).map((condition) =>
       buildConditionView(condition, monitor, snapshot)
     ),
+    trade_actions: getRecentTradeActions(monitor.id, 5),
     last_signal: lastSignal
       ? {
           ...lastSignal,
@@ -534,6 +538,73 @@ monitorsRouter.patch("/:id", (req, res) => {
       failure(error instanceof Error ? error.message : "更新失败")
     );
   }
+});
+
+monitorsRouter.post("/:id/trade-actions", (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!isPositiveInteger(id)) {
+    res.status(400).json(failure("监控项 ID 不正确"));
+    return;
+  }
+
+  const monitor = getMonitorById(id);
+
+  if (!monitor) {
+    res.status(404).json(failure("监控项不存在"));
+    return;
+  }
+
+  const body = req.body ?? {};
+  const action = body.action;
+  const allowed: TradeActionKind[] = [
+    "T_LONG",
+    "T_SHORT",
+    "CLOSE"
+  ];
+
+  if (!allowed.includes(action)) {
+    res.status(400).json(failure("不支持的交易动作"));
+    return;
+  }
+
+  const rawPrice = Number(body.price ?? monitor.last_price);
+  const price = Number.isFinite(rawPrice) ? rawPrice : 0;
+
+  if (price <= 0) {
+    res.status(400).json(failure("缺少有效的成交价格"));
+    return;
+  }
+
+  const lastSignal = getLastSignalByMonitor(id);
+  const actionId = insertTradeAction({
+    monitorId: id,
+    signalId: lastSignal?.id ?? null,
+    action,
+    price,
+    note:
+      typeof body.note === "string"
+        ? body.note.trim().slice(0, 300)
+        : null
+  });
+
+  if (action === "CLOSE") {
+    cancelStopWatchesForMonitor(id);
+  }
+
+  res.status(201).json(
+    success(
+      {
+        id: actionId,
+        monitor_id: id,
+        action,
+        price
+      },
+      action === "CLOSE"
+        ? "已记录清仓并取消活动止损观察"
+        : "已记录 T 操作"
+    )
+  );
 });
 
 monitorsRouter.post("/:id/close-position", (req, res) => {

@@ -438,6 +438,33 @@ export default function HomePage() {
     }
   }
 
+  async function recordTradeAction(
+    item: MonitorItem,
+    action: "T_LONG" | "T_SHORT"
+  ) {
+    const label = action === "T_LONG" ? "正T" : "反T";
+
+    if (
+      !window.confirm(
+        `确定记录「${item.name}」的${label}操作吗？`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await api(`/api/monitors/${item.id}/trade-actions`, {
+        method: "POST",
+        body: JSON.stringify({ action })
+      });
+
+      await loadDashboard();
+      setMessage(`已记录「${item.name}」的${label}`);
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
   async function closePosition(item: MonitorItem) {
     if (
       !window.confirm(
@@ -700,6 +727,9 @@ export default function HomePage() {
         onDelete={(item) => void deleteMonitor(item)}
         onRefresh={(item) => void refreshMonitor(item)}
         onClosePosition={(item) => void closePosition(item)}
+        onTradeAction={(item, action) =>
+          void recordTradeAction(item, action)
+        }
       />
 
       <NotificationSettings

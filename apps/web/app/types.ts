@@ -199,6 +199,16 @@ export interface MonitorSignalItem {
   created_at: number;
 }
 
+export interface TradeActionItem {
+  id: number;
+  monitor_id: number | null;
+  signal_id: number | null;
+  action: "T_LONG" | "T_SHORT" | "CLOSE";
+  price: number;
+  note: string | null;
+  created_at: number;
+}
+
 export interface MonitorItem {
   id: number;
   name: string;
@@ -223,6 +233,7 @@ export interface MonitorItem {
   } | null;
   pending: boolean;
   conditions: MonitorConditionView[];
+  trade_actions?: TradeActionItem[];
   last_signal: MonitorSignalItem | null;
   created_at: number;
   updated_at: number;

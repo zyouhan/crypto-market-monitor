@@ -18,6 +18,10 @@ interface MonitorListProps {
   onDelete: (item: MonitorItem) => void;
   onRefresh: (item: MonitorItem) => void;
   onClosePosition: (item: MonitorItem) => void;
+  onTradeAction: (
+    item: MonitorItem,
+    action: "T_LONG" | "T_SHORT"
+  ) => void;
 }
 
 export function MonitorList({
@@ -27,7 +31,8 @@ export function MonitorList({
   onEdit,
   onDelete,
   onRefresh,
-  onClosePosition
+  onClosePosition,
+  onTradeAction
 }: MonitorListProps) {
   return (
     <section className="panel monitor-panel">
@@ -58,6 +63,7 @@ export function MonitorList({
                 onDelete={onDelete}
                 onRefresh={onRefresh}
                 onClosePosition={onClosePosition}
+                onTradeAction={onTradeAction}
               />
             ))}
           </div>
