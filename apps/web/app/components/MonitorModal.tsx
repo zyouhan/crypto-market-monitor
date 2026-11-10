@@ -239,11 +239,6 @@ export function MonitorModal({
           ? [normalizedSymbol]
           : [];
 
-    if (batch.length > 0 && !presetId) {
-      setLocalError("批量创建请先选择一个预设");
-      return;
-    }
-
     if (batch.length > 20) {
       setLocalError("批量标的不能超过 20 个");
       return;
@@ -280,7 +275,7 @@ export function MonitorModal({
             : `${targetSymbol} ${
                 name.trim() ||
                 presetName ||
-                "预设监控"
+                "自定义监控"
               }`,
         symbol: targetSymbol,
         interval: baseInterval,
