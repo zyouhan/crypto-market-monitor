@@ -7,6 +7,11 @@ import {
   createDefaultCondition,
   type ConditionDraft
 } from "./ConditionEditor";
+import {
+  MONITOR_PRESETS,
+  buildPresetConditions,
+  type MonitorPreset
+} from "../lib/monitor-presets";
 import type {
   ConditionCatalogItem,
   ConditionKind,
@@ -39,7 +44,7 @@ interface MonitorModalProps {
   loading: boolean;
   error: string;
   onClose: () => void;
-  onSave: (payload: SaveMonitorPayload) => Promise<void>;
+  onSave: (payloads: SaveMonitorPayload[]) => Promise<void>;
 }
 
 function intervalIndex(interval: string): number {
@@ -124,6 +129,16 @@ export function MonitorModal({
     catalog[0]?.kind ?? "KDJ_EXTREME"
   );
   const [localError, setLocalError] = useState("");
+  const [selectedPresetId, setSelectedPresetId] = useState<
+    string | null
+  >(null);
+  const [presetId, setPresetId] = useState<string | null>(
+    null
+  );
+  const [presetName, setPresetName] = useState<string | null>(
+    null
+  );
+  const [batchSymbols, setBatchSymbols] = useState("");
 
   const isEditing = item !== null;
   const baseInterval = baseIntervalFor(
@@ -131,10 +146,17 @@ export function MonitorModal({
     initialInterval
   );
 
+  function detachPreset(): void {
+    setSelectedPresetId(null);
+    setPresetId(null);
+    setPresetName(null);
+  }
+
   function updateCondition(
     index: number,
     next: ConditionDraft
   ): void {
+    detachPreset();
     setConditions((current) =>
       current.map((condition, currentIndex) =>
         currentIndex === index ? next : condition
@@ -143,6 +165,7 @@ export function MonitorModal({
   }
 
   function removeCondition(index: number): void {
+    detachPreset();
     setConditions((current) =>
       current.filter((_, currentIndex) => currentIndex !== index)
     );
@@ -157,10 +180,36 @@ export function MonitorModal({
       return;
     }
 
+    detachPreset();
     setConditions((current) => [
       ...current,
       createDefaultCondition(definition, baseInterval, role)
     ]);
+  }
+
+  function applyPreset(preset: MonitorPreset): void {
+    const next = buildPresetConditions(preset, catalog);
+
+    if (!next) {
+      setLocalError("当前条件目录缺少该预设所需条件");
+      return;
+    }
+
+    setConditions(next);
+    setSelectedPresetId(preset.id);
+    setPresetId(preset.id);
+    setPresetName(preset.defaultName);
+    setLocalError("");
+
+    if (
+      !name.trim() ||
+      MONITOR_PRESETS.some(
+        (candidate) =>
+          candidate.defaultName === name.trim()
+      )
+    ) {
+      setName(preset.defaultName);
+    }
   }
 
   async function handleSubmit(
@@ -170,9 +219,38 @@ export function MonitorModal({
     setLocalError("");
 
     const normalizedSymbol = symbol.trim().toUpperCase();
+    const batch = Array.from(
+      new Set(
+        batchSymbols
+          .split(/[\s,，]+/)
+          .map((value) => value.trim().toUpperCase())
+          .filter(Boolean)
+      )
+    );
+    const symbols =
+      batch.length > 0
+        ? batch
+        : normalizedSymbol
+          ? [normalizedSymbol]
+          : [];
 
-    if (!normalizedSymbol) {
+    if (batch.length > 0 && !presetId) {
+      setLocalError("批量创建请先选择一个预设");
+      return;
+    }
+
+    if (batch.length > 20) {
+      setLocalError("批量标的不能超过 20 个");
+      return;
+    }
+
+    if (symbols.length === 0) {
       setLocalError("请输入交易标的");
+      return;
+    }
+
+    if (isEditing && symbols.length > 1) {
+      setLocalError("编辑模式只能保存一个标的");
       return;
     }
 
@@ -188,25 +266,35 @@ export function MonitorModal({
       return;
     }
 
-    const payload: SaveMonitorPayload = {
-      name:
-        name.trim() ||
-        `${normalizedSymbol} ${baseInterval} 监控`,
-      symbol: normalizedSymbol,
-      interval: baseInterval,
-      enabled,
-      wechat_enabled: wechatEnabled,
-      sound_enabled: soundEnabled,
-      conditions: conditions.map((condition) => ({
-        kind: condition.kind,
-        role: condition.role,
-        interval: condition.interval,
-        params: condition.params
-      }))
-    };
+    const payloads: SaveMonitorPayload[] = symbols.map(
+      (targetSymbol) => ({
+        name:
+          symbols.length === 1
+            ? name.trim() ||
+              `${targetSymbol} ${baseInterval} 监控`
+            : `${targetSymbol} ${
+                name.trim() ||
+                presetName ||
+                "预设监控"
+              }`,
+        symbol: targetSymbol,
+        interval: baseInterval,
+        enabled,
+        wechat_enabled: wechatEnabled,
+        sound_enabled: soundEnabled,
+        preset_id: presetId,
+        preset_name: presetName,
+        conditions: conditions.map((condition) => ({
+          kind: condition.kind,
+          role: condition.role,
+          interval: condition.interval,
+          params: condition.params
+        }))
+      })
+    );
 
     try {
-      await onSave(payload);
+      await onSave(payloads);
     } catch {
       // 页面统一展示错误
     }
@@ -264,6 +352,82 @@ export function MonitorModal({
           </div>
         )}
 
+        {!isEditing && (
+          <section className="preset-picker">
+            <div className="preset-heading">
+              <div>
+                <div className="preset-title">快速预设</div>
+                <div className="preset-subtitle">
+                  选择一套入场条件，可一次创建多个标的
+                </div>
+              </div>
+            </div>
+
+            <div className="preset-grid">
+              {MONITOR_PRESETS.map((preset) => {
+                const available =
+                  buildPresetConditions(preset, catalog) !== null;
+
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    className={`preset-card ${
+                      selectedPresetId === preset.id
+                        ? "active"
+                        : ""
+                    }`}
+                    disabled={!available}
+                    onClick={() => applyPreset(preset)}
+                  >
+                    <span
+                      className={`preset-side ${
+                        preset.direction === "long"
+                          ? "bull"
+                          : "bear"
+                      }`}
+                    >
+                      {preset.direction === "long"
+                        ? "做多"
+                        : "做空"}
+                    </span>
+                    <strong>{preset.title}</strong>
+                    <span>{preset.description}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="form-field">
+              <label>批量标的（可选）</label>
+              <textarea
+                rows={2}
+                value={batchSymbols}
+                placeholder="BTCUSDT, ETHUSDT；留空则使用上方交易标的"
+                onChange={(event) => {
+                  const value = event.target.value;
+                  const count = new Set(
+                    value
+                      .split(/[\s,，]+/)
+                      .map((item) => item.trim().toUpperCase())
+                      .filter(Boolean)
+                  ).size;
+
+                  setBatchSymbols(value);
+
+                  if (count > 1) {
+                    setWechatEnabled(false);
+                    setSoundEnabled(false);
+                  }
+                }}
+              />
+              <div className="field-help">
+                逗号或换行分隔，最多 20 个；多个标的默认关闭微信和声音，可手动开启。
+              </div>
+            </div>
+          </section>
+        )}
+
         <section className="form-section">
           <div className="section-heading">
             <span className="section-number">1</span>
@@ -286,12 +450,18 @@ export function MonitorModal({
               <label>交易标的</label>
               <input
                 value={symbol}
-                disabled={isEditing}
-                placeholder="例如 BTCUSDT"
+                disabled={
+                  isEditing || Boolean(batchSymbols.trim())
+                }
+                placeholder={
+                  batchSymbols.trim()
+                    ? "已在批量标的中指定"
+                    : "例如 BTCUSDT"
+                }
                 onChange={(event) =>
                   setSymbol(event.target.value.toUpperCase())
                 }
-                required
+                required={!batchSymbols.trim()}
               />
             </div>
 

@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 
 /**
  * v5 表结构。
@@ -18,6 +18,8 @@ const V5_SCHEMA_SQL = `
     name TEXT NOT NULL,
     symbol TEXT NOT NULL,
     interval TEXT NOT NULL,
+    preset_id TEXT,
+    preset_name TEXT,
 
     enabled INTEGER NOT NULL DEFAULT 1,
     wechat_enabled INTEGER NOT NULL DEFAULT 1,
@@ -78,6 +80,8 @@ const V5_SCHEMA_SQL = `
 
     monitor_id INTEGER,
     monitor_name TEXT,
+    preset_id TEXT,
+    preset_name TEXT,
 
     symbol TEXT NOT NULL,
     interval TEXT,

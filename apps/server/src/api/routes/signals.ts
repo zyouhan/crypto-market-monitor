@@ -28,10 +28,47 @@ signalsRouter.get("/stats", (_req, res) => {
     WHERE trigger_met = 1
   `).get() as { count: number };
 
+  const presetRows = db.prepare(`
+    SELECT
+      COALESCE(preset_id, 'custom') AS preset_id,
+      COALESCE(preset_name, '自定义/历史') AS preset_name,
+      COUNT(1) AS total,
+      SUM(CASE WHEN event_time >= ? THEN 1 ELSE 0 END) AS today,
+      MAX(event_time) AS last_event_time
+    FROM signals
+    WHERE trigger_met = 1
+      AND event_type IN ('ENTRY_LONG', 'ENTRY_SHORT')
+    GROUP BY preset_id, preset_name
+  `).all(startOfToday) as Array<{
+    preset_id: string;
+    preset_name: string;
+    total: number;
+    today: number;
+    last_event_time: number | null;
+  }>;
+
+  const monitorRows = db.prepare(`
+    SELECT
+      COALESCE(preset_id, 'custom') AS preset_id,
+      COUNT(1) AS count
+    FROM monitors
+    GROUP BY preset_id
+  `).all() as Array<{
+    preset_id: string;
+    count: number;
+  }>;
+  const monitorCounts = new Map(
+    monitorRows.map((row) => [row.preset_id, row.count])
+  );
+
   res.json(
     success({
       today: today.count,
-      total: total.count
+      total: total.count,
+      by_preset: presetRows.map((row) => ({
+        ...row,
+        monitors: monitorCounts.get(row.preset_id) ?? 0
+      }))
     })
   );
 });

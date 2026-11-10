@@ -89,6 +89,8 @@ signals              信号：监控项、条件快照、周期、方向、通�
 
 `reversal` 更偏向拐点入场，`cross` 是原来的进入极值触发。
 
+> TradingView 没有内置 KDJ，只有 Stochastic；需要社区 Pine 脚本，或用 `J = 3K - 2D` 自行计算。
+
 ### `VOLUME_SPIKE`
 
 - 参数：`lookback`（默认 5）、`multiplier`（默认 3）；
@@ -169,6 +171,7 @@ KDJ 入场信号会创建 `stop_watches` 止损观察：
 | DELETE | `/api/monitors/:id` | 删除监控项，历史信号保留 |
 | POST | `/api/monitors/:id/refresh` | 单项立即请求，返回 pending |
 | GET | `/api/signals` | 信号记录，支持 `symbol/interval/monitor_id/event_type/triggered/limit/offset` |
+| GET | `/api/signals/stats` | 今日/累计信号，以及按预设分组的入场统计 |
 | GET/PUT | `/api/settings` | 全局监控开关、全局微信通知开关 |
 
 ## 通知与控制
@@ -199,12 +202,13 @@ PROXY_URL=
 
 ## 数据库迁移
 
-当前 `PRAGMA user_version = 9`。
+当前 `PRAGMA user_version = 10`。
 
 - v6 增加 `stop_watches` 止损观察；
 - v7 增加 `trade_actions` 人工 T/清仓记录；
 - v8 增加止损观察的 MFE / MAE 进度；
 - v9 增加 1R / 回到入场价提醒标记；
+- v10 增加监控项和信号的 `preset_id` / `preset_name`；
 - v4 → v5 前会自动备份到 `data/archive/v4-<时间戳>/`；
 - 旧的 `symbols` / `strategies` / `strategy_states` / `signals_v4` 保留用于回滚；
 - 旧策略迁移规则：
@@ -224,6 +228,19 @@ npm run build
 ```
 
 登录后访问 <http://localhost:3000>。
+
+## 监控预设
+
+新建监控项提供 4 个入场预设：
+
+- 多头拐点：5m KDJ J<15 拐头 + 15m DEA 向上；
+- 空头拐点：5m KDJ J>85 + 15m DEA 向下；
+- 多头严格：额外要求 15m EMA 价格位置和 ADX 多头趋势；
+- 空头严格：额外要求 15m EMA 价格位置和 ADX 空头趋势。
+
+预设支持批量标的：逗号或换行分隔，最多 20 个。多个标的默认关闭微信和声音，避免统计样本消耗 Server酱额度。
+
+监控项和信号会记录 `preset_id` / `preset_name`，首页可按预设统计入场信号数量。
 
 ## 部署
 

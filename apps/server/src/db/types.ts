@@ -26,6 +26,8 @@ export interface MonitorRecord {
   name: string;
   symbol: string;
   interval: string;
+  preset_id: string | null;
+  preset_name: string | null;
   enabled: number;
   wechat_enabled: number;
   sound_enabled: number;
@@ -79,6 +81,8 @@ export interface MonitorSignalRecord {
   id: number;
   monitor_id: number | null;
   monitor_name: string | null;
+  preset_id: string | null;
+  preset_name: string | null;
   symbol: string;
   interval: string | null;
   kind: string;
@@ -103,6 +107,8 @@ export interface MonitorSignalRecord {
 export interface NewMonitorSignalRecord {
   monitor_id: number | null;
   monitor_name: string | null;
+  preset_id: string | null;
+  preset_name: string | null;
   symbol: string;
   interval: string;
   kind: string;

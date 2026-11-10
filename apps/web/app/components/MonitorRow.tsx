@@ -172,6 +172,11 @@ export function MonitorRow({
           <div className="monitor-meta-line">
             <span>{item.symbol}</span>
             <span>{item.interval}</span>
+            {item.preset_name && (
+              <span className="preset-badge">
+                预设 · {item.preset_name}
+              </span>
+            )}
             {item.source && (
               <span className="source-badge">
                 {item.source === "MIXED"

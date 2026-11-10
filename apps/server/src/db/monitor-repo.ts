@@ -101,6 +101,8 @@ export function insertMonitor(input: {
   enabled: number;
   wechatEnabled: number;
   soundEnabled: number;
+  presetId?: string | null;
+  presetName?: string | null;
 }): number {
   const now = Date.now();
 
@@ -109,16 +111,20 @@ export function insertMonitor(input: {
       name,
       symbol,
       interval,
+      preset_id,
+      preset_name,
       enabled,
       wechat_enabled,
       sound_enabled,
       created_at,
       updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     input.name,
     input.symbol,
     input.interval,
+    input.presetId ?? null,
+    input.presetName ?? null,
     input.enabled,
     input.wechatEnabled,
     input.soundEnabled,
@@ -357,6 +363,8 @@ export function insertSignalIgnore(
     INSERT OR IGNORE INTO signals (
       monitor_id,
       monitor_name,
+      preset_id,
+      preset_name,
       symbol,
       interval,
       kind,
@@ -375,10 +383,12 @@ export function insertSignalIgnore(
       reason,
       payload,
       created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     input.monitor_id,
     input.monitor_name,
+    input.preset_id,
+    input.preset_name,
     input.symbol,
     input.interval,
     input.kind,

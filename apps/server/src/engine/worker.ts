@@ -226,6 +226,8 @@ function toSignalRecord(
   return {
     monitor_id: monitor.id,
     monitor_name: monitor.name,
+    preset_id: monitor.preset_id ?? null,
+    preset_name: monitor.preset_name ?? null,
     symbol: monitor.symbol,
     interval: monitor.interval,
     kind: "MONITOR",
@@ -344,6 +346,8 @@ function stopHitRecord(
   return {
     monitor_id: monitor.id,
     monitor_name: monitor.name,
+    preset_id: monitor.preset_id ?? null,
+    preset_name: monitor.preset_name ?? null,
     symbol: monitor.symbol,
     interval: monitor.interval,
     kind: "RISK",
@@ -383,6 +387,8 @@ function managementSignalRecord(
   return {
     monitor_id: monitor.id,
     monitor_name: monitor.name,
+    preset_id: monitor.preset_id ?? null,
+    preset_name: monitor.preset_name ?? null,
     symbol: monitor.symbol,
     interval: monitor.interval,
     kind: "MANAGEMENT",

@@ -491,6 +491,28 @@ export function ensureStopWatchProgressColumns(
   }
 }
 
+export function ensurePresetColumns(
+  database: Database.Database
+): void {
+  const targets = [
+    ["monitors", "preset_id", "TEXT"],
+    ["monitors", "preset_name", "TEXT"],
+    ["signals", "preset_id", "TEXT"],
+    ["signals", "preset_name", "TEXT"]
+  ] as const;
+
+  for (const [table, column, definition] of targets) {
+    if (
+      tableExists(database, table) &&
+      !hasColumn(database, table, column)
+    ) {
+      database.exec(
+        `ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`
+      );
+    }
+  }
+}
+
 export function migrateToV5(
   database: Database.Database,
   dbFile: string,

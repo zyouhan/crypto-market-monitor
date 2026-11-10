@@ -329,6 +329,15 @@ monitorsRouter.post("/", (req, res) => {
       true,
       "声音提醒开关"
     );
+    const presetId =
+      typeof body.preset_id === "string" && body.preset_id.trim()
+        ? body.preset_id.trim().slice(0, 64)
+        : null;
+    const presetName =
+      typeof body.preset_name === "string" &&
+      body.preset_name.trim()
+        ? body.preset_name.trim().slice(0, 120)
+        : null;
 
     let id = 0;
 
@@ -339,7 +348,9 @@ monitorsRouter.post("/", (req, res) => {
         interval,
         enabled,
         wechatEnabled,
-        soundEnabled
+        soundEnabled,
+        presetId,
+        presetName
       });
       insertConditionRows(id, prepared.conditions);
     });

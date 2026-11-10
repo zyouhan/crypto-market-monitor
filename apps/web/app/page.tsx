@@ -16,7 +16,7 @@ import { SignalTable } from "./components/SignalTable";
 import { SignalToasts } from "./components/SignalToasts";
 import { SoundSettings } from "./components/SoundSettings";
 import { api, errorMessage } from "./lib/api";
-import { isAlertSignal } from "./lib/format";
+import { formatTime, isAlertSignal } from "./lib/format";
 import {
   DEFAULT_SOUND_ALERT_SETTINGS,
   getSoundAlertKind,
@@ -527,31 +527,69 @@ export default function HomePage() {
   }
 
   async function handleSaveMonitor(
-    payload: SaveMonitorPayload
+    payloads: SaveMonitorPayload[]
   ) {
     setLoading(true);
     setError("");
 
     try {
       if (editing) {
+        const payload = payloads[0];
+
+        if (!payload) {
+          throw new Error("缺少监控项数据");
+        }
+
         await api(`/api/monitors/${editing.id}`, {
           method: "PUT",
           body: JSON.stringify(payload)
         });
-      } else {
-        await api("/api/monitors", {
-          method: "POST",
-          body: JSON.stringify(payload)
-        });
+
+        setMessage("监控项更新成功");
+        closeModal();
+        await loadDashboard();
+        return;
+      }
+
+      const failures: string[] = [];
+      let created = 0;
+
+      for (const payload of payloads) {
+        try {
+          await api("/api/monitors", {
+            method: "POST",
+            body: JSON.stringify(payload)
+          });
+          created += 1;
+        } catch (err) {
+          failures.push(
+            `${payload.symbol}: ${errorMessage(err)}`
+          );
+        }
+      }
+
+      if (failures.length > 0) {
+        if (created > 0) {
+          await loadDashboard();
+        }
+
+        setError(
+          `已创建 ${created} 个，失败 ${failures.length} 个：${failures.join(
+            "；"
+          )}`
+        );
+        throw new Error("部分监控项创建失败");
       }
 
       setMessage(
-        editing ? "监控项更新成功" : "监控项创建成功"
+        `已创建 ${payloads.length} 个监控项`
       );
       closeModal();
       await loadDashboard();
     } catch (err) {
-      setError(errorMessage(err));
+      if (!errorMessage(err).includes("部分监控项")) {
+        setError(errorMessage(err));
+      }
       throw err;
     } finally {
       setLoading(false);
@@ -690,6 +728,41 @@ export default function HomePage() {
           <span className="global-paused">全局监控已暂停</span>
         )}
       </div>
+
+      {(stats.by_preset?.filter(
+        (item) => item.monitors > 0 || item.total > 0
+      ).length ?? 0) > 0 && (
+        <section className="preset-stats">
+          <div className="preset-stats-head">
+            <span>预设组合</span>
+            <span>监控项</span>
+            <span>今日入场</span>
+            <span>累计入场</span>
+            <span>最近信号</span>
+          </div>
+
+          {stats.by_preset
+            ?.filter(
+              (item) => item.monitors > 0 || item.total > 0
+            )
+            .map((item) => (
+              <div
+                className="preset-stats-row"
+                key={item.preset_id}
+              >
+                <strong>{item.preset_name}</strong>
+                <span>{item.monitors}</span>
+                <span>{item.today}</span>
+                <span>{item.total}</span>
+                <span>
+                  {item.last_event_time
+                    ? formatTime(item.last_event_time)
+                    : "--"}
+                </span>
+              </div>
+            ))}
+        </section>
+      )}
 
       <nav className="monitor-tabs" aria-label="监控项分类">
         {[
