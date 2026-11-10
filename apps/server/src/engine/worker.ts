@@ -5,6 +5,7 @@ import type {
 } from "../db/types";
 import { db } from "../db";
 import {
+  cancelStopWatchesForDirection,
   createStopWatch,
   getActiveStopWatches,
   getMonitorById,
@@ -645,6 +646,10 @@ async function runMonitor(  monitor: MonitorRecord,
           (draft.eventType === "ENTRY_LONG" ||
             draft.eventType === "ENTRY_SHORT")
         ) {
+          cancelStopWatchesForDirection(
+            monitor.id,
+            draft.direction
+          );
           createStopWatch({
             signalId: inserted,
             monitorId: monitor.id,

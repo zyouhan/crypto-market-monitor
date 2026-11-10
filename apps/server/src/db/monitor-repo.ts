@@ -527,6 +527,20 @@ export function cancelStopWatchesForMonitor(
   `).run(monitorId);
 }
 
+export function cancelStopWatchesForDirection(
+  monitorId: number,
+  direction: SignalDirection
+): void {
+  db.prepare(`
+    UPDATE stop_watches
+    SET status = 'CANCELLED'
+    WHERE
+      monitor_id = ?
+      AND direction = ?
+      AND status = 'ACTIVE'
+  `).run(monitorId, direction);
+}
+
 export function insertTradeAction(input: {
   monitorId: number;
   signalId: number | null;
