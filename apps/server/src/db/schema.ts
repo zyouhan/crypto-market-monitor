@@ -129,9 +129,6 @@ const V5_SCHEMA_SQL = `
   CREATE INDEX IF NOT EXISTS idx_signals_created_at
     ON signals(created_at DESC);
 
-  CREATE INDEX IF NOT EXISTS idx_signals_stats
-    ON signals(track_stats, stats_deleted, event_type, event_time DESC);
-
   CREATE TABLE IF NOT EXISTS stop_watches (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
 

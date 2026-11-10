@@ -544,6 +544,13 @@ export function ensureStatsColumns(
       );
     }
   }
+
+  if (tableExists(database, "signals")) {
+    database.exec(`
+      CREATE INDEX IF NOT EXISTS idx_signals_stats
+        ON signals(track_stats, stats_deleted, event_type, event_time DESC)
+    `);
+  }
 }
 
 export function migrateToV5(
