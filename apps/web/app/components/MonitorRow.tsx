@@ -74,6 +74,27 @@ function statusTags(
 
     if (hit) {
       add("止损已触及", "bear");
+    } else if (
+      latestSignal?.event_type === "ENTRY_LONG" ||
+      latestSignal?.event_type === "ENTRY_SHORT"
+    ) {
+      add(`止损 ${formatPrice(stopPrice)}`, "warn");
+
+      const pnl =
+        latestSignal.direction === "BULL"
+          ? ((item.last_price - latestSignal.price) /
+              latestSignal.price) *
+            100
+          : ((latestSignal.price - item.last_price) /
+              latestSignal.price) *
+            100;
+
+      if (Number.isFinite(pnl)) {
+        add(
+          `${pnl >= 0 ? "浮盈" : "浮亏"} ${Math.abs(pnl).toFixed(2)}%`,
+          pnl >= 0 ? "bull" : "bear"
+        );
+      }
     }
   }
 
