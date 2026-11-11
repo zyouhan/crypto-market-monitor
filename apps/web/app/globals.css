@@ -2598,6 +2598,88 @@ option {
 .strategy-stats-pagination > div {
   display: flex;
   gap: 7px;
+  align-items: center;
+}
+
+.stats-page-input {
+  width: 58px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #0b111a;
+  color: var(--text);
+  padding: 0 6px;
+  font-size: 11px;
+}
+
+.stats-select-cell {
+  width: 28px;
+  text-align: center;
+}
+
+.stats-select-cell input {
+  accent-color: var(--blue);
+  cursor: pointer;
+}
+
+.stats-export-backdrop {
+  z-index: 90;
+}
+
+.stats-export-modal {
+  width: min(680px, 92vw);
+}
+
+.export-section {
+  margin-top: 14px;
+}
+
+.export-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.export-section-head strong,
+.export-section > strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.export-symbol-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #0b111a;
+}
+
+.export-time-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.export-time-grid .form-field {
+  margin-top: 0;
+}
+
+.export-time-grid input {
+  width: 100%;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #0b111a;
+  color: var(--text);
+  padding: 0 7px;
+  font-size: 11px;
 }
 
 .table-empty {

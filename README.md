@@ -182,6 +182,8 @@ KDJ 入场信号会创建 `stop_watches` 止损观察：
 | GET | `/api/signals/stats` | 今日/累计信号，以及按预设分组的策略统计 |
 | GET | `/api/signals/stats/entries` | 策略统计明细，支持 `search/limit/offset`；备注也参与搜索 |
 | GET | `/api/signals/stats/results` | 按标的统计已填写结果的数量和占比 |
+| GET | `/api/signals/stats/export` | 按标的和时间段导出 Excel |
+| POST | `/api/signals/stats/batch-delete` | 批量软删除策略统计记录 |
 | POST | `/api/signals/stats/backfill-trends` | 尝试还原历史信号的大级别趋势 |
 | PATCH | `/api/signals/:id/stats` | 修改统计备注或结果 |
 | DELETE | `/api/signals/:id/stats` | 从策略统计中软删除一条记录 |
@@ -276,6 +278,8 @@ DEA 拐头后的有效期默认 12 根 5m（约 1 小时），可在条件里调
 新建监控项可以选择记录 15m、1h、4h 的 DEA 走势作为参考。参考走势只用于展示和统计记录，不参与过滤或触发。信号产生时会保存当时三个周期的 DEA 方向、拐头、加速、走弱状态；历史信号可在统计页面点击「还原历史趋势」尝试从行情历史补全，无法获取的周期保持为空。
 
 监控列表会显示大级别参考周期标签；信号记录和策略统计使用不同颜色的方向标签与大级别趋势标签，向上/向下、拐头/加速/走弱可直接区分。
+
+策略统计支持页码跳转、当前页批量删除和 Excel 导出。导出可选择全部标的或指定标的，并可按信号发生时间设置起止范围；工作簿包含统计明细、标的统计、结果统计和带数据条的柱状图工作表。
 
 监控项列表支持勾选后批量请求、批量删除，以及批量修改微信通知和声音提醒开关。
 

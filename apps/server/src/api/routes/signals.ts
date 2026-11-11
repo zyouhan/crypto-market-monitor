@@ -7,22 +7,15 @@ import {
   buildReferenceTrends,
   REFERENCE_INTERVALS
 } from "../../monitors/reference-trends";
+import {
+  isStatsResult,
+  STATS_RESULT_VALUES
+} from "../../monitors/stats-results";
+import { buildStatsWorkbook } from "../../monitors/stats-export";
 import { getMarketKlines } from "../../market";
 import { failure, success } from "../middleware";
 
 export const signalsRouter: Router = Router();
-
-const STATS_RESULT_VALUES = [
-  "light_success",
-  "heavy_success",
-  "light_reasonable_stop",
-  "heavy_reasonable_stop",
-  "light_failed",
-  "heavy_failed",
-  "other"
-] as const;
-
-const STATS_RESULTS = new Set(STATS_RESULT_VALUES);
 
 signalsRouter.get("/stats", (_req, res) => {
   const now = new Date();
@@ -304,6 +297,104 @@ signalsRouter.post("/stats/backfill-trends", async (req, res) => {
   );
 });
 
+signalsRouter.get("/stats/export", async (req, res) => {
+  const symbolsRaw = req.query.symbols;
+  const symbols = (
+    Array.isArray(symbolsRaw)
+      ? symbolsRaw
+      : typeof symbolsRaw === "string"
+        ? symbolsRaw.split(",")
+        : []
+  )
+    .map((symbol) => String(symbol).trim().toUpperCase())
+    .filter(Boolean);
+  const from = Number(req.query.from);
+  const to = Number(req.query.to);
+  const hasFrom = Number.isFinite(from) && from > 0;
+  const hasTo = Number.isFinite(to) && to > 0;
+
+  const conditions = [
+    "trigger_met = 1",
+    "track_stats = 1",
+    "stats_deleted = 0",
+    "event_type IN ('ENTRY_LONG', 'ENTRY_SHORT')"
+  ];
+  const params: Array<string | number> = [];
+
+  if (symbols.length > 0) {
+    conditions.push(
+      `symbol IN (${symbols.map(() => "?").join(", ")})`
+    );
+    params.push(...symbols);
+  }
+
+  if (hasFrom) {
+    conditions.push("event_time >= ?");
+    params.push(from);
+  }
+
+  if (hasTo) {
+    conditions.push("event_time <= ?");
+    params.push(to);
+  }
+
+  const rows = db.prepare(`
+    SELECT
+      event_time,
+      symbol,
+      preset_name,
+      monitor_name,
+      direction,
+      price,
+      event_type,
+      stats_result,
+      stats_note,
+      reference_trends
+    FROM signals
+    WHERE ${conditions.join(" AND ")}
+    ORDER BY event_time ASC, id ASC
+    LIMIT 50000
+  `).all(...params) as Array<{
+    event_time: number;
+    symbol: string;
+    preset_name: string | null;
+    monitor_name: string | null;
+    direction: "BULL" | "BEAR" | null;
+    price: number;
+    event_type: string;
+    stats_result: string | null;
+    stats_note: string | null;
+    reference_trends: string | null;
+  }>;
+
+  try {
+    const buffer = await buildStatsWorkbook(rows);
+    const filename = `strategy-stats-${new Date()
+      .toISOString()
+      .slice(0, 16)
+      .replace(/[:T]/g, "-")}.xlsx`;
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${filename}"`
+    );
+    res.setHeader("Content-Length", String(buffer.length));
+    res.send(buffer);
+  } catch (error) {
+    res.status(500).json(
+      failure(
+        error instanceof Error
+          ? `导出失败: ${error.message}`
+          : "导出失败"
+      )
+    );
+  }
+});
+
 signalsRouter.get("/stats/entries", (req, res) => {
   const limit = Math.min(
     Math.max(Number(req.query.limit) || 20, 1),
@@ -396,6 +487,39 @@ signalsRouter.get("/stats/entries", (req, res) => {
   );
 });
 
+signalsRouter.post("/stats/batch-delete", (req, res) => {
+  const ids = Array.isArray(req.body?.ids)
+    ? req.body.ids
+        .map((id: unknown) => Number(id))
+        .filter(
+          (id: number) =>
+            Number.isInteger(id) && id > 0
+        )
+        .slice(0, 200)
+    : [];
+
+  if (ids.length === 0) {
+    res.status(400).json(failure("请选择需要删除的统计记录"));
+    return;
+  }
+
+  const placeholders = ids.map(() => "?").join(", ");
+  const result = db.prepare(`
+    UPDATE signals
+    SET stats_deleted = 1
+    WHERE id IN (${placeholders})
+  `).run(...ids);
+
+  res.json(
+    success(
+      {
+        deleted: result.changes
+      },
+      "已从策略统计中删除"
+    )
+  );
+});
+
 signalsRouter.patch("/:id/stats", (req, res) => {
   const id = Number(req.params.id);
 
@@ -458,7 +582,7 @@ signalsRouter.patch("/:id/stats", (req, res) => {
     if (
       body.result !== null &&
       (typeof body.result !== "string" ||
-        !STATS_RESULTS.has(body.result))
+        !isStatsResult(body.result))
     ) {
       res.status(400).json(failure("统计结果不正确"));
       return;

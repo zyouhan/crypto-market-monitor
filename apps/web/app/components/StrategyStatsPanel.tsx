@@ -13,6 +13,7 @@ import {
 } from "../lib/format";
 import { referenceTagItems } from "../lib/reference-trends";
 import { ReferenceTags } from "./ReferenceTags";
+import { StatsExportModal } from "./StatsExportModal";
 import type {
   SignalStats,
   StatsResult,
@@ -96,11 +97,99 @@ export function StrategyStatsPanel({
   >(null);
   const [backfilling, setBackfilling] = useState(false);
   const [backfillMessage, setBackfillMessage] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(
+    new Set()
+  );
+  const [pageInput, setPageInput] = useState("1");
+  const [exportOpen, setExportOpen] = useState(false);
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const missingReferenceIds = entries
     .filter((entry) => !entry.reference_trends)
     .map((entry) => entry.id);
+  const pageSelectedIds = entries
+    .filter((entry) => selectedIds.has(entry.id))
+    .map((entry) => entry.id);
+  const allPageSelected =
+    entries.length > 0 &&
+    pageSelectedIds.length === entries.length;
+
+  useEffect(() => {
+    setSelectedIds((current) => {
+      const validIds = new Set(
+        entries.map((entry) => entry.id)
+      );
+      const next = new Set(
+        Array.from(current).filter((id) => validIds.has(id))
+      );
+
+      return next.size === current.size
+        ? current
+        : next;
+    });
+  }, [entries]);
+
+  useEffect(() => {
+    setPageInput(String(page + 1));
+  }, [page]);
+
+  function togglePageSelection(checked: boolean): void {
+    setSelectedIds(
+      checked
+        ? new Set(entries.map((entry) => entry.id))
+        : new Set()
+    );
+  }
+
+  function goToPage(): void {
+    const value = Number(pageInput);
+
+    if (!Number.isFinite(value)) {
+      setPageInput(String(page + 1));
+      return;
+    }
+
+    const next = Math.min(
+      Math.max(Math.floor(value), 1),
+      pageCount
+    );
+    setPage(next - 1);
+    setPageInput(String(next));
+  }
+
+  async function handleBatchDelete(): Promise<void> {
+    if (pageSelectedIds.length === 0) {
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `从策略统计中删除选中的 ${pageSelectedIds.length} 条记录？\n原始信号记录不会被删除。`
+      )
+    ) {
+      return;
+    }
+
+    setError("");
+
+    try {
+      await api("/api/signals/stats/batch-delete", {
+        method: "POST",
+        body: JSON.stringify({ ids: pageSelectedIds })
+      });
+      setSelectedIds(new Set());
+      await loadStats();
+      await loadResultStats();
+
+      if (entries.length === pageSelectedIds.length && page > 0) {
+        setPage((current) => current - 1);
+      } else {
+        setReloadKey((current) => current + 1);
+      }
+    } catch (deleteError) {
+      setError(errorMessage(deleteError));
+    }
+  }
 
   async function loadStats(): Promise<void> {
     try {
@@ -444,6 +533,22 @@ export function StrategyStatsPanel({
             />
           </label>
           <div className="strategy-stats-actions">
+            <button
+              type="button"
+              className="button small"
+              onClick={() => setExportOpen(true)}
+            >
+              导出 Excel
+            </button>
+            {pageSelectedIds.length > 0 && (
+              <button
+                type="button"
+                className="button small danger"
+                onClick={() => void handleBatchDelete()}
+              >
+                批量删除 ({pageSelectedIds.length})
+              </button>
+            )}
             {missingReferenceIds.length > 0 && (
               <button
                 type="button"
@@ -473,6 +578,16 @@ export function StrategyStatsPanel({
           <table>
             <thead>
               <tr>
+                <th className="stats-select-cell">
+                  <input
+                    type="checkbox"
+                    aria-label="全选当前页统计"
+                    checked={allPageSelected}
+                    onChange={(event) =>
+                      togglePageSelection(event.target.checked)
+                    }
+                  />
+                </th>
                 <th>时间</th>
                 <th>标的</th>
                 <th>预设</th>
@@ -488,19 +603,41 @@ export function StrategyStatsPanel({
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={10} className="table-empty">
+                  <td colSpan={11} className="table-empty">
                     加载中…
                   </td>
                 </tr>
               ) : entries.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="table-empty">
+                  <td colSpan={11} className="table-empty">
                     暂无统计记录
                   </td>
                 </tr>
               ) : (
                 entries.map((entry) => (
                   <tr key={entry.id}>
+                    <td className="stats-select-cell">
+                      <input
+                        type="checkbox"
+                        aria-label={`选择 ${entry.symbol} ${formatTime(
+                          entry.event_time
+                        )}`}
+                        checked={selectedIds.has(entry.id)}
+                        onChange={(event) =>
+                          setSelectedIds((current) => {
+                            const next = new Set(current);
+
+                            if (event.target.checked) {
+                              next.add(entry.id);
+                            } else {
+                              next.delete(entry.id);
+                            }
+
+                            return next;
+                          })
+                        }
+                      />
+                    </td>
                     <td>{formatTime(entry.event_time)}</td>
                     <td>{entry.symbol}</td>
                     <td>{entry.preset_name ?? "自定义/历史"}</td>
@@ -588,6 +725,30 @@ export function StrategyStatsPanel({
             第 {page + 1} / {pageCount} 页
           </span>
           <div>
+            <input
+              className="stats-page-input"
+              type="number"
+              min={1}
+              max={pageCount}
+              value={pageInput}
+              aria-label="跳转页码"
+              onChange={(event) =>
+                setPageInput(event.target.value)
+              }
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  goToPage();
+                }
+              }}
+            />
+            <button
+              type="button"
+              className="button"
+              disabled={loading}
+              onClick={goToPage}
+            >
+              跳转
+            </button>
             <button
               type="button"
               className="button"
@@ -676,6 +837,13 @@ export function StrategyStatsPanel({
             </div>
           </div>
         </div>
+      )}
+
+      {exportOpen && (
+        <StatsExportModal
+          symbols={resultStats.symbols}
+          onClose={() => setExportOpen(false)}
+        />
       )}
     </>
   );
