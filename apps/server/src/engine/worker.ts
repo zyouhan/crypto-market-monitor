@@ -171,10 +171,12 @@ async function runWithConcurrency<T>(
 function buildSnapshot(
   runtimes: ConditionRuntime[],
   marketByInterval: Map<string, MarketKlines>,
-  price: number | null
+  price: number | null,
+  referenceTrends: unknown
 ): string {
   return JSON.stringify({
     price,
+    reference_trends: referenceTrends,
     conditions: runtimes.map((runtime) => {
       const market = marketByInterval.get(runtime.interval);
 
@@ -572,10 +574,25 @@ async function runMonitor(
 
   const latestBase = baseKlines[baseKlines.length - 1];
   const { source, note } = combineSource(marketByInterval);
+  const referenceKlines = new Map<string, Kline[]>();
+
+  for (const [interval, market] of marketByInterval) {
+    referenceKlines.set(interval, market.klines);
+  }
+
+  const currentReferenceTrends =
+    referenceIntervals.length > 0
+      ? buildReferenceTrends(
+          referenceIntervals,
+          referenceKlines,
+          latestBase.closeTime
+        )
+      : null;
   const snapshot = buildSnapshot(
     runtimes,
     marketByInterval,
-    latestBase.close
+    latestBase.close,
+    currentReferenceTrends
   );
   const successAt = Date.now();
 
@@ -660,11 +677,6 @@ async function runMonitor(
   });
 
   const insertedIds: number[] = [];
-  const referenceKlines = new Map<string, Kline[]>();
-
-  for (const [interval, market] of marketByInterval) {
-    referenceKlines.set(interval, market.klines);
-  }
 
   const transaction = db.transaction(() => {
     for (const update of stateUpdates) {

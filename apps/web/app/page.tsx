@@ -221,8 +221,7 @@ export default function HomePage() {
 
   const filteredMonitors = useMemo(() => {
     const keyword = search.trim().toLowerCase();
-
-    return monitors.filter((monitor) => {
+    const filtered = monitors.filter((monitor) => {
       if (
         category !== "all" &&
         monitorCategory(monitor) !== category
@@ -239,7 +238,25 @@ export default function HomePage() {
         monitor.symbol.toLowerCase().includes(keyword)
       );
     });
-  }, [monitors, category, search]);
+
+    return filtered.sort((a, b) => {
+      const aTime =
+        latestAlertByMonitor.get(a.id)?.event_time ??
+        a.last_signal?.event_time ??
+        0;
+      const bTime =
+        latestAlertByMonitor.get(b.id)?.event_time ??
+        b.last_signal?.event_time ??
+        0;
+
+      return bTime - aTime;
+    });
+  }, [
+    monitors,
+    category,
+    search,
+    latestAlertByMonitor
+  ]);
 
   const checkAuth = useCallback(async () => {
     try {

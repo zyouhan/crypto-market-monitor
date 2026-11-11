@@ -7,6 +7,8 @@ import {
   formatPrice,
   formatTime
 } from "../lib/format";
+import { referenceTagItems } from "../lib/reference-trends";
+import { ReferenceTags } from "./ReferenceTags";
 import type {
   ConditionDisplayItem,
   MonitorItem,
@@ -54,16 +56,8 @@ function statusTags(item: MonitorItem): Tag[] {
     tags.push({ label, tone });
   }
 
-  if (item.enabled !== 1) {
-    add("已停用", "bear");
-  }
-
   if (item.pending) {
     add("请求中", "pending");
-  }
-
-  if (item.track_stats === 1) {
-    add("统计中", "neutral");
   }
 
   if (item.last_error) {
@@ -114,6 +108,16 @@ export function MonitorRow({
 }: MonitorRowProps) {
   const [expanded, setExpanded] = useState(false);
   const tags = statusTags(item);
+  const referenceItems = referenceTagItems(
+    item.snapshot?.reference_trends
+  );
+  const missingReferenceIntervals =
+    item.reference_intervals.filter(
+      (interval) =>
+        !referenceItems.some(
+          (reference) => reference.interval === interval
+        )
+    );
 
   return (
     <article
@@ -141,18 +145,17 @@ export function MonitorRow({
           <div className="monitor-meta-line">
             <span>{item.symbol}</span>
             <span>{item.interval}</span>
+            {item.enabled !== 1 && (
+              <span className="identity-tag bear">已停用</span>
+            )}
+            {item.track_stats === 1 && (
+              <span className="identity-tag neutral">
+                统计中
+              </span>
+            )}
             {item.preset_name && (
               <span className="preset-badge">
                 预设 · {item.preset_name}
-              </span>
-            )}
-            {item.reference_intervals.length > 0 && (
-              <span
-                className="reference-config-badge"
-                title="大级别 DEA 参考周期"
-              >
-                大级别{" "}
-                {item.reference_intervals.join("/")}
               </span>
             )}
             {item.source && (
@@ -192,6 +195,22 @@ export function MonitorRow({
         </div>
 
         <div className="monitor-cell monitor-state-cell">
+          {item.reference_intervals.length > 0 && (
+            <div className="reference-status-row">
+              {referenceItems.length > 0 && (
+                <ReferenceTags items={referenceItems} />
+              )}
+              {missingReferenceIntervals.map((interval) => (
+                <span
+                  className="reference-tag empty"
+                  key={interval}
+                >
+                  {interval} —
+                </span>
+              ))}
+            </div>
+          )}
+
           <div className="row-tags">
             {tags.map((tag) => (
               <span

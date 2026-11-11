@@ -79,9 +79,13 @@ export function StrategyStatsPanel({
   const [resultSymbol, setResultSymbol] = useState("");
   const [entries, setEntries] = useState<StrategyStatsEntry[]>([]);
   const [total, setTotal] = useState(0);
+  const [unfilledTotal, setUnfilledTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
+  const [symbolFilter, setSymbolFilter] = useState("ALL");
+  const [typeFilter, setTypeFilter] = useState("ALL");
+  const [resultFilter, setResultFilter] = useState("ALL");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(
@@ -102,8 +106,6 @@ export function StrategyStatsPanel({
   );
   const [pageInput, setPageInput] = useState("1");
   const [exportOpen, setExportOpen] = useState(false);
-  const [importingLegacy, setImportingLegacy] =
-    useState(false);
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const missingReferenceIds = entries
@@ -240,15 +242,32 @@ export function StrategyStatsPanel({
       setError("");
 
       try {
+        const params = new URLSearchParams({
+          limit: String(PAGE_SIZE),
+          offset: String(page * PAGE_SIZE),
+          search
+        });
+
+        if (symbolFilter !== "ALL") {
+          params.set("symbol", symbolFilter);
+        }
+
+        if (typeFilter !== "ALL") {
+          params.set("event_type", typeFilter);
+        }
+
+        if (resultFilter !== "ALL") {
+          params.set("result", resultFilter);
+        }
+
         const data = await api<StrategyStatsPage>(
-          `/api/signals/stats/entries?limit=${PAGE_SIZE}&offset=${
-            page * PAGE_SIZE
-          }&search=${encodeURIComponent(search)}`
+          `/api/signals/stats/entries?${params.toString()}`
         );
 
         if (!cancelled) {
           setEntries(data.items);
           setTotal(data.total);
+          setUnfilledTotal(data.unfilled);
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -266,7 +285,14 @@ export function StrategyStatsPanel({
     return () => {
       cancelled = true;
     };
-  }, [page, search, reloadKey]);
+  }, [
+    page,
+    search,
+    symbolFilter,
+    typeFilter,
+    resultFilter,
+    reloadKey
+  ]);
 
   async function handleDelete(
     entry: StrategyStatsEntry
@@ -404,43 +430,6 @@ export function StrategyStatsPanel({
     }
   }
 
-  async function importLegacyStats(): Promise<void> {
-    const count = stats.legacy_count ?? 0;
-
-    if (count <= 0 || importingLegacy) {
-      return;
-    }
-
-    if (
-      !window.confirm(
-        `将 ${count} 条历史入场信号纳入策略统计？\n纳入后会出现在统计明细和导出 Excel 中。`
-      )
-    ) {
-      return;
-    }
-
-    setImportingLegacy(true);
-    setError("");
-
-    try {
-      const result = await api<{ imported: number }>(
-        "/api/signals/stats/import-legacy",
-        { method: "POST" }
-      );
-
-      setBackfillMessage(
-        `已纳入 ${result.imported} 条历史入场信号`
-      );
-      await loadStats();
-      await loadResultStats();
-      setReloadKey((current) => current + 1);
-    } catch (importError) {
-      setError(errorMessage(importError));
-    } finally {
-      setImportingLegacy(false);
-    }
-  }
-
   return (
     <>
       <div
@@ -572,18 +561,6 @@ export function StrategyStatsPanel({
             />
           </label>
           <div className="strategy-stats-actions">
-            {(stats.legacy_count ?? 0) > 0 && (
-              <button
-                type="button"
-                className="button small"
-                disabled={importingLegacy}
-                onClick={() => void importLegacyStats()}
-              >
-                {importingLegacy
-                  ? "纳入中…"
-                  : `纳入历史统计 (${stats.legacy_count})`}
-              </button>
-            )}
             <button
               type="button"
               className="button small"
@@ -618,9 +595,60 @@ export function StrategyStatsPanel({
               </span>
             )}
             <span className="strategy-stats-count">
-              共 {total} 条
+              共 {total} 条 · 未填写 {unfilledTotal} 条
             </span>
           </div>
+        </div>
+
+        <div className="strategy-stats-filters">
+          <select
+            value={symbolFilter}
+            aria-label="筛选标的"
+            onChange={(event) => {
+              setSymbolFilter(event.target.value);
+              setPage(0);
+            }}
+          >
+            <option value="ALL">全部标的</option>
+            {resultStats.symbols.map((symbol) => (
+              <option value={symbol} key={symbol}>
+                {symbol}
+              </option>
+            ))}
+          </select>
+          <select
+            value={typeFilter}
+            aria-label="筛选类型"
+            onChange={(event) => {
+              setTypeFilter(event.target.value);
+              setPage(0);
+            }}
+          >
+            <option value="ALL">全部类型</option>
+            <option value="ENTRY_LONG">做多入场</option>
+            <option value="ENTRY_SHORT">做空入场</option>
+          </select>
+          <select
+            value={resultFilter}
+            aria-label="筛选结果"
+            onChange={(event) => {
+              setResultFilter(event.target.value);
+              setPage(0);
+            }}
+          >
+            <option value="ALL">全部结果</option>
+            {RESULT_OPTIONS.filter(
+              (option) => option.value !== ""
+            ).map((option) => (
+              <option
+                value={option.value}
+                key={option.value}
+              >
+                {option.label}
+              </option>
+            ))}
+            <option value="unfilled">未填写</option>
+          </select>
         </div>
 
         {error && <div className="error-box">{error}</div>}
@@ -666,7 +694,14 @@ export function StrategyStatsPanel({
                 </tr>
               ) : (
                 entries.map((entry) => (
-                  <tr key={entry.id}>
+                  <tr
+                    key={entry.id}
+                    className={
+                      entry.stats_result
+                        ? "stats-row"
+                        : "stats-row stats-row-unfilled"
+                    }
+                  >
                     <td className="stats-select-cell">
                       <input
                         type="checkbox"

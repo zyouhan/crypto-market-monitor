@@ -416,31 +416,77 @@ signalsRouter.get("/stats/entries", (req, res) => {
       ? req.query.search.trim()
       : "";
   const pattern = `%${search}%`;
-  const where = `
-    WHERE trigger_met = 1
-      AND track_stats = 1
-      AND stats_deleted = 0
-      AND event_type IN ('ENTRY_LONG', 'ENTRY_SHORT')
-      AND (
-        ? = ''
-        OR symbol LIKE ?
-        OR preset_name LIKE ?
-        OR monitor_name LIKE ?
-        OR stats_note LIKE ?
-      )
-  `;
+  const symbol =
+    typeof req.query.symbol === "string" &&
+    req.query.symbol.trim()
+      ? req.query.symbol.trim().toUpperCase()
+      : "";
+  const eventType =
+    req.query.event_type === "ENTRY_LONG" ||
+    req.query.event_type === "ENTRY_SHORT"
+      ? req.query.event_type
+      : "";
+  const result =
+    req.query.result === "unfilled" ||
+    isStatsResult(req.query.result)
+      ? req.query.result
+      : "";
+  const whereParts = [
+    "trigger_met = 1",
+    "track_stats = 1",
+    "stats_deleted = 0",
+    "event_type IN ('ENTRY_LONG', 'ENTRY_SHORT')"
+  ];
+  const params: Array<string | number> = [];
+
+  if (search) {
+    whereParts.push(`(
+      symbol LIKE ?
+      OR preset_name LIKE ?
+      OR monitor_name LIKE ?
+      OR stats_note LIKE ?
+    )`);
+    params.push(pattern, pattern, pattern, pattern);
+  }
+
+  if (symbol) {
+    whereParts.push("symbol = ?");
+    params.push(symbol);
+  }
+
+  if (eventType) {
+    whereParts.push("event_type = ?");
+    params.push(eventType);
+  }
+
+  if (result === "unfilled") {
+    whereParts.push("stats_result IS NULL");
+  } else if (result) {
+    whereParts.push("stats_result = ?");
+    params.push(result);
+  }
+
+  const where = `WHERE ${whereParts.join(" AND ")}`;
 
   const total = db.prepare(`
     SELECT COUNT(1) AS count
     FROM signals
     ${where}
-  `).get(
-    search,
-    pattern,
-    pattern,
-    pattern,
-    pattern
-  ) as { count: number };
+  `).get(...params) as { count: number };
+
+  const unfilled =
+    result === "unfilled"
+      ? total.count
+      : result
+        ? 0
+        : (
+            db.prepare(`
+              SELECT COUNT(1) AS count
+              FROM signals
+              ${where}
+                AND stats_result IS NULL
+            `).get(...params) as { count: number }
+          ).count;
 
   const items = db.prepare(`
     SELECT
@@ -461,11 +507,7 @@ signalsRouter.get("/stats/entries", (req, res) => {
     ORDER BY event_time DESC, id DESC
     LIMIT ? OFFSET ?
   `).all(
-    search,
-    pattern,
-    pattern,
-    pattern,
-    pattern,
+    ...params,
     limit,
     offset
   ) as Array<Record<string, unknown> & {
@@ -491,6 +533,7 @@ signalsRouter.get("/stats/entries", (req, res) => {
         };
       }),
       total: total.count,
+      unfilled,
       limit,
       offset
     })

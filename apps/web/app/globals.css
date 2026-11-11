@@ -2303,6 +2303,12 @@ option {
   color: var(--red);
 }
 
+.reference-tag.empty {
+  border-color: var(--border);
+  background: #111722;
+  color: var(--muted);
+}
+
 .reference-arrow {
   font-weight: 700;
 }
@@ -2324,6 +2330,29 @@ option {
   color: #b6a5ff;
   background: #1d1836;
   font-size: 10px;
+}
+
+.identity-tag {
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.identity-tag.bear {
+  border-color: rgb(239 112 137 / 35%);
+  color: var(--red);
+  background: #3a202b;
+}
+
+.identity-tag.neutral {
+  color: var(--muted);
+  background: #141c28;
+}
+
+.reference-status-row {
+  margin-bottom: 5px;
 }
 
 .direction-badge {
@@ -2554,6 +2583,40 @@ option {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 10px;
+}
+
+.strategy-stats-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 10px;
+}
+
+.strategy-stats-filters select {
+  height: 30px;
+  min-width: 112px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #0b111a;
+  color: var(--text);
+  font-size: 11px;
+  padding: 0 7px;
+}
+
+.strategy-stats-modal tbody tr.stats-row {
+  transition: background-color 120ms ease;
+}
+
+.strategy-stats-modal tbody tr.stats-row:hover {
+  background: #16283d;
+}
+
+.strategy-stats-modal tbody tr.stats-row-unfilled {
+  background: #111722;
+}
+
+.strategy-stats-modal tbody tr.stats-row-unfilled:hover {
+  background: #1a2638;
 }
 
 .strategy-stats-search {

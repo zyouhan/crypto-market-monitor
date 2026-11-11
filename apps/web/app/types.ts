@@ -165,6 +165,7 @@ export interface ReferenceTrend {
 export interface StrategyStatsPage {
   items: StrategyStatsEntry[];
   total: number;
+  unfilled: number;
   limit: number;
   offset: number;
 }
@@ -336,6 +337,14 @@ export interface MonitorItem {
     price?: number | null;
     conditions?: ConditionSnapshot[];
     updatedAt?: number;
+    reference_trends?:
+      | Partial<
+          Record<
+            "15m" | "1h" | "4h",
+            ReferenceTrend | null
+          >
+        >
+      | null;
   } | null;
   pending: boolean;
   conditions: MonitorConditionView[];
