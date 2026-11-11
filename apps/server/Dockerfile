@@ -16,6 +16,7 @@ COPY apps/server/package.json ./apps/server/package.json
 COPY apps/web/package.json ./apps/web/package.json
 
 RUN npm ci
+RUN mkdir -p /app/apps/server/node_modules
 
 # 复制后端源码
 COPY apps/server ./apps/server
@@ -41,6 +42,8 @@ COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/package-lock.json ./package-lock.json
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/server/package.json ./apps/server/package.json
+# Workspace 依赖可能被 npm 放在 apps/server/node_modules（例如 jszip）
+COPY --from=builder /app/apps/server/node_modules ./apps/server/node_modules
 COPY --from=builder /app/apps/server/dist ./apps/server/dist
 
 EXPOSE 4000
