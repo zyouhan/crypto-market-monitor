@@ -104,6 +104,7 @@ export function insertMonitor(input: {
   presetId?: string | null;
   presetName?: string | null;
   trackStats?: number;
+  referenceIntervals?: string;
 }): number {
   const now = Date.now();
 
@@ -115,12 +116,13 @@ export function insertMonitor(input: {
       preset_id,
       preset_name,
       track_stats,
+      reference_intervals,
       enabled,
       wechat_enabled,
       sound_enabled,
       created_at,
       updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     input.name,
     input.symbol,
@@ -128,6 +130,7 @@ export function insertMonitor(input: {
     input.presetId ?? null,
     input.presetName ?? null,
     input.trackStats ?? 0,
+    input.referenceIntervals ?? "[]",
     input.enabled,
     input.wechatEnabled,
     input.soundEnabled,
@@ -181,6 +184,7 @@ export function updateMonitorFields(input: {
   wechatEnabled: number;
   soundEnabled: number;
   trackStats: number;
+  referenceIntervals: string;
 }): void {
   db.prepare(`
     UPDATE monitors
@@ -191,6 +195,7 @@ export function updateMonitorFields(input: {
       wechat_enabled = ?,
       sound_enabled = ?,
       track_stats = ?,
+      reference_intervals = ?,
       updated_at = ?
     WHERE id = ?
   `).run(
@@ -200,6 +205,7 @@ export function updateMonitorFields(input: {
     input.wechatEnabled,
     input.soundEnabled,
     input.trackStats,
+    input.referenceIntervals,
     Date.now(),
     input.id
   );
@@ -373,6 +379,7 @@ export function insertSignalIgnore(
       preset_name,
       track_stats,
       stats_deleted,
+      reference_trends,
       symbol,
       interval,
       kind,
@@ -391,7 +398,7 @@ export function insertSignalIgnore(
       reason,
       payload,
       created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     input.monitor_id,
     input.monitor_name,
@@ -399,6 +406,7 @@ export function insertSignalIgnore(
     input.preset_name,
     input.track_stats,
     input.stats_deleted,
+    input.reference_trends,
     input.symbol,
     input.interval,
     input.kind,

@@ -34,6 +34,10 @@ import { getKlineLimit } from "../market/binance";
 import { getMarketKlines } from "../market";
 import type { MarketKlines } from "../market";
 import { evaluateMonitorSignals } from "../monitors/evaluator";
+import {
+  buildReferenceTrends,
+  parseReferenceIntervals
+} from "../monitors/reference-trends";
 import type {
   ConditionRuntime,
   MonitorSignalDraft
@@ -221,7 +225,8 @@ function combineSource(
 
 function toSignalRecord(
   monitor: MonitorRecord,
-  draft: MonitorSignalDraft
+  draft: MonitorSignalDraft,
+  referenceTrends: string | null
 ) {
   return {
     monitor_id: monitor.id,
@@ -230,6 +235,7 @@ function toSignalRecord(
     preset_name: monitor.preset_name ?? null,
     track_stats: monitor.track_stats ?? 0,
     stats_deleted: 0,
+    reference_trends: referenceTrends,
     symbol: monitor.symbol,
     interval: monitor.interval,
     kind: "MONITOR",
@@ -352,6 +358,7 @@ function stopHitRecord(
     preset_name: monitor.preset_name ?? null,
     track_stats: monitor.track_stats ?? 0,
     stats_deleted: 0,
+    reference_trends: null,
     symbol: monitor.symbol,
     interval: monitor.interval,
     kind: "RISK",
@@ -395,6 +402,7 @@ function managementSignalRecord(
     preset_name: monitor.preset_name ?? null,
     track_stats: monitor.track_stats ?? 0,
     stats_deleted: 0,
+    reference_trends: null,
     symbol: monitor.symbol,
     interval: monitor.interval,
     kind: "MANAGEMENT",
@@ -440,6 +448,22 @@ async function runMonitor(
 
   for (const condition of conditions) {
     intervals.add(conditionInterval(condition, monitor));
+  }
+
+  let referenceIntervals: ReturnType<
+    typeof parseReferenceIntervals
+  > = [];
+
+  try {
+    referenceIntervals = parseReferenceIntervals(
+      JSON.parse(monitor.reference_intervals || "[]")
+    );
+  } catch {
+    referenceIntervals = [];
+  }
+
+  for (const interval of referenceIntervals) {
+    intervals.add(interval);
   }
 
   const marketByInterval = new Map<string, MarketKlines>();
@@ -636,6 +660,11 @@ async function runMonitor(
   });
 
   const insertedIds: number[] = [];
+  const referenceKlines = new Map<string, Kline[]>();
+
+  for (const [interval, market] of marketByInterval) {
+    referenceKlines.set(interval, market.klines);
+  }
 
   const transaction = db.transaction(() => {
     for (const update of stateUpdates) {
@@ -648,7 +677,21 @@ async function runMonitor(
     }
 
     for (const draft of drafts) {
-      const record = toSignalRecord(monitor, draft);
+      const referenceTrends =
+        referenceIntervals.length > 0
+          ? JSON.stringify(
+              buildReferenceTrends(
+                referenceIntervals,
+                referenceKlines,
+                draft.eventTime
+              )
+            )
+          : null;
+      const record = toSignalRecord(
+        monitor,
+        draft,
+        referenceTrends
+      );
 
       const inserted = insertSignalIgnore({
         ...record,

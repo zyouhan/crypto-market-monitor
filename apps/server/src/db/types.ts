@@ -30,6 +30,7 @@ export interface MonitorRecord {
   preset_id: string | null;
   preset_name: string | null;
   track_stats: number;
+  reference_intervals: string;
   enabled: number;
   wechat_enabled: number;
   sound_enabled: number;
@@ -87,6 +88,7 @@ export interface MonitorSignalRecord {
   preset_name: string | null;
   track_stats: number;
   stats_deleted: number;
+  reference_trends: string | null;
   symbol: string;
   interval: string | null;
   kind: string;
@@ -115,6 +117,7 @@ export interface NewMonitorSignalRecord {
   preset_name: string | null;
   track_stats: number;
   stats_deleted: number;
+  reference_trends: string | null;
   symbol: string;
   interval: string;
   kind: string;

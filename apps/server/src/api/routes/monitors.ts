@@ -167,6 +167,50 @@ function buildConditionView(
   };
 }
 
+const REFERENCE_INTERVALS = ["15m", "1h", "4h"];
+const REFERENCE_INTERVAL_SET = new Set(REFERENCE_INTERVALS);
+
+function readReferenceIntervals(
+  value: unknown,
+  fallback: string[]
+): string[] {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  if (!Array.isArray(value)) {
+    throw new Error("大级别参考周期格式不正确");
+  }
+
+  const selected = new Set(
+    value.filter(
+      (item): item is string =>
+        typeof item === "string" &&
+        REFERENCE_INTERVAL_SET.has(item)
+    )
+  );
+
+  return REFERENCE_INTERVALS.filter((interval) =>
+    selected.has(interval)
+  );
+}
+
+function parseReferenceIntervals(value: string): string[] {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return REFERENCE_INTERVALS.filter((interval) =>
+      parsed.includes(interval)
+    );
+  } catch {
+    return [];
+  }
+}
+
 function buildMonitorView(monitor: MonitorRecord) {
   const snapshot = parseJson(monitor.snapshot);
   const pending = getPendingMonitorIds().includes(monitor.id);
@@ -175,6 +219,9 @@ function buildMonitorView(monitor: MonitorRecord) {
   return {
     ...monitor,
     pending,
+    reference_intervals: parseReferenceIntervals(
+      monitor.reference_intervals
+    ),
     snapshot,
     conditions: getMonitorConditions(monitor.id).map((condition) =>
       buildConditionView(condition, monitor, snapshot)
@@ -343,6 +390,10 @@ monitorsRouter.post("/", (req, res) => {
       false,
       "纳入策略统计"
     );
+    const referenceIntervals = readReferenceIntervals(
+      body.reference_intervals,
+      []
+    );
 
     let id = 0;
 
@@ -356,7 +407,8 @@ monitorsRouter.post("/", (req, res) => {
         soundEnabled,
         presetId,
         presetName,
-        trackStats
+        trackStats,
+        referenceIntervals: JSON.stringify(referenceIntervals)
       });
       insertConditionRows(id, prepared.conditions);
     });
@@ -433,6 +485,10 @@ monitorsRouter.put("/:id", (req, res) => {
       existing.track_stats === 1,
       "纳入策略统计"
     );
+    const referenceIntervals = readReferenceIntervals(
+      body.reference_intervals,
+      parseReferenceIntervals(existing.reference_intervals)
+    );
 
     const oldSignature = JSON.stringify(
       getMonitorConditions(id).map((condition) => ({
@@ -455,7 +511,8 @@ monitorsRouter.put("/:id", (req, res) => {
         enabled,
         wechatEnabled,
         soundEnabled,
-        trackStats
+        trackStats,
+        referenceIntervals: JSON.stringify(referenceIntervals)
       });
       deleteMonitorConditions(id);
       insertConditionRows(id, conditions);
@@ -553,7 +610,10 @@ monitorsRouter.patch("/:id", (req, res) => {
       enabled,
       wechatEnabled,
       soundEnabled,
-      trackStats
+      trackStats,
+      referenceIntervals: JSON.stringify(
+        parseReferenceIntervals(existing.reference_intervals)
+      )
     });
 
     const monitor = getMonitorById(id);

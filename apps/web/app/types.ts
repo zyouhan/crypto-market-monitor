@@ -133,6 +133,24 @@ export interface StrategyStatsEntry {
   monitor_name: string | null;
   stats_note: string | null;
   stats_result: StatsResult | null;
+  reference_trends:
+    | Partial<
+        Record<
+          "15m" | "1h" | "4h",
+          ReferenceTrend | null
+        >
+      >
+    | null;
+}
+
+export interface ReferenceTrend {
+  interval: "15m" | "1h" | "4h";
+  direction: "up" | "down";
+  turning: boolean;
+  accelerating: boolean;
+  weakening: boolean;
+  dea: number;
+  time: number;
 }
 
 export interface StrategyStatsPage {
@@ -284,6 +302,7 @@ export interface MonitorItem {
   preset_id?: string | null;
   preset_name?: string | null;
   track_stats: number;
+  reference_intervals: Array<"15m" | "1h" | "4h">;
   enabled: number;
   wechat_enabled: number;
   sound_enabled: number;
@@ -327,5 +346,6 @@ export interface SaveMonitorPayload {
   preset_id?: string | null;
   preset_name?: string | null;
   track_stats: boolean;
+  reference_intervals: Array<"15m" | "1h" | "4h">;
   conditions: SaveConditionInput[];
 }

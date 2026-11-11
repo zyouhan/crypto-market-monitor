@@ -182,6 +182,7 @@ KDJ 入场信号会创建 `stop_watches` 止损观察：
 | GET | `/api/signals/stats` | 今日/累计信号，以及按预设分组的策略统计 |
 | GET | `/api/signals/stats/entries` | 策略统计明细，支持 `search/limit/offset`；备注也参与搜索 |
 | GET | `/api/signals/stats/results` | 按标的统计已填写结果的数量和占比 |
+| POST | `/api/signals/stats/backfill-trends` | 尝试还原历史信号的大级别趋势 |
 | PATCH | `/api/signals/:id/stats` | 修改统计备注或结果 |
 | DELETE | `/api/signals/:id/stats` | 从策略统计中软删除一条记录 |
 | GET/PUT | `/api/settings` | 全局监控开关、全局微信通知开关 |
@@ -214,7 +215,7 @@ PROXY_URL=
 
 ## 数据库迁移
 
-当前 `PRAGMA user_version = 13`。
+当前 `PRAGMA user_version = 14`。
 
 - v6 增加 `stop_watches` 止损观察；
 - v7 增加 `trade_actions` 人工 T/清仓记录；
@@ -224,6 +225,7 @@ PROXY_URL=
 - v11 增加 `track_stats` 策略统计开关和 `stats_deleted` 软删除标记；
 - v12 增加策略统计的 `stats_note` 备注和 `stats_result` 结果；
 - v13 将旧结果迁移为轻仓结果；
+- v14 增加监控项的大级别参考周期和信号的大级别趋势快照；
 - v4 → v5 前会自动备份到 `data/archive/v4-<时间戳>/`；
 - 旧的 `symbols` / `strategies` / `strategy_states` / `signals_v4` 保留用于回滚；
 - 旧策略迁移规则：
@@ -270,6 +272,8 @@ DEA 拐头后的有效期默认 12 根 5m（约 1 小时），可在条件里调
 - 其他。
 
 旧版本的「成功 / 合理止损 / 失败」会自动迁移为对应的轻仓结果。统计页面可以按标的筛选结果，展示每种结果的数量和占比。
+
+新建监控项可以选择记录 15m、1h、4h 的 DEA 走势作为参考。参考走势只用于展示和统计记录，不参与过滤或触发。信号产生时会保存当时三个周期的 DEA 方向、拐头、加速、走弱状态；历史信号可在统计页面点击「还原历史趋势」尝试从行情历史补全，无法获取的周期保持为空。
 
 监控项列表支持勾选后批量请求、批量删除，以及批量修改微信通知和声音提醒开关。
 

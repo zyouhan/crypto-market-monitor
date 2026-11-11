@@ -1891,6 +1891,37 @@ td {
   margin-top: 12px;
 }
 
+.reference-trend-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.reference-label {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.reference-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #0b111a;
+  color: var(--text);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.reference-choice input {
+  accent-color: var(--blue);
+  margin: 0;
+}
+
 .serverchan-note {
   color: var(--muted);
   font-size: 11px;
@@ -2451,6 +2482,24 @@ option {
 .strategy-stats-count {
   color: var(--muted);
   font-size: 11px;
+  white-space: nowrap;
+}
+
+.strategy-stats-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.stats-reference {
+  display: block;
+  max-width: 210px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 

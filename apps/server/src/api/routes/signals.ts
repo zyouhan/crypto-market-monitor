@@ -3,6 +3,11 @@ import { Router } from "express";
 import type { SignalEventType } from "../../db/types";
 import { db } from "../../db";
 import { getSignals } from "../../db/monitor-repo";
+import {
+  buildReferenceTrends,
+  REFERENCE_INTERVALS
+} from "../../monitors/reference-trends";
+import { getMarketKlines } from "../../market";
 import { failure, success } from "../middleware";
 
 export const signalsRouter: Router = Router();
@@ -209,6 +214,96 @@ signalsRouter.get("/stats/results", (req, res) => {
   );
 });
 
+signalsRouter.post("/stats/backfill-trends", async (req, res) => {
+  const ids = Array.isArray(req.body?.ids)
+    ? req.body.ids
+        .map((id: unknown) => Number(id))
+        .filter(
+          (id: number) =>
+            Number.isInteger(id) && id > 0
+        )
+        .slice(0, 50)
+    : [];
+
+  if (ids.length === 0) {
+    res.status(400).json(failure("请提供需要还原的信号 ID"));
+    return;
+  }
+
+  const placeholders = ids.map(() => "?").join(", ");
+  const rows = db.prepare(`
+    SELECT id, symbol, event_time
+    FROM signals
+    WHERE id IN (${placeholders})
+      AND reference_trends IS NULL
+  `).all(...ids) as Array<{
+    id: number;
+    symbol: string;
+    event_time: number;
+  }>;
+
+  const bySymbol = new Map<string, typeof rows>();
+
+  for (const row of rows) {
+    const list = bySymbol.get(row.symbol) ?? [];
+    list.push(row);
+    bySymbol.set(row.symbol, list);
+  }
+
+  let updated = 0;
+  let failed = 0;
+
+  for (const [symbol, symbolRows] of bySymbol) {
+    const klinesByInterval = new Map<
+      string,
+      Awaited<ReturnType<typeof getMarketKlines>>["klines"]
+    >();
+
+    try {
+      await Promise.all(
+        REFERENCE_INTERVALS.map(async (interval) => {
+          const market = await getMarketKlines(
+            symbol,
+            interval,
+            300
+          );
+          klinesByInterval.set(interval, market.klines);
+        })
+      );
+    } catch {
+      failed += symbolRows.length;
+      continue;
+    }
+
+    for (const row of symbolRows) {
+      const trends = buildReferenceTrends(
+        REFERENCE_INTERVALS,
+        klinesByInterval,
+        row.event_time
+      );
+
+      db.prepare(`
+        UPDATE signals
+        SET reference_trends = ?
+        WHERE id = ?
+          AND reference_trends IS NULL
+      `).run(JSON.stringify(trends), row.id);
+      updated += 1;
+    }
+  }
+
+  res.json(
+    success(
+      {
+        updated,
+        failed,
+        remaining: rows.length - updated - failed
+      },
+      "历史大级别趋势还原完成"
+    )
+  );
+});
+
 signalsRouter.get("/stats/entries", (req, res) => {
   const limit = Math.min(
     Math.max(Number(req.query.limit) || 20, 1),
@@ -258,7 +353,8 @@ signalsRouter.get("/stats/entries", (req, res) => {
       event_type,
       monitor_name,
       stats_note,
-      stats_result
+      stats_result,
+      reference_trends
     FROM signals
     ${where}
     ORDER BY event_time DESC, id DESC
@@ -271,11 +367,28 @@ signalsRouter.get("/stats/entries", (req, res) => {
     pattern,
     limit,
     offset
-  );
+  ) as Array<Record<string, unknown> & {
+    reference_trends: string | null;
+  }>;
 
   res.json(
     success({
-      items,
+      items: items.map((item) => {
+        let referenceTrends: unknown = null;
+
+        if (item.reference_trends) {
+          try {
+            referenceTrends = JSON.parse(item.reference_trends);
+          } catch {
+            referenceTrends = null;
+          }
+        }
+
+        return {
+          ...item,
+          reference_trends: referenceTrends
+        };
+      }),
       total: total.count,
       limit,
       offset

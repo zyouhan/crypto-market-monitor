@@ -48,6 +48,42 @@ const RESULT_LABELS = new Map(
   ])
 );
 
+const REFERENCE_ORDER = ["15m", "1h", "4h"] as const;
+
+function referenceSummary(
+  entry: StrategyStatsEntry
+): string {
+  if (!entry.reference_trends) {
+    return "—";
+  }
+
+  const parts: string[] = [];
+
+  for (const interval of REFERENCE_ORDER) {
+    const trend = entry.reference_trends[interval];
+
+    if (!trend) {
+      continue;
+    }
+
+    const direction =
+      trend.direction === "up" ? "↑" : "↓";
+    const flags = [
+      trend.turning ? "拐头" : "",
+      trend.accelerating ? "加速" : "",
+      trend.weakening ? "走弱" : ""
+    ].filter(Boolean);
+
+    parts.push(
+      `${interval}${direction}${
+        flags.length > 0 ? ` ${flags.join("/")}` : ""
+      }`
+    );
+  }
+
+  return parts.length > 0 ? parts.join(" · ") : "—";
+}
+
 interface StrategyStatsPanelProps {
   onClose?: () => void;
   onChanged: () => void | Promise<void>;
@@ -98,8 +134,13 @@ export function StrategyStatsPanel({
   const [savingResultId, setSavingResultId] = useState<
     number | null
   >(null);
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillMessage, setBackfillMessage] = useState("");
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const missingReferenceIds = entries
+    .filter((entry) => !entry.reference_trends)
+    .map((entry) => entry.id);
 
   async function loadStats(): Promise<void> {
     try {
@@ -282,6 +323,36 @@ export function StrategyStatsPanel({
     }
   }
 
+  async function backfillTrends(): Promise<void> {
+    if (missingReferenceIds.length === 0 || backfilling) {
+      return;
+    }
+
+    setBackfilling(true);
+    setBackfillMessage("");
+    setError("");
+
+    try {
+      const result = await api<{
+        updated: number;
+        failed: number;
+        remaining: number;
+      }>("/api/signals/stats/backfill-trends", {
+        method: "POST",
+        body: JSON.stringify({ ids: missingReferenceIds })
+      });
+
+      setBackfillMessage(
+        `已还原 ${result.updated} 条，失败 ${result.failed} 条，剩余 ${result.remaining} 条`
+      );
+      setReloadKey((current) => current + 1);
+    } catch (backfillError) {
+      setError(errorMessage(backfillError));
+    } finally {
+      setBackfilling(false);
+    }
+  }
+
   return (
     <>
       <div
@@ -412,9 +483,28 @@ export function StrategyStatsPanel({
               onChange={(event) => setQuery(event.target.value)}
             />
           </label>
-          <span className="strategy-stats-count">
-            共 {total} 条
-          </span>
+          <div className="strategy-stats-actions">
+            {missingReferenceIds.length > 0 && (
+              <button
+                type="button"
+                className="button small"
+                disabled={backfilling}
+                onClick={() => void backfillTrends()}
+              >
+                {backfilling
+                  ? "还原中…"
+                  : `还原历史趋势 (${missingReferenceIds.length})`}
+              </button>
+            )}
+            {backfillMessage && (
+              <span className="strategy-stats-count">
+                {backfillMessage}
+              </span>
+            )}
+            <span className="strategy-stats-count">
+              共 {total} 条
+            </span>
+          </div>
         </div>
 
         {error && <div className="error-box">{error}</div>}
@@ -429,6 +519,7 @@ export function StrategyStatsPanel({
                 <th>方向</th>
                 <th>价格</th>
                 <th>类型</th>
+                <th>大级别参考</th>
                 <th>备注</th>
                 <th>结果</th>
                 <th>操作</th>
@@ -437,13 +528,13 @@ export function StrategyStatsPanel({
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="table-empty">
+                  <td colSpan={10} className="table-empty">
                     加载中…
                   </td>
                 </tr>
               ) : entries.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="table-empty">
+                  <td colSpan={10} className="table-empty">
                     暂无统计记录
                   </td>
                 </tr>
@@ -456,6 +547,14 @@ export function StrategyStatsPanel({
                     <td>{directionLabel(entry.direction)}</td>
                     <td>{formatPrice(entry.price)}</td>
                     <td>{eventTypeLabel(entry.event_type)}</td>
+                    <td>
+                      <span
+                        className="stats-reference"
+                        title={referenceSummary(entry)}
+                      >
+                        {referenceSummary(entry)}
+                      </span>
+                    </td>
                     <td>
                       <button
                         type="button"

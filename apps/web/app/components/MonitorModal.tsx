@@ -118,6 +118,11 @@ export function MonitorModal({
   const [trackStats, setTrackStats] = useState(
     item ? item.track_stats === 1 : false
   );
+  const [referenceIntervals, setReferenceIntervals] = useState<
+    Array<"15m" | "1h" | "4h">
+  >(
+    item?.reference_intervals ?? ["15m", "1h", "4h"]
+  );
   const [conditions, setConditions] = useState<ConditionDraft[]>(
     item
       ? item.conditions.map((condition) => ({
@@ -285,6 +290,7 @@ export function MonitorModal({
         preset_id: presetId,
         preset_name: presetName,
         track_stats: trackStats,
+        reference_intervals: referenceIntervals,
         conditions: conditions.map((condition) => ({
           kind: condition.kind,
           role: condition.role,
@@ -491,6 +497,38 @@ export function MonitorModal({
             </label>
             <span className="field-help">
               选择预设会自动开启；修改条件后需重新确认是否继续统计
+            </span>
+          </div>
+
+          <div className="reference-trend-row">
+            <span className="reference-label">大级别趋势参考</span>
+            {(["15m", "1h", "4h"] as const).map(
+              (interval) => (
+                <label
+                  className="reference-choice"
+                  key={interval}
+                >
+                  <input
+                    type="checkbox"
+                    checked={referenceIntervals.includes(
+                      interval
+                    )}
+                    onChange={(event) =>
+                      setReferenceIntervals((current) =>
+                        event.target.checked
+                          ? [...current, interval]
+                          : current.filter(
+                              (item) => item !== interval
+                            )
+                      )
+                    }
+                  />
+                  {interval}
+                </label>
+              )
+            )}
+            <span className="field-help">
+              仅记录 DEA 走势，不参与过滤和触发
             </span>
           </div>
         </section>

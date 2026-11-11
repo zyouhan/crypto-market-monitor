@@ -523,6 +523,11 @@ export function ensureStatsColumns(
       "INTEGER NOT NULL DEFAULT 0"
     ],
     [
+      "monitors",
+      "reference_intervals",
+      "TEXT NOT NULL DEFAULT '[]'"
+    ],
+    [
       "signals",
       "track_stats",
       "INTEGER NOT NULL DEFAULT 0"
@@ -533,7 +538,8 @@ export function ensureStatsColumns(
       "INTEGER NOT NULL DEFAULT 0"
     ],
     ["signals", "stats_note", "TEXT"],
-    ["signals", "stats_result", "TEXT"]
+    ["signals", "stats_result", "TEXT"],
+    ["signals", "reference_trends", "TEXT"]
   ] as const;
 
   for (const [table, column, definition] of targets) {
