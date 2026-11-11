@@ -113,9 +113,12 @@ export interface SignalStats {
 }
 
 export type StatsResult =
-  | "success"
-  | "reasonable_stop"
-  | "failed"
+  | "light_success"
+  | "heavy_success"
+  | "light_reasonable_stop"
+  | "heavy_reasonable_stop"
+  | "light_failed"
+  | "heavy_failed"
   | "other";
 
 export interface StrategyStatsEntry {
@@ -137,6 +140,19 @@ export interface StrategyStatsPage {
   total: number;
   limit: number;
   offset: number;
+}
+
+export interface StatsResultStats {
+  symbol: string | null;
+  symbols: string[];
+  total: number;
+  filled: number;
+  unfilled: number;
+  by_result: Array<{
+    result: StatsResult;
+    count: number;
+    pct: number;
+  }>;
 }
 
 export interface SaveStrategyInput {

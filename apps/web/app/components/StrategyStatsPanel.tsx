@@ -14,6 +14,7 @@ import {
 import type {
   SignalStats,
   StatsResult,
+  StatsResultStats,
   StrategyStatsEntry,
   StrategyStatsPage
 } from "../types";
@@ -25,15 +26,32 @@ const RESULT_OPTIONS: Array<{
   label: string;
 }> = [
   { value: "", label: "未填写" },
-  { value: "success", label: "成功" },
-  { value: "reasonable_stop", label: "合理止损" },
-  { value: "failed", label: "失败" },
+  { value: "light_success", label: "轻仓成功" },
+  { value: "heavy_success", label: "重仓成功" },
+  {
+    value: "light_reasonable_stop",
+    label: "轻仓合理止损"
+  },
+  {
+    value: "heavy_reasonable_stop",
+    label: "重仓合理止损"
+  },
+  { value: "light_failed", label: "轻仓失败" },
+  { value: "heavy_failed", label: "重仓失败" },
   { value: "other", label: "其他" }
 ];
 
-interface StrategyStatsModalProps {
-  onClose: () => void;
+const RESULT_LABELS = new Map(
+  RESULT_OPTIONS.map((option) => [
+    option.value,
+    option.label
+  ])
+);
+
+interface StrategyStatsPanelProps {
+  onClose?: () => void;
   onChanged: () => void | Promise<void>;
+  pageMode?: boolean;
 }
 
 function directionLabel(
@@ -42,15 +60,26 @@ function directionLabel(
   return direction === "BEAR" ? "做空" : "做多";
 }
 
-export function StrategyStatsModal({
+export function StrategyStatsPanel({
   onClose,
-  onChanged
-}: StrategyStatsModalProps) {
+  onChanged,
+  pageMode = false
+}: StrategyStatsPanelProps) {
   const [stats, setStats] = useState<SignalStats>({
     today: 0,
     total: 0,
     by_preset: []
   });
+  const [resultStats, setResultStats] =
+    useState<StatsResultStats>({
+      symbol: null,
+      symbols: [],
+      total: 0,
+      filled: 0,
+      unfilled: 0,
+      by_result: []
+    });
+  const [resultSymbol, setResultSymbol] = useState("");
   const [entries, setEntries] = useState<StrategyStatsEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -80,9 +109,27 @@ export function StrategyStatsModal({
     }
   }
 
+  async function loadResultStats(): Promise<void> {
+    try {
+      setResultStats(
+        await api<StatsResultStats>(
+          `/api/signals/stats/results?symbol=${encodeURIComponent(
+            resultSymbol
+          )}`
+        )
+      );
+    } catch (loadError) {
+      setError(errorMessage(loadError));
+    }
+  }
+
   useEffect(() => {
     void loadStats();
   }, []);
+
+  useEffect(() => {
+    void loadResultStats();
+  }, [resultSymbol]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -150,6 +197,7 @@ export function StrategyStatsModal({
         method: "DELETE"
       });
       await loadStats();
+      await loadResultStats();
       await Promise.resolve(onChanged());
 
       if (entries.length === 1 && page > 0) {
@@ -226,6 +274,7 @@ export function StrategyStatsModal({
             : item
         )
       );
+      await loadResultStats();
     } catch (saveError) {
       setError(errorMessage(saveError));
     } finally {
@@ -236,14 +285,23 @@ export function StrategyStatsModal({
   return (
     <>
       <div
-        className="modal-backdrop"
+        className={`modal-backdrop ${
+          pageMode ? "strategy-stats-page-wrap" : ""
+        }`}
         onMouseDown={(event) => {
-          if (event.target === event.currentTarget) {
+          if (
+            event.target === event.currentTarget &&
+            onClose
+          ) {
             onClose();
           }
         }}
       >
-        <div className="modal strategy-stats-modal">
+        <div
+          className={`modal strategy-stats-modal ${
+            pageMode ? "strategy-stats-page-panel" : ""
+          }`}
+        >
         <div className="modal-title-row">
           <div>
             <h2>策略统计</h2>
@@ -251,14 +309,16 @@ export function StrategyStatsModal({
               只统计打开「纳入策略统计」开关的监控入场信号
             </div>
           </div>
-          <button
-            type="button"
-            className="modal-close"
-            aria-label="关闭"
-            onClick={onClose}
-          >
-            ×
-          </button>
+          {onClose && (
+            <button
+              type="button"
+              className="modal-close"
+              aria-label="关闭"
+              onClick={onClose}
+            >
+              ×
+            </button>
+          )}
         </div>
 
         <div className="strategy-stats-summary">
@@ -288,12 +348,67 @@ export function StrategyStatsModal({
           )}
         </div>
 
+        <div className="result-stats-section">
+          <div className="result-stats-head">
+            <div>
+              <h3>结果占比</h3>
+              <span>
+                总记录 {resultStats.total} · 已填写{" "}
+                {resultStats.filled} · 未填写{" "}
+                {resultStats.unfilled}
+              </span>
+            </div>
+            <select
+              value={resultSymbol}
+              onChange={(event) =>
+                setResultSymbol(event.target.value)
+              }
+            >
+              <option value="">全部标的</option>
+              {resultStats.symbols.map((symbol) => (
+                <option value={symbol} key={symbol}>
+                  {symbol}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="result-stats-grid">
+            {resultStats.by_result.map((item) => (
+              <div
+                className="result-stat-card"
+                key={item.result}
+              >
+                <div className="result-stat-top">
+                  <span>
+                    {RESULT_LABELS.get(item.result) ??
+                      item.result}
+                  </span>
+                  <strong>
+                    {item.pct.toFixed(1)}%
+                  </strong>
+                </div>
+                <div className="result-stat-bar">
+                  <span
+                    style={{
+                      width: `${Math.min(item.pct, 100)}%`
+                    }}
+                  />
+                </div>
+                <div className="result-stat-count">
+                  {item.count} 条
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="strategy-stats-toolbar">
           <label className="search-box strategy-stats-search">
             <span aria-hidden="true">⌕</span>
             <input
               value={query}
-              placeholder="搜索标的 / 预设 / 监控项"
+              placeholder="搜索标的 / 预设 / 监控项 / 备注"
               onChange={(event) => setQuery(event.target.value)}
             />
           </label>

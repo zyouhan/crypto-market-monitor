@@ -2284,10 +2284,128 @@ option {
   margin-top: 4px;
 }
 
+.strategy-stats-page-wrap {
+  position: static;
+  display: block;
+  padding: 0;
+  background: transparent;
+  z-index: auto;
+}
+
+.result-stats-section {
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #0f1520;
+}
+
+.result-stats-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.result-stats-head h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.result-stats-head span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.result-stats-head select {
+  height: 30px;
+  min-width: 150px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #0b111a;
+  color: var(--text);
+  font-size: 11px;
+  padding: 0 7px;
+}
+
+.result-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.result-stat-card {
+  padding: 8px 9px;
+  border: 1px solid rgb(42 55 73 / 70%);
+  border-radius: 7px;
+  background: #0b111a;
+}
+
+.result-stat-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.result-stat-top strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.result-stat-bar {
+  height: 4px;
+  margin: 6px 0 5px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #1c2838;
+}
+
+.result-stat-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #4d8dff, #71d7c0);
+}
+
+.result-stat-count {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+@media (max-width: 900px) {
+  .result-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .result-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .result-stats-head {
+    flex-direction: column;
+  }
+}
+
 .strategy-stats-modal {
   width: min(1180px, 96vw);
   max-height: 88vh;
   overflow-y: auto;
+}
+
+.strategy-stats-page-panel {
+  width: 100%;
+  max-height: none;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
 }
 
 .strategy-stats-summary {

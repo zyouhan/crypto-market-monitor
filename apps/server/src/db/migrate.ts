@@ -552,6 +552,23 @@ export function ensureStatsColumns(
       CREATE INDEX IF NOT EXISTS idx_signals_stats
         ON signals(track_stats, stats_deleted, event_type, event_time DESC)
     `);
+
+    if (hasColumn(database, "signals", "stats_result")) {
+      database.exec(`
+        UPDATE signals
+        SET stats_result = CASE stats_result
+          WHEN 'success' THEN 'light_success'
+          WHEN 'reasonable_stop' THEN 'light_reasonable_stop'
+          WHEN 'failed' THEN 'light_failed'
+          ELSE stats_result
+        END
+        WHERE stats_result IN (
+          'success',
+          'reasonable_stop',
+          'failed'
+        )
+      `);
+    }
   }
 }
 

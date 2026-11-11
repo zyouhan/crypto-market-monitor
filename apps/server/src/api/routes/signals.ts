@@ -7,12 +7,17 @@ import { failure, success } from "../middleware";
 
 export const signalsRouter: Router = Router();
 
-const STATS_RESULTS = new Set([
-  "success",
-  "reasonable_stop",
-  "failed",
+const STATS_RESULT_VALUES = [
+  "light_success",
+  "heavy_success",
+  "light_reasonable_stop",
+  "heavy_reasonable_stop",
+  "light_failed",
+  "heavy_failed",
   "other"
-]);
+] as const;
+
+const STATS_RESULTS = new Set(STATS_RESULT_VALUES);
 
 signalsRouter.get("/stats", (_req, res) => {
   const now = new Date();
@@ -122,6 +127,84 @@ signalsRouter.get("/stats", (_req, res) => {
       by_preset: Array.from(presetMap.values()).sort(
         (a, b) => b.total - a.total
       )
+    })
+  );
+});
+
+signalsRouter.get("/stats/results", (req, res) => {
+  const symbol =
+    typeof req.query.symbol === "string" &&
+    req.query.symbol.trim()
+      ? req.query.symbol.trim().toUpperCase()
+      : null;
+  const symbolFilter = symbol ? "AND symbol = ?" : "";
+  const symbolParams = symbol ? [symbol] : [];
+  const baseWhere = `
+    WHERE trigger_met = 1
+      AND track_stats = 1
+      AND stats_deleted = 0
+      AND event_type IN ('ENTRY_LONG', 'ENTRY_SHORT')
+      ${symbolFilter}
+  `;
+
+  const total = db.prepare(`
+    SELECT COUNT(1) AS count
+    FROM signals
+    ${baseWhere}
+  `).get(...symbolParams) as { count: number };
+
+  const filled = db.prepare(`
+    SELECT COUNT(1) AS count
+    FROM signals
+    ${baseWhere}
+      AND stats_result IS NOT NULL
+  `).get(...symbolParams) as { count: number };
+
+  const rows = db.prepare(`
+    SELECT stats_result AS result, COUNT(1) AS count
+    FROM signals
+    ${baseWhere}
+      AND stats_result IS NOT NULL
+    GROUP BY stats_result
+  `).all(...symbolParams) as Array<{
+    result: string;
+    count: number;
+  }>;
+
+  const counts = new Map(
+    rows.map((row) => [row.result, row.count])
+  );
+  const byResult = STATS_RESULT_VALUES.map((result) => {
+    const count = counts.get(result) ?? 0;
+
+    return {
+      result,
+      count,
+      pct:
+        filled.count > 0
+          ? (count / filled.count) * 100
+          : 0
+    };
+  });
+
+  const symbols = db.prepare(`
+    SELECT DISTINCT symbol
+    FROM signals
+    WHERE trigger_met = 1
+      AND track_stats = 1
+      AND stats_deleted = 0
+      AND event_type IN ('ENTRY_LONG', 'ENTRY_SHORT')
+    ORDER BY symbol
+  `).all() as Array<{ symbol: string }>;
+
+  res.json(
+    success({
+      symbol,
+      symbols: symbols.map((row) => row.symbol),
+      total: total.count,
+      filled: filled.count,
+      unfilled: total.count - filled.count,
+      by_result: byResult
     })
   );
 });

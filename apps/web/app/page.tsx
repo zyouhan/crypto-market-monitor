@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   useCallback,
   useEffect,
@@ -15,7 +16,6 @@ import { NotificationSettings } from "./components/NotificationSettings";
 import { SignalTable } from "./components/SignalTable";
 import { SignalToasts } from "./components/SignalToasts";
 import { SoundSettings } from "./components/SoundSettings";
-import { StrategyStatsModal } from "./components/StrategyStatsModal";
 import { api, errorMessage } from "./lib/api";
 import { isAlertSignal } from "./lib/format";
 import {
@@ -96,7 +96,6 @@ export default function HomePage() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<MonitorItem | null>(null);
-  const [strategyStatsOpen, setStrategyStatsOpen] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -821,12 +820,9 @@ export default function HomePage() {
             />
           </label>
 
-          <button
-            className="button"
-            onClick={() => setStrategyStatsOpen(true)}
-          >
+          <Link className="button" href="/stats">
             策略统计
-          </button>
+          </Link>
 
           <button
             className="button primary"
@@ -983,13 +979,6 @@ export default function HomePage() {
           error={error}
           onClose={closeModal}
           onSave={handleSaveMonitor}
-        />
-      )}
-
-      {strategyStatsOpen && (
-        <StrategyStatsModal
-          onClose={() => setStrategyStatsOpen(false)}
-          onChanged={loadDashboard}
         />
       )}
     </main>
