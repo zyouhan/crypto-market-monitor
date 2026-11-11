@@ -419,7 +419,7 @@ export async function buildStatsWorkbook(
     zip,
     "sheet3.xml",
     3,
-    "rId3",
+    "rId6",
     "统计明细",
     worksheetXml(detailColumns, detailRows)
   );
@@ -442,7 +442,7 @@ export async function buildStatsWorkbook(
     zip,
     "sheet4.xml",
     4,
-    "rId4",
+    "rId7",
     "标的统计",
     worksheetXml(symbolColumns, symbolRows)
   );
@@ -471,7 +471,7 @@ export async function buildStatsWorkbook(
     zip,
     "sheet5.xml",
     5,
-    "rId5",
+    "rId8",
     "结果统计",
     worksheetXml(resultColumns, resultRows)
   );
