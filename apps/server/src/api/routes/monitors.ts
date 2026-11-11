@@ -232,7 +232,10 @@ function buildMonitorView(monitor: MonitorRecord) {
       ? {
           ...lastSignal,
           conditions: JSON.parse(lastSignal.conditions ?? "[]"),
-          payload: parseJson(lastSignal.payload)
+          payload: parseJson(lastSignal.payload),
+          reference_trends: parseJson(
+            lastSignal.reference_trends
+          )
         }
       : null
   };

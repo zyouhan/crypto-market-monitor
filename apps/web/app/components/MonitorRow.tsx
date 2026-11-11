@@ -146,6 +146,15 @@ export function MonitorRow({
                 预设 · {item.preset_name}
               </span>
             )}
+            {item.reference_intervals.length > 0 && (
+              <span
+                className="reference-config-badge"
+                title="大级别 DEA 参考周期"
+              >
+                大级别{" "}
+                {item.reference_intervals.join("/")}
+              </span>
+            )}
             {item.source && (
               <span className="source-badge">
                 {item.source === "MIXED"

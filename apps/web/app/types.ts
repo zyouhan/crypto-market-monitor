@@ -90,6 +90,14 @@ export interface SignalItem {
   push_error: string | null;
   reason: string | null;
   payload: Record<string, unknown> | null;
+  reference_trends?:
+    | Partial<
+        Record<
+          "15m" | "1h" | "4h",
+          ReferenceTrend | null
+        >
+      >
+    | null;
   created_at: number;
 }
 
@@ -271,6 +279,14 @@ export interface MonitorSignalItem {
   push_error: string | null;
   reason: string | null;
   payload: Record<string, unknown> | null;
+  reference_trends?:
+    | Partial<
+        Record<
+          "15m" | "1h" | "4h",
+          ReferenceTrend | null
+        >
+      >
+    | null;
   created_at: number;
 }
 

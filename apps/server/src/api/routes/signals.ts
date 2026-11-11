@@ -613,7 +613,8 @@ signalsRouter.get("/", (req, res) => {
   }).map((row) => ({
     ...row,
     conditions: parseJson(row.conditions),
-    payload: parseJson(row.payload)
+    payload: parseJson(row.payload),
+    reference_trends: parseJson(row.reference_trends)
   }));
 
   res.json(success({ items, limit, offset }));

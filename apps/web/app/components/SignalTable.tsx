@@ -3,12 +3,13 @@
 import { useMemo, useState } from "react";
 
 import {
-  directionLabel,
   eventTypeLabel,
   formatPrice,
   formatTime
 } from "../lib/format";
 import type { MonitorItem, MonitorSignalItem } from "../types";
+import { referenceTagItems } from "../lib/reference-trends";
+import { ReferenceTags } from "./ReferenceTags";
 
 interface SignalTableProps {
   signals: MonitorSignalItem[];
@@ -390,6 +391,7 @@ export function SignalTable({
                 <th>监控项</th>
                 <th>触发条件</th>
                 <th>触发详情</th>
+                <th>大级别</th>
                 <th>方向</th>
                 <th>价格</th>
                 <th>通知</th>
@@ -419,16 +421,29 @@ export function SignalTable({
                   >
                     {triggerDetail(signal)}
                   </td>
-                  <td
-                    className={
-                      signal.direction === "BULL"
-                        ? "type-golden"
+                  <td>
+                    <ReferenceTags
+                      items={referenceTagItems(
+                        signal.reference_trends
+                      )}
+                    />
+                  </td>
+                  <td>
+                    <span
+                      className={`direction-badge ${
+                        signal.direction === "BULL"
+                          ? "bull"
+                          : signal.direction === "BEAR"
+                            ? "bear"
+                            : "neutral"
+                      }`}
+                    >
+                      {signal.direction === "BULL"
+                        ? "↗ 做多"
                         : signal.direction === "BEAR"
-                          ? "type-death"
-                          : "type-neutral"
-                    }
-                  >
-                    {directionLabel(signal.direction)}
+                          ? "↘ 做空"
+                          : "—"}
+                    </span>
                   </td>
                   <td>{formatPrice(signal.price)}</td>
                   <td

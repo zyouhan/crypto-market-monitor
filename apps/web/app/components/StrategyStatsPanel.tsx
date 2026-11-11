@@ -11,6 +11,8 @@ import {
   formatPrice,
   formatTime
 } from "../lib/format";
+import { referenceTagItems } from "../lib/reference-trends";
+import { ReferenceTags } from "./ReferenceTags";
 import type {
   SignalStats,
   StatsResult,
@@ -48,52 +50,10 @@ const RESULT_LABELS = new Map(
   ])
 );
 
-const REFERENCE_ORDER = ["15m", "1h", "4h"] as const;
-
-function referenceSummary(
-  entry: StrategyStatsEntry
-): string {
-  if (!entry.reference_trends) {
-    return "—";
-  }
-
-  const parts: string[] = [];
-
-  for (const interval of REFERENCE_ORDER) {
-    const trend = entry.reference_trends[interval];
-
-    if (!trend) {
-      continue;
-    }
-
-    const direction =
-      trend.direction === "up" ? "↑" : "↓";
-    const flags = [
-      trend.turning ? "拐头" : "",
-      trend.accelerating ? "加速" : "",
-      trend.weakening ? "走弱" : ""
-    ].filter(Boolean);
-
-    parts.push(
-      `${interval}${direction}${
-        flags.length > 0 ? ` ${flags.join("/")}` : ""
-      }`
-    );
-  }
-
-  return parts.length > 0 ? parts.join(" · ") : "—";
-}
-
 interface StrategyStatsPanelProps {
   onClose?: () => void;
   onChanged: () => void | Promise<void>;
   pageMode?: boolean;
-}
-
-function directionLabel(
-  direction: StrategyStatsEntry["direction"]
-): string {
-  return direction === "BEAR" ? "做空" : "做多";
 }
 
 export function StrategyStatsPanel({
@@ -544,16 +504,31 @@ export function StrategyStatsPanel({
                     <td>{formatTime(entry.event_time)}</td>
                     <td>{entry.symbol}</td>
                     <td>{entry.preset_name ?? "自定义/历史"}</td>
-                    <td>{directionLabel(entry.direction)}</td>
+                    <td>
+                      <span
+                        className={`direction-badge ${
+                          entry.direction === "BULL"
+                            ? "bull"
+                            : entry.direction === "BEAR"
+                              ? "bear"
+                              : "neutral"
+                        }`}
+                      >
+                        {entry.direction === "BULL"
+                          ? "↗ 做多"
+                          : entry.direction === "BEAR"
+                            ? "↘ 做空"
+                            : "—"}
+                      </span>
+                    </td>
                     <td>{formatPrice(entry.price)}</td>
                     <td>{eventTypeLabel(entry.event_type)}</td>
                     <td>
-                      <span
-                        className="stats-reference"
-                        title={referenceSummary(entry)}
-                      >
-                        {referenceSummary(entry)}
-                      </span>
+                      <ReferenceTags
+                        items={referenceTagItems(
+                          entry.reference_trends
+                        )}
+                      />
                     </td>
                     <td>
                       <button
