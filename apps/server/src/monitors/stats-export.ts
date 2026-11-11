@@ -93,6 +93,10 @@ function referenceLabel(value: string | null): string {
 
 function escapeXml(value: string): string {
   return value
+    .replace(
+      /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,
+      ""
+    )
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -262,7 +266,7 @@ function chartDataLabelsXml(
         return "";
       }
 
-      return `<c:dLbls>${labels}<c:showLegendKey val="0"/><c:showVal val="1"/><c:showCatName val="0"/><c:showSerName val="0"/><c:showPercent val="0"/><c:showBubbleSize val="0"/><c:dLblPos val="outEnd"/></c:dLbls>`;
+      return `<c:dLbls>${labels}<c:showLegendKey val="0"/><c:showVal val="1"/><c:showCatName val="0"/><c:showSerName val="0"/><c:showPercent val="0"/><c:showBubbleSize val="0"/></c:dLbls>`;
     });
 }
 

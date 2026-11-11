@@ -110,6 +110,7 @@ export interface SettingsData {
 export interface SignalStats {
   today: number;
   total: number;
+  legacy_count?: number;
   by_preset?: Array<{
     preset_id: string;
     preset_name: string;

@@ -102,6 +102,8 @@ export function StrategyStatsPanel({
   );
   const [pageInput, setPageInput] = useState("1");
   const [exportOpen, setExportOpen] = useState(false);
+  const [importingLegacy, setImportingLegacy] =
+    useState(false);
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const missingReferenceIds = entries
@@ -402,6 +404,43 @@ export function StrategyStatsPanel({
     }
   }
 
+  async function importLegacyStats(): Promise<void> {
+    const count = stats.legacy_count ?? 0;
+
+    if (count <= 0 || importingLegacy) {
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `将 ${count} 条历史入场信号纳入策略统计？\n纳入后会出现在统计明细和导出 Excel 中。`
+      )
+    ) {
+      return;
+    }
+
+    setImportingLegacy(true);
+    setError("");
+
+    try {
+      const result = await api<{ imported: number }>(
+        "/api/signals/stats/import-legacy",
+        { method: "POST" }
+      );
+
+      setBackfillMessage(
+        `已纳入 ${result.imported} 条历史入场信号`
+      );
+      await loadStats();
+      await loadResultStats();
+      setReloadKey((current) => current + 1);
+    } catch (importError) {
+      setError(errorMessage(importError));
+    } finally {
+      setImportingLegacy(false);
+    }
+  }
+
   return (
     <>
       <div
@@ -533,6 +572,18 @@ export function StrategyStatsPanel({
             />
           </label>
           <div className="strategy-stats-actions">
+            {(stats.legacy_count ?? 0) > 0 && (
+              <button
+                type="button"
+                className="button small"
+                disabled={importingLegacy}
+                onClick={() => void importLegacyStats()}
+              >
+                {importingLegacy
+                  ? "纳入中…"
+                  : `纳入历史统计 (${stats.legacy_count})`}
+              </button>
+            )}
             <button
               type="button"
               className="button small"

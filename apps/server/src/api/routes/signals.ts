@@ -48,6 +48,15 @@ signalsRouter.get("/stats", (_req, res) => {
       )
   `).get() as { count: number };
 
+  const legacy = db.prepare(`
+    SELECT COUNT(1) AS count
+    FROM signals
+    WHERE trigger_met = 1
+      AND track_stats = 0
+      AND stats_deleted = 0
+      AND event_type IN ('ENTRY_LONG', 'ENTRY_SHORT')
+  `).get() as { count: number };
+
   const presetRows = db.prepare(`
     SELECT
       COALESCE(preset_id, 'custom') AS preset_id,
@@ -122,6 +131,7 @@ signalsRouter.get("/stats", (_req, res) => {
     success({
       today: today.count,
       total: total.count,
+      legacy_count: legacy.count,
       by_preset: Array.from(presetMap.values()).sort(
         (a, b) => b.total - a.total
       )
@@ -516,6 +526,24 @@ signalsRouter.post("/stats/batch-delete", (req, res) => {
         deleted: result.changes
       },
       "已从策略统计中删除"
+    )
+  );
+});
+
+signalsRouter.post("/stats/import-legacy", (_req, res) => {
+  const result = db.prepare(`
+    UPDATE signals
+    SET track_stats = 1
+    WHERE trigger_met = 1
+      AND track_stats = 0
+      AND stats_deleted = 0
+      AND event_type IN ('ENTRY_LONG', 'ENTRY_SHORT')
+  `).run();
+
+  res.json(
+    success(
+      { imported: result.changes },
+      "历史入场信号已纳入策略统计"
     )
   );
 });
