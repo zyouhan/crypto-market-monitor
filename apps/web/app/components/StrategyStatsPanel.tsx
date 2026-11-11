@@ -393,6 +393,16 @@ export function StrategyStatsPanel({
         )
       );
       await loadResultStats();
+
+      if (
+        resultFilter !== "ALL" &&
+        entries.length === 1 &&
+        page > 0
+      ) {
+        setPage((current) => current - 1);
+      } else {
+        setReloadKey((current) => current + 1);
+      }
     } catch (saveError) {
       setError(errorMessage(saveError));
     } finally {
