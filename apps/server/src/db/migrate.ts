@@ -589,6 +589,8 @@ export function ensurePresetQualityFilters(
     id: number;
     preset_id: string;
   }>;
+  let added = 0;
+  let removed = 0;
   let updated = 0;
 
   for (const monitor of monitors) {
@@ -605,10 +607,6 @@ export function ensurePresetQualityFilters(
       params: string;
       sort_order: number;
     }>;
-
-    if (conditions.length !== 2) {
-      continue;
-    }
 
     const kdj = conditions.find(
       (condition) =>
@@ -650,12 +648,17 @@ export function ensurePresetQualityFilters(
     }
 
     const now = Date.now();
-    const nextSort =
-      Math.max(
-        ...conditions.map((condition) => condition.sort_order)
-      ) + 1;
 
     if (isLong) {
+      if (conditions.length !== 2) {
+        continue;
+      }
+
+      const nextSort =
+        Math.max(
+          ...conditions.map((condition) => condition.sort_order)
+        ) + 1;
+
       database.prepare(`
         INSERT INTO monitor_conditions (
           monitor_id, kind, role, interval, params,
@@ -674,7 +677,44 @@ export function ensurePresetQualityFilters(
         now,
         now
       );
-    } else {
+      added += 1;
+      continue;
+    }
+
+    const autoShortTrend = conditions.find((condition) => {
+      if (
+        condition.kind !== "EMA_CROSS" ||
+        condition.role !== "filter" ||
+        condition.interval !== "15m"
+      ) {
+        return false;
+      }
+
+      const params = parseJson(condition.params);
+
+      return (
+        params.fast === 25 &&
+        params.slow === 60 &&
+        params.threshold === 0 &&
+        (params.priceSide === "none" ||
+          params.priceSide === undefined) &&
+        (params.maxPriceDistancePct === 0 ||
+          params.maxPriceDistancePct === undefined)
+      );
+    });
+
+    if (autoShortTrend) {
+      database.prepare(`
+        DELETE FROM monitor_conditions
+        WHERE id = ?
+      `).run(autoShortTrend.id);
+      removed += 1;
+    }
+
+    if (
+      typeof macdParams.minHistPct !== "number" ||
+      macdParams.minHistPct <= 0
+    ) {
       database.prepare(`
         UPDATE monitor_conditions
         SET params = ?, updated_at = ?
@@ -687,32 +727,13 @@ export function ensurePresetQualityFilters(
         now,
         macd.id
       );
-      database.prepare(`
-        INSERT INTO monitor_conditions (
-          monitor_id, kind, role, interval, params,
-          sort_order, created_at, updated_at
-        ) VALUES (?, 'EMA_CROSS', 'filter', '15m', ?, ?, ?, ?)
-      `).run(
-        monitor.id,
-        JSON.stringify({
-          fast: 25,
-          slow: 60,
-          threshold: 0,
-          priceSide: "none",
-          maxPriceDistancePct: 0
-        }),
-        nextSort,
-        now,
-        now
-      );
+      updated += 1;
     }
-
-    updated += 1;
   }
 
-  if (updated > 0) {
+  if (added > 0 || removed > 0 || updated > 0) {
     console.log(
-      `[DB] 已为 ${updated} 个预设监控项补充入场质量过滤`
+      `[DB] 预设过滤同步: 新增 ${added}，清理做空 15m EMA ${removed}，更新 MACD 柱幅度 ${updated}`
     );
   }
 }

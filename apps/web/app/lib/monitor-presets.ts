@@ -66,10 +66,10 @@ export const MONITOR_PRESETS: MonitorPreset[] = [
   makePreset(
     "short-dea-kdj",
     "5m DEA + 1m KDJ（做空）",
-    "5m DEA 拐头向下第一根后，1m J>80 入场；5m MACD 柱需有足够幅度，且 15m EMA 趋势不能向上",
+    "5m DEA 拐头向下第一根后，1m J>80 入场；5m MACD 柱需有足够幅度",
     "short",
     "5m DEA向下 + 1m J>80",
-    ["KDJ_EXTREME", "MACD_DEA_TURN", "EMA_CROSS"],
+    ["KDJ_EXTREME", "MACD_DEA_TURN"],
     (catalog) => {
       const kdj = makeCondition(
         catalog,
@@ -102,23 +102,8 @@ export const MONITOR_PRESETS: MonitorPreset[] = [
           minHistPct: 0.02
         }
       );
-      const trend = makeCondition(
-        catalog,
-        "EMA_CROSS",
-        "filter",
-        "15m",
-        {
-          fast: 25,
-          slow: 60,
-          threshold: 0,
-          priceSide: "none",
-          maxPriceDistancePct: 0
-        }
-      );
 
-      return kdj && macd && trend
-        ? [kdj, macd, trend]
-        : null;
+      return kdj && macd ? [kdj, macd] : null;
     }
   ),
   makePreset(
