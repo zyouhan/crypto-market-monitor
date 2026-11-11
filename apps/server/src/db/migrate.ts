@@ -578,6 +578,145 @@ export function ensureStatsColumns(
   }
 }
 
+export function ensurePresetQualityFilters(
+  database: Database.Database
+): void {
+  const monitors = database.prepare(`
+    SELECT id, preset_id
+    FROM monitors
+    WHERE preset_id IN ('long-dea-kdj', 'short-dea-kdj')
+  `).all() as Array<{
+    id: number;
+    preset_id: string;
+  }>;
+  let updated = 0;
+
+  for (const monitor of monitors) {
+    const conditions = database.prepare(`
+      SELECT id, kind, role, interval, params, sort_order
+      FROM monitor_conditions
+      WHERE monitor_id = ?
+      ORDER BY sort_order, id
+    `).all(monitor.id) as Array<{
+      id: number;
+      kind: string;
+      role: string;
+      interval: string | null;
+      params: string;
+      sort_order: number;
+    }>;
+
+    if (conditions.length !== 2) {
+      continue;
+    }
+
+    const kdj = conditions.find(
+      (condition) =>
+        condition.kind === "KDJ_EXTREME" &&
+        condition.role === "trigger" &&
+        condition.interval === "1m"
+    );
+    const macd = conditions.find(
+      (condition) =>
+        condition.kind === "MACD_DEA_TURN" &&
+        condition.role === "filter" &&
+        condition.interval === "5m"
+    );
+
+    if (!kdj || !macd) {
+      continue;
+    }
+
+    const kdjParams = parseJson(kdj.params);
+    const macdParams = parseJson(macd.params);
+    const isLong = monitor.preset_id === "long-dea-kdj";
+    const kdjMatches =
+      kdjParams.period === 9 &&
+      kdjParams.oversold === 15 &&
+      kdjParams.overbought === 80 &&
+      kdjParams.triggerMode === "cross" &&
+      kdjParams.longEnabled === isLong &&
+      kdjParams.shortEnabled !== isLong;
+    const macdMatches =
+      macdParams.fast === 12 &&
+      macdParams.slow === 26 &&
+      macdParams.signal === 9 &&
+      macdParams.freshBars === 12 &&
+      macdParams.zeroSide === "any" &&
+      macdParams.direction === (isLong ? "up" : "down");
+
+    if (!kdjMatches || !macdMatches) {
+      continue;
+    }
+
+    const now = Date.now();
+    const nextSort =
+      Math.max(
+        ...conditions.map((condition) => condition.sort_order)
+      ) + 1;
+
+    if (isLong) {
+      database.prepare(`
+        INSERT INTO monitor_conditions (
+          monitor_id, kind, role, interval, params,
+          sort_order, created_at, updated_at
+        ) VALUES (?, 'EMA_CROSS', 'filter', '5m', ?, ?, ?, ?)
+      `).run(
+        monitor.id,
+        JSON.stringify({
+          fast: 25,
+          slow: 60,
+          threshold: 0,
+          priceSide: "none",
+          maxPriceDistancePct: 1.5
+        }),
+        nextSort,
+        now,
+        now
+      );
+    } else {
+      database.prepare(`
+        UPDATE monitor_conditions
+        SET params = ?, updated_at = ?
+        WHERE id = ?
+      `).run(
+        JSON.stringify({
+          ...macdParams,
+          minHistPct: 0.02
+        }),
+        now,
+        macd.id
+      );
+      database.prepare(`
+        INSERT INTO monitor_conditions (
+          monitor_id, kind, role, interval, params,
+          sort_order, created_at, updated_at
+        ) VALUES (?, 'EMA_CROSS', 'filter', '15m', ?, ?, ?, ?)
+      `).run(
+        monitor.id,
+        JSON.stringify({
+          fast: 25,
+          slow: 60,
+          threshold: 0,
+          priceSide: "none",
+          maxPriceDistancePct: 0
+        }),
+        nextSort,
+        now,
+        now
+      );
+    }
+
+    updated += 1;
+  }
+
+  if (updated > 0) {
+    console.log(
+      `[DB] 已为 ${updated} 个预设监控项补充入场质量过滤`
+    );
+  }
+}
+
 export function migrateToV5(
   database: Database.Database,
   dbFile: string,

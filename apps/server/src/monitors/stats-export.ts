@@ -254,7 +254,7 @@ function chartDataLabelsXml(
             countsBySymbol.get(symbol)?.get(result) ?? 0;
 
           if (count <= 0) {
-            return "";
+            return `<c:dLbl><c:idx val="${index}"/><c:delete val="1"/></c:dLbl>`;
           }
 
           return `<c:dLbl><c:idx val="${index}"/><c:tx><c:rich><a:bodyPr/><a:p><a:r><a:rPr lang="zh-CN"/><a:t>${count}</a:t></a:r></a:p></c:rich></c:tx></c:dLbl>`;
@@ -330,9 +330,13 @@ export async function buildStatsWorkbook(
     symbolResults.set(row.symbol, counts);
   }
 
-  const symbols = Array.from(
-    new Set(rows.map((row) => row.symbol))
-  ).sort();
+  const symbols = Array.from(symbolResults.keys()).sort();
+  const chartResults = STATS_RESULT_VALUES.filter((result) =>
+    symbols.some(
+      (symbol) =>
+        (symbolResults.get(symbol)?.get(result) ?? 0) > 0
+    )
+  );
   const chartFields =
     symbols.length > 0 ? symbols : ["暂无数据"];
   const chartData: Record<
@@ -340,7 +344,7 @@ export async function buildStatsWorkbook(
     Record<string, number>
   > = {};
 
-  for (const result of STATS_RESULT_VALUES) {
+  for (const result of chartResults) {
     const label = STATS_RESULT_LABELS[result];
     chartData[label] = {};
 
@@ -359,16 +363,26 @@ export async function buildStatsWorkbook(
     }
   }
 
-  const chartBuffer = await generateChart({
-    chart: "column",
-    chartTitle: "各标的策略结果占比（%）",
-    titles: STATS_RESULT_VALUES.map(
-      (result) => STATS_RESULT_LABELS[result]
-    ),
-    fields: chartFields,
-    data: chartData,
-    showVal: false
-  });
+  const chartBuffer =
+    chartResults.length > 0
+      ? await generateChart({
+          chart: "column",
+          chartTitle: "各标的策略结果占比（%）",
+          titles: chartResults.map(
+            (result) => STATS_RESULT_LABELS[result]
+          ),
+          fields: chartFields,
+          data: chartData,
+          showVal: false
+        })
+      : await generateChart({
+          chart: "column",
+          chartTitle: "暂无已填写结果",
+          titles: ["暂无数据"],
+          fields: ["暂无数据"],
+          data: { 暂无数据: { 暂无数据: 0 } },
+          showVal: false
+        });
 
   const zip = await JSZip.loadAsync(chartBuffer);
   const workbookXml = await readZipText(
@@ -485,7 +499,7 @@ export async function buildStatsWorkbook(
     const labels = chartDataLabelsXml(
       symbolResults,
       chartFields,
-      STATS_RESULT_VALUES
+      chartResults
     );
     const labeledChart = applySeriesDataLabels(
       chartText,

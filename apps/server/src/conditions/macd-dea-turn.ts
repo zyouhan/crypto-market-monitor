@@ -24,6 +24,7 @@ interface DeaParams extends MacdParams {
   direction: DeaDirection;
   freshBars: number;
   zeroSide: ZeroSide;
+  minHistPct: number;
 }
 
 interface TurnInfo {
@@ -53,13 +54,15 @@ function readParams(raw: unknown): DeaParams {
     input.zeroSide === "negative"
       ? input.zeroSide
       : "any";
+  const minHistPct = Number(input.minHistPct ?? 0);
   const params: DeaParams = {
     fast,
     slow,
     signal,
     direction,
     freshBars,
-    zeroSide
+    zeroSide,
+    minHistPct
   };
 
   validateMacdParams(params);
@@ -72,7 +75,33 @@ function readParams(raw: unknown): DeaParams {
     throw new Error("DEA 拐头有效期必须在 1 到 50 根之间");
   }
 
+  if (
+    !Number.isFinite(minHistPct) ||
+    minHistPct < 0 ||
+    minHistPct > 20
+  ) {
+    throw new Error("MACD 柱幅度必须在 0 到 20% 之间");
+  }
+
   return params;
+}
+
+function histogramAllowed(
+  point: MacdPoint,
+  params: DeaParams
+): boolean {
+  if (params.minHistPct <= 0) {
+    return true;
+  }
+
+  if (point.histogram === null || point.close <= 0) {
+    return false;
+  }
+
+  return (
+    (Math.abs(point.histogram) / point.close) * 100 >=
+    params.minHistPct
+  );
 }
 
 function deaSideAllowed(
@@ -166,7 +195,9 @@ function buildPoint(
     previous?.dea !== undefined;
   const rising = hasSlope ? current.dea! > previous!.dea! : false;
   const falling = hasSlope ? current.dea! < previous!.dea! : false;
-  const positionAllowed = deaSideAllowed(current, params);
+  const histogramOk = histogramAllowed(current, params);
+  const positionAllowed =
+    deaSideAllowed(current, params) && histogramOk;
 
   let eventDirection: SignalDirection | null = null;
   let activeDirection: SignalDirection | null = null;
@@ -199,7 +230,9 @@ function buildPoint(
           ? turn
             ? positionAllowed
               ? `DEA ${rising ? "向上" : "向下"}，拐头后走弱`
-              : `DEA ${rising ? "向上" : "向下"}，但零轴位置不符`
+              : !histogramOk
+                ? `DEA ${rising ? "向上" : "向下"}，但 MACD 柱接近零轴`
+                : `DEA ${rising ? "向上" : "向下"}，但零轴位置不符`
             : params.direction === "up"
               ? rising
                 ? "DEA 向上，但拐头已过期"
@@ -277,7 +310,9 @@ function buildPoint(
       direction: params.direction,
       freshBars: params.freshBars,
       zeroSide: params.zeroSide,
+      minHistPct: params.minHistPct,
       positionAllowed,
+      histogramAllowed: histogramOk,
       barsSinceTurn: turn?.bars ?? null,
       dif: current.dif,
       dea: current.dea,
@@ -423,6 +458,16 @@ export const macdDeaTurnDefinition: ConditionDefinition = {
         { value: "positive", label: "零轴上方" },
         { value: "negative", label: "零轴下方" }
       ]
+    },
+    {
+      key: "minHistPct",
+      label: "MACD 柱最小幅度（%）",
+      type: "number",
+      min: 0,
+      max: 20,
+      step: "any",
+      defaultValue: 0,
+      help: "|DIF-DEA| / 收盘价 × 100，用于排除 DEA 与 DIF 纠缠的假拐头"
     }
   ],
   normalizeParams(raw) {
@@ -442,8 +487,12 @@ export const macdDeaTurnDefinition: ConditionDefinition = {
         : value.zeroSide === "negative"
           ? " · 零轴下"
           : "";
+    const strength =
+      value.minHistPct > 0
+        ? ` · 柱≥${value.minHistPct}%`
+        : "";
 
-    return `MACD ${value.fast}/${value.slow}/${value.signal} · DEA ${direction}拐头 · ${value.freshBars}根内${side}`;
+    return `MACD ${value.fast}/${value.slow}/${value.signal} · DEA ${direction}拐头 · ${value.freshBars}根内${side}${strength}`;
   },
   run: runMacd
 };

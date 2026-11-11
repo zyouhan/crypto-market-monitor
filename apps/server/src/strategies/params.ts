@@ -3,6 +3,7 @@ export interface EmaTrendParams {
   slow: number;
   threshold: number;
   priceSide?: "none" | "above" | "below";
+  maxPriceDistancePct?: number;
 }
 
 export interface KdjEntryParams {
@@ -39,7 +40,8 @@ export const DEFAULT_EMA_PARAMS: EmaTrendParams = {
   fast: 25,
   slow: 60,
   threshold: 10,
-  priceSide: "none"
+  priceSide: "none",
+  maxPriceDistancePct: 0
 };
 
 export const DEFAULT_KDJ_PARAMS: KdjEntryParams = {
@@ -176,8 +178,23 @@ export function normalizeEmaParams(
     raw.priceSide === "above" || raw.priceSide === "below"
       ? raw.priceSide
       : "none";
+  const maxPriceDistancePct = readNumber(
+    raw.maxPriceDistancePct,
+    DEFAULT_EMA_PARAMS.maxPriceDistancePct ?? 0,
+    "快线距离上限"
+  );
 
-  return { fast, slow, threshold, priceSide };
+  if (maxPriceDistancePct < 0 || maxPriceDistancePct > 50) {
+    throw new ParamValidationError("快线距离上限必须在 0 到 50% 之间");
+  }
+
+  return {
+    fast,
+    slow,
+    threshold,
+    priceSide,
+    maxPriceDistancePct
+  };
 }
 
 /**

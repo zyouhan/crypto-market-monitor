@@ -94,11 +94,49 @@ function statusDirection(
   return null;
 }
 
+function fastDistanceAllowed(
+  close: number | null,
+  fastEma: number | null,
+  direction: SignalDirection | null,
+  maxPriceDistancePct: number | undefined
+): boolean {
+  if (
+    !maxPriceDistancePct ||
+    maxPriceDistancePct <= 0 ||
+    close === null ||
+    fastEma === null ||
+    fastEma <= 0 ||
+    direction === null
+  ) {
+    return true;
+  }
+
+  const distancePct =
+    ((close - fastEma) / fastEma) * 100;
+
+  return direction === "BULL"
+    ? distancePct <= maxPriceDistancePct
+    : distancePct >= -maxPriceDistancePct;
+}
+
 function priceAllowed(
   close: number | null,
   slowEma: number | null,
+  fastEma: number | null,
+  direction: SignalDirection | null,
   params: EmaTrendParams
 ): boolean {
+  if (
+    !fastDistanceAllowed(
+      close,
+      fastEma,
+      direction,
+      params.maxPriceDistancePct
+    )
+  ) {
+    return false;
+  }
+
   if (params.priceSide === "none" || params.priceSide === undefined) {
     return true;
   }
@@ -116,7 +154,9 @@ function buildDisplay(
   state: StrategyStateView,
   params: EmaTrendParams,
   close: number | null = null,
-  slowEma: number | null = null
+  slowEma: number | null = null,
+  fastEma: number | null = null,
+  direction: SignalDirection | null = null
 ): ConditionDisplayItem[] {
   const aligned =
     typeof state.extra.aligned === "boolean"
@@ -195,6 +235,32 @@ function buildDisplay(
     });
   }
 
+  if (
+    (params.maxPriceDistancePct ?? 0) > 0 &&
+    close !== null &&
+    fastEma !== null &&
+    fastEma > 0
+  ) {
+    const distancePct =
+      ((close - fastEma) / fastEma) * 100;
+
+    display.push({
+      label: "距快线",
+      value: `${distancePct >= 0 ? "+" : ""}${distancePct.toFixed(
+        2
+      )}% / 上限 ${params.maxPriceDistancePct}%`,
+      tone:
+        fastDistanceAllowed(
+          close,
+          fastEma,
+          direction,
+          params.maxPriceDistancePct
+        )
+          ? "neutral"
+          : "bear"
+    });
+  }
+
   return display;
 }
 
@@ -214,12 +280,24 @@ function latestPoint(
       klines.map((kline) => kline.close),
       params.slow
     )[klines.length - 1] ?? null;
-  const allowed = priceAllowed(last.close, slowEma, params);
+  const fastEma =
+    calculateEMA(
+      klines.map((kline) => kline.close),
+      params.fast
+    )[klines.length - 1] ?? null;
+  const direction = statusDirection(state.status);
+  const allowed = priceAllowed(
+    last.close,
+    slowEma,
+    fastEma,
+    direction,
+    params
+  );
 
   return {
     time: last.closeTime,
     eventType: null,
-    direction: statusDirection(state.status),
+    direction,
     active: state.status !== "NEUTRAL" && allowed,
     threshold: params.threshold,
     payload: {
@@ -228,6 +306,7 @@ function latestPoint(
       threshold: params.threshold,
       close: last.close,
       slowEma,
+      fastEma,
       priceSide: params.priceSide ?? "none",
       priceAllowed: allowed
     },
@@ -235,7 +314,9 @@ function latestPoint(
       state,
       params,
       last.close,
-      slowEma
+      slowEma,
+      fastEma,
+      direction
     )
   };
 }
@@ -263,6 +344,10 @@ function runEmaCondition(
   const slowEmas = calculateEMA(
     input.klines.map((kline) => kline.close),
     params.slow
+  );
+  const fastEmas = calculateEMA(
+    input.klines.map((kline) => kline.close),
+    params.fast
   );
   const indexByTime = new Map<number, number>();
 
@@ -293,9 +378,17 @@ function runEmaCondition(
         index === undefined
           ? null
           : slowEmas[index] ?? null;
+      const fastEma =
+        index === undefined
+          ? null
+          : fastEmas[index] ?? null;
+      const direction =
+        event?.direction ?? statusDirection(status);
       const allowed = priceAllowed(
         kline.close,
         slowEma,
+        fastEma,
+        direction,
         params
       );
 
@@ -304,8 +397,7 @@ function runEmaCondition(
         eventType: allowed
           ? event?.eventType ?? null
           : null,
-        direction:
-          event?.direction ?? statusDirection(status),
+        direction,
         active: status !== "NEUTRAL" && allowed,
         threshold: params.threshold,
         payload: {
@@ -316,6 +408,7 @@ function runEmaCondition(
           }),
           close: kline.close,
           slowEma,
+          fastEma,
           priceSide: params.priceSide ?? "none",
           priceAllowed: allowed
         },
@@ -323,7 +416,9 @@ function runEmaCondition(
           result.state,
           params,
           kline.close,
-          slowEma
+          slowEma,
+          fastEma,
+          direction
         )
       });
     }
@@ -379,6 +474,16 @@ export const emaCrossDefinition: ConditionDefinition = {
         { value: "below", label: "收盘在慢线下方" }
       ],
       help: "用于排除 DEA/EMA 仍向上但价格已经跌破慢线的情况"
+    },
+    {
+      key: "maxPriceDistancePct",
+      label: "距快线上限（%）",
+      type: "number",
+      min: 0,
+      max: 50,
+      step: "any",
+      defaultValue: 0,
+      help: "做多时价格高于快线、做空时价格低于快线超过该百分比则不通过"
     }
   ],
   normalizeParams(raw, klineLimit) {
@@ -392,7 +497,12 @@ export const emaCrossDefinition: ConditionDefinition = {
           ? " · 价格在慢线下方"
           : "";
 
-    return `EMA ${params.fast}/${params.slow}${side}`;
+    const distance =
+      Number(params.maxPriceDistancePct ?? 0) > 0
+        ? ` · 距快线≤${params.maxPriceDistancePct}%`
+        : "";
+
+    return `EMA ${params.fast}/${params.slow}${side}${distance}`;
   },
   run: runEmaCondition
 };
