@@ -237,6 +237,52 @@ async function addWorksheet(
   );
 }
 
+function chartDataLabelsXml(
+  countsBySymbol: Map<string, Map<string, number>>,
+  fields: string[],
+  results: readonly string[]
+): string[] {
+  return results
+    .map((result) => {
+      const labels = fields
+        .map((symbol, index) => {
+          const count =
+            countsBySymbol.get(symbol)?.get(result) ?? 0;
+
+          if (count <= 0) {
+            return "";
+          }
+
+          return `<c:dLbl><c:idx val="${index}"/><c:tx><c:rich><a:bodyPr/><a:p><a:r><a:rPr lang="zh-CN"/><a:t>${count}</a:t></a:r></a:p></c:rich></c:tx></c:dLbl>`;
+        })
+        .filter(Boolean)
+        .join("");
+
+      if (!labels) {
+        return "";
+      }
+
+      return `<c:dLbls>${labels}<c:showLegendKey val="0"/><c:showVal val="1"/><c:showCatName val="0"/><c:showSerName val="0"/><c:showPercent val="0"/><c:showBubbleSize val="0"/><c:dLblPos val="outEnd"/></c:dLbls>`;
+    });
+}
+
+function applySeriesDataLabels(
+  chartXml: string,
+  labels: string[]
+): string {
+  let seriesIndex = 0;
+
+  return chartXml.replace(
+    /(<c:ser>[\s\S]*?<\/c:tx>)([\s\S]*?<\/c:ser>)/g,
+    (match, head: string, tail: string) => {
+      const label = labels[seriesIndex];
+      seriesIndex += 1;
+
+      return label ? `${head}${label}${tail}` : match;
+    }
+  );
+}
+
 function generateChart(
   options: Parameters<XLSXChart["generate"]>[0]
 ): Promise<Buffer> {
@@ -432,9 +478,19 @@ export async function buildStatsWorkbook(
 
   if (chartXml) {
     const chartText = await readZipText(zip, chartPath);
+    const labels = chartDataLabelsXml(
+      symbolResults,
+      chartFields,
+      STATS_RESULT_VALUES
+    );
+    const labeledChart = applySeriesDataLabels(
+      chartText,
+      labels
+    );
+
     zip.file(
       chartPath,
-      chartText.replace(
+      labeledChart.replace(
         '<c:numFmt formatCode="General" sourceLinked="1"/>',
         '<c:numFmt formatCode="0&quot;%&quot;" sourceLinked="0"/>'
       )
