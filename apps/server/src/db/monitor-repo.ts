@@ -185,12 +185,16 @@ export function updateMonitorFields(input: {
   soundEnabled: number;
   trackStats: number;
   referenceIntervals: string;
+  presetId: string | null;
+  presetName: string | null;
 }): void {
   db.prepare(`
     UPDATE monitors
     SET
       name = ?,
       interval = ?,
+      preset_id = ?,
+      preset_name = ?,
       enabled = ?,
       wechat_enabled = ?,
       sound_enabled = ?,
@@ -201,6 +205,8 @@ export function updateMonitorFields(input: {
   `).run(
     input.name,
     input.interval,
+    input.presetId,
+    input.presetName,
     input.enabled,
     input.wechatEnabled,
     input.soundEnabled,

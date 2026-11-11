@@ -41,6 +41,7 @@ const RESULT_OPTIONS: Array<{
   },
   { value: "light_failed", label: "轻仓失败" },
   { value: "heavy_failed", label: "重仓失败" },
+  { value: "not_suitable", label: "不适合入场" },
   { value: "other", label: "其他" }
 ];
 

@@ -492,6 +492,24 @@ monitorsRouter.put("/:id", (req, res) => {
       body.reference_intervals,
       parseReferenceIntervals(existing.reference_intervals)
     );
+    const presetId = Object.prototype.hasOwnProperty.call(
+      body,
+      "preset_id"
+    )
+      ? typeof body.preset_id === "string" &&
+        body.preset_id.trim()
+        ? body.preset_id.trim().slice(0, 64)
+        : null
+      : existing.preset_id;
+    const presetName = Object.prototype.hasOwnProperty.call(
+      body,
+      "preset_name"
+    )
+      ? typeof body.preset_name === "string" &&
+        body.preset_name.trim()
+        ? body.preset_name.trim().slice(0, 120)
+        : null
+      : existing.preset_name;
 
     const oldSignature = JSON.stringify(
       getMonitorConditions(id).map((condition) => ({
@@ -515,7 +533,9 @@ monitorsRouter.put("/:id", (req, res) => {
         wechatEnabled,
         soundEnabled,
         trackStats,
-        referenceIntervals: JSON.stringify(referenceIntervals)
+        referenceIntervals: JSON.stringify(referenceIntervals),
+        presetId,
+        presetName
       });
       deleteMonitorConditions(id);
       insertConditionRows(id, conditions);
@@ -616,7 +636,9 @@ monitorsRouter.patch("/:id", (req, res) => {
       trackStats,
       referenceIntervals: JSON.stringify(
         parseReferenceIntervals(existing.reference_intervals)
-      )
+      ),
+      presetId: existing.preset_id,
+      presetName: existing.preset_name
     });
 
     const monitor = getMonitorById(id);

@@ -5,6 +5,7 @@ export const STATS_RESULT_VALUES = [
   "heavy_reasonable_stop",
   "light_failed",
   "heavy_failed",
+  "not_suitable",
   "other"
 ] as const;
 
@@ -17,6 +18,7 @@ export const STATS_RESULT_LABELS: Record<StatsResult, string> = {
   heavy_reasonable_stop: "重仓合理止损",
   light_failed: "轻仓失败",
   heavy_failed: "重仓失败",
+  not_suitable: "不适合入场",
   other: "其他"
 };
 

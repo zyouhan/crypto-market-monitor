@@ -141,10 +141,10 @@ export function MonitorModal({
     string | null
   >(null);
   const [presetId, setPresetId] = useState<string | null>(
-    null
+    item?.preset_id ?? null
   );
   const [presetName, setPresetName] = useState<string | null>(
-    null
+    item?.preset_name ?? null
   );
   const [batchSymbols, setBatchSymbols] = useState("");
 

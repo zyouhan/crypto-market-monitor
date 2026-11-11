@@ -128,6 +128,7 @@ export type StatsResult =
   | "heavy_reasonable_stop"
   | "light_failed"
   | "heavy_failed"
+  | "not_suitable"
   | "other";
 
 export interface StrategyStatsEntry {
