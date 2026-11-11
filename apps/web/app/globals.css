@@ -2285,7 +2285,7 @@ option {
 }
 
 .strategy-stats-modal {
-  width: min(1100px, 96vw);
+  width: min(1180px, 96vw);
   max-height: 88vh;
   overflow-y: auto;
 }
@@ -2369,6 +2369,69 @@ option {
 .danger-link:disabled {
   color: var(--muted);
   cursor: wait;
+}
+
+.stats-note {
+  display: block;
+  max-width: 180px;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 2px 0;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.stats-note.has-note {
+  color: var(--text);
+}
+
+.stats-note:hover {
+  color: var(--blue);
+  text-decoration: underline;
+}
+
+.stats-result-select {
+  height: 28px;
+  min-width: 92px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #0b111a;
+  color: var(--text);
+  font-size: 11px;
+  padding: 0 6px;
+}
+
+.stats-note-backdrop {
+  z-index: 80;
+}
+
+.stats-note-modal {
+  width: min(620px, 92vw);
+}
+
+.stats-note-textarea {
+  width: 100%;
+  min-height: 160px;
+  margin-top: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #0b111a;
+  color: var(--text);
+  padding: 10px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.stats-note-textarea:focus {
+  border-color: var(--blue);
+  outline: none;
 }
 
 @media (max-width: 900px) {

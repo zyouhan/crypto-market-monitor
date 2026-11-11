@@ -112,6 +112,12 @@ export interface SignalStats {
   }>;
 }
 
+export type StatsResult =
+  | "success"
+  | "reasonable_stop"
+  | "failed"
+  | "other";
+
 export interface StrategyStatsEntry {
   id: number;
   event_time: number;
@@ -122,6 +128,8 @@ export interface StrategyStatsEntry {
   price: number;
   event_type: SignalEventType;
   monitor_name: string | null;
+  stats_note: string | null;
+  stats_result: StatsResult | null;
 }
 
 export interface StrategyStatsPage {

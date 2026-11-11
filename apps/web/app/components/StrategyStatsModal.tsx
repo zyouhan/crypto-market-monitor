@@ -13,11 +13,23 @@ import {
 } from "../lib/format";
 import type {
   SignalStats,
+  StatsResult,
   StrategyStatsEntry,
   StrategyStatsPage
 } from "../types";
 
 const PAGE_SIZE = 20;
+
+const RESULT_OPTIONS: Array<{
+  value: StatsResult | "";
+  label: string;
+}> = [
+  { value: "", label: "未填写" },
+  { value: "success", label: "成功" },
+  { value: "reasonable_stop", label: "合理止损" },
+  { value: "failed", label: "失败" },
+  { value: "other", label: "其他" }
+];
 
 interface StrategyStatsModalProps {
   onClose: () => void;
@@ -50,6 +62,13 @@ export function StrategyStatsModal({
     null
   );
   const [reloadKey, setReloadKey] = useState(0);
+  const [noteEntry, setNoteEntry] =
+    useState<StrategyStatsEntry | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+  const [savingResultId, setSavingResultId] = useState<
+    number | null
+  >(null);
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -145,16 +164,86 @@ export function StrategyStatsModal({
     }
   }
 
+  function openNoteEditor(entry: StrategyStatsEntry): void {
+    setNoteEntry(entry);
+    setNoteDraft(entry.stats_note ?? "");
+    setError("");
+  }
+
+  async function saveNote(): Promise<void> {
+    if (!noteEntry) {
+      return;
+    }
+
+    setSavingNote(true);
+    setError("");
+
+    try {
+      const updated = await api<{
+        id: number;
+        stats_note: string | null;
+        stats_result: StatsResult | null;
+      }>(`/api/signals/${noteEntry.id}/stats`, {
+        method: "PATCH",
+        body: JSON.stringify({ note: noteDraft })
+      });
+
+      setEntries((current) =>
+        current.map((entry) =>
+          entry.id === noteEntry.id
+            ? { ...entry, stats_note: updated.stats_note }
+            : entry
+        )
+      );
+      setNoteEntry(null);
+    } catch (saveError) {
+      setError(errorMessage(saveError));
+    } finally {
+      setSavingNote(false);
+    }
+  }
+
+  async function saveResult(
+    entry: StrategyStatsEntry,
+    value: string
+  ): Promise<void> {
+    const result =
+      value === "" ? null : (value as StatsResult);
+
+    setSavingResultId(entry.id);
+    setError("");
+
+    try {
+      await api(`/api/signals/${entry.id}/stats`, {
+        method: "PATCH",
+        body: JSON.stringify({ result })
+      });
+
+      setEntries((current) =>
+        current.map((item) =>
+          item.id === entry.id
+            ? { ...item, stats_result: result }
+            : item
+        )
+      );
+    } catch (saveError) {
+      setError(errorMessage(saveError));
+    } finally {
+      setSavingResultId(null);
+    }
+  }
+
   return (
-    <div
-      className="modal-backdrop"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) {
-          onClose();
-        }
-      }}
-    >
-      <div className="modal strategy-stats-modal">
+    <>
+      <div
+        className="modal-backdrop"
+        onMouseDown={(event) => {
+          if (event.target === event.currentTarget) {
+            onClose();
+          }
+        }}
+      >
+        <div className="modal strategy-stats-modal">
         <div className="modal-title-row">
           <div>
             <h2>策略统计</h2>
@@ -225,19 +314,21 @@ export function StrategyStatsModal({
                 <th>方向</th>
                 <th>价格</th>
                 <th>类型</th>
+                <th>备注</th>
+                <th>结果</th>
                 <th>操作</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="table-empty">
+                  <td colSpan={9} className="table-empty">
                     加载中…
                   </td>
                 </tr>
               ) : entries.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="table-empty">
+                  <td colSpan={9} className="table-empty">
                     暂无统计记录
                   </td>
                 </tr>
@@ -250,6 +341,40 @@ export function StrategyStatsModal({
                     <td>{directionLabel(entry.direction)}</td>
                     <td>{formatPrice(entry.price)}</td>
                     <td>{eventTypeLabel(entry.event_type)}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className={`stats-note ${
+                          entry.stats_note ? "has-note" : ""
+                        }`}
+                        title={entry.stats_note ?? "添加备注"}
+                        onClick={() => openNoteEditor(entry)}
+                      >
+                        {entry.stats_note || "添加备注"}
+                      </button>
+                    </td>
+                    <td>
+                      <select
+                        className="stats-result-select"
+                        value={entry.stats_result ?? ""}
+                        disabled={savingResultId === entry.id}
+                        onChange={(event) =>
+                          void saveResult(
+                            entry,
+                            event.target.value
+                          )
+                        }
+                      >
+                        {RESULT_OPTIONS.map((option) => (
+                          <option
+                            value={option.value}
+                            key={option.value || "empty"}
+                          >
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
                     <td>
                       <button
                         type="button"
@@ -294,7 +419,75 @@ export function StrategyStatsModal({
             </button>
           </div>
         </div>
+        </div>
       </div>
-    </div>
+
+      {noteEntry && (
+        <div
+          className="modal-backdrop stats-note-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setNoteEntry(null);
+            }
+          }}
+        >
+          <div className="modal stats-note-modal">
+            <div className="modal-title-row">
+              <div>
+                <h2>备注</h2>
+                <div className="modal-subtitle">
+                  {noteEntry.symbol} ·{" "}
+                  {formatTime(noteEntry.event_time)}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="modal-close"
+                aria-label="关闭"
+                onClick={() => setNoteEntry(null)}
+              >
+                ×
+              </button>
+            </div>
+
+            <textarea
+              className="stats-note-textarea"
+              rows={8}
+              maxLength={5000}
+              value={noteDraft}
+              placeholder="记录这笔信号的判断、市场背景或复盘备注"
+              onChange={(event) =>
+                setNoteDraft(event.target.value)
+              }
+              autoFocus
+            />
+
+            <div className="modal-footer">
+              <span className="field-help">
+                {noteDraft.length} / 5000
+              </span>
+              <div className="form-actions">
+                <button
+                  type="button"
+                  className="button"
+                  disabled={savingNote}
+                  onClick={() => setNoteEntry(null)}
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  className="button primary"
+                  disabled={savingNote}
+                  onClick={() => void saveNote()}
+                >
+                  {savingNote ? "保存中…" : "保存备注"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

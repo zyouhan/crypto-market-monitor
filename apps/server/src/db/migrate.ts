@@ -531,7 +531,9 @@ export function ensureStatsColumns(
       "signals",
       "stats_deleted",
       "INTEGER NOT NULL DEFAULT 0"
-    ]
+    ],
+    ["signals", "stats_note", "TEXT"],
+    ["signals", "stats_result", "TEXT"]
   ] as const;
 
   for (const [table, column, definition] of targets) {

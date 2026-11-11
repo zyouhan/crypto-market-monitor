@@ -7,6 +7,13 @@ import { failure, success } from "../middleware";
 
 export const signalsRouter: Router = Router();
 
+const STATS_RESULTS = new Set([
+  "success",
+  "reasonable_stop",
+  "failed",
+  "other"
+]);
+
 signalsRouter.get("/stats", (_req, res) => {
   const now = new Date();
   const startOfToday = new Date(
@@ -140,6 +147,7 @@ signalsRouter.get("/stats/entries", (req, res) => {
         OR symbol LIKE ?
         OR preset_name LIKE ?
         OR monitor_name LIKE ?
+        OR stats_note LIKE ?
       )
   `;
 
@@ -149,6 +157,7 @@ signalsRouter.get("/stats/entries", (req, res) => {
     ${where}
   `).get(
     search,
+    pattern,
     pattern,
     pattern,
     pattern
@@ -164,13 +173,16 @@ signalsRouter.get("/stats/entries", (req, res) => {
       direction,
       price,
       event_type,
-      monitor_name
+      monitor_name,
+      stats_note,
+      stats_result
     FROM signals
     ${where}
     ORDER BY event_time DESC, id DESC
     LIMIT ? OFFSET ?
   `).all(
     search,
+    pattern,
     pattern,
     pattern,
     pattern,
@@ -185,6 +197,98 @@ signalsRouter.get("/stats/entries", (req, res) => {
       limit,
       offset
     })
+  );
+});
+
+signalsRouter.patch("/:id/stats", (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(400).json(failure("信号 ID 不正确"));
+    return;
+  }
+
+  const signal = db.prepare(`
+    SELECT id, track_stats, stats_note, stats_result
+    FROM signals
+    WHERE id = ?
+  `).get(id) as
+    | {
+        id: number;
+        track_stats: number;
+        stats_note: string | null;
+        stats_result: string | null;
+      }
+    | undefined;
+
+  if (!signal) {
+    res.status(404).json(failure("信号不存在"));
+    return;
+  }
+
+  const body = req.body ?? {};
+  const hasNote = Object.prototype.hasOwnProperty.call(
+    body,
+    "note"
+  );
+  const hasResult = Object.prototype.hasOwnProperty.call(
+    body,
+    "result"
+  );
+
+  if (!hasNote && !hasResult) {
+    res.status(400).json(
+      failure("请提供备注或结果")
+    );
+    return;
+  }
+
+  let note = signal.stats_note;
+  let result = signal.stats_result;
+
+  if (hasNote) {
+    if (body.note !== null && typeof body.note !== "string") {
+      res.status(400).json(failure("备注必须是文本"));
+      return;
+    }
+
+    note =
+      typeof body.note === "string" && body.note.length > 0
+        ? body.note.slice(0, 5000)
+        : null;
+  }
+
+  if (hasResult) {
+    if (
+      body.result !== null &&
+      (typeof body.result !== "string" ||
+        !STATS_RESULTS.has(body.result))
+    ) {
+      res.status(400).json(failure("统计结果不正确"));
+      return;
+    }
+
+    result =
+      typeof body.result === "string" ? body.result : null;
+  }
+
+  db.prepare(`
+    UPDATE signals
+    SET
+      stats_note = ?,
+      stats_result = ?
+    WHERE id = ?
+  `).run(note, result, id);
+
+  res.json(
+    success(
+      {
+        id,
+        stats_note: note,
+        stats_result: result
+      },
+      "统计信息已更新"
+    )
   );
 });
 
