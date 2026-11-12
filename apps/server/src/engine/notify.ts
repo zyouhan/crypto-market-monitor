@@ -133,8 +133,10 @@ export function buildMonitorMessage(
   monitor: MonitorRecord
 ): { title: string; description: string } {
   const title = `[监控] ${signal.symbol} ${
-    signal.monitor_name ?? monitor.name
-  } ${displayDirection(signal)}`;
+    signal.interval ?? monitor.interval
+  } ${signal.monitor_name ?? monitor.name} ${displayDirection(
+    signal
+  )}`;
 
   const conditions = parseConditions(signal.conditions);
 

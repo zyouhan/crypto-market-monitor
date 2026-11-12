@@ -278,6 +278,9 @@ export function MonitorRow({
                       : "neutral"
                 }`}
               >
+                {latestSignal.interval
+                  ? `${latestSignal.interval} `
+                  : ""}
                 {eventTypeLabel(latestSignal.event_type)}
               </div>
               <div className="row-signal-meta">

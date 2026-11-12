@@ -144,9 +144,9 @@ function triggerDetail(signal: MonitorSignalItem): string {
     signal.event_type === "SHORT_ZONE_START" ||
     signal.event_type === "SHORT_ZONE_EXHAUST"
   ) {
-    return `${eventTypeLabel(signal.event_type)} · ${
-      trigger?.summary ?? "MACD"
-    }`;
+    return `${signal.interval ? `${signal.interval} ` : ""}${eventTypeLabel(
+      signal.event_type
+    )} · ${trigger?.summary ?? "MACD"}`;
   }
 
   if (signal.event_type === "STOP_LOSS_HIT") {

@@ -48,6 +48,7 @@ export function SignalToasts({
             <div className="toast-head">
               <strong>
                 {signal.symbol} ·{" "}
+                {signal.interval ? `${signal.interval} ` : ""}
                 {eventTypeLabel(signal.event_type)}
               </strong>
 
