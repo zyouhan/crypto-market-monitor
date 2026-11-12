@@ -74,6 +74,14 @@ function eventLabel(eventType: string): string {
     return "DIF 下穿零轴";
   }
 
+  if (eventType === "KDJ_J_UP_K") {
+    return "J 上穿 K";
+  }
+
+  if (eventType === "KDJ_J_DOWN_K") {
+    return "J 下穿 K";
+  }
+
   return eventType;
 }
 

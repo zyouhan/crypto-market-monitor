@@ -4,6 +4,7 @@ import { adxTrendDefinition } from "./adx-trend";
 import { emaCrossDefinition } from "./ema-cross";
 import { emaFastTurnDefinition } from "./ema-fast-turn";
 import { kdjExtremeDefinition } from "./kdj-extreme";
+import { kdjJkCrossDefinition } from "./kdj-jk-cross";
 import { macdDeaTurnDefinition } from "./macd-dea-turn";
 import { macdDeaZoneDefinition } from "./macd-dea-zone";
 import { macdDifZeroDefinition } from "./macd-dif-zero";
@@ -17,6 +18,7 @@ export const CONDITION_DEFINITIONS: Record<
 > = {
   EMA_CROSS: emaCrossDefinition,
   KDJ_EXTREME: kdjExtremeDefinition,
+  KDJ_JK_CROSS: kdjJkCrossDefinition,
   VOLUME_SPIKE: volumeSpikeDefinition,
   PRICE_LEVEL: priceLevelDefinition,
   MACD_DEA_TURN: macdDeaTurnDefinition,

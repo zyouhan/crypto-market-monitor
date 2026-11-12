@@ -158,6 +158,15 @@ function triggerDetail(signal: MonitorSignalItem): string {
     }`;
   }
 
+  if (
+    signal.event_type === "KDJ_J_UP_K" ||
+    signal.event_type === "KDJ_J_DOWN_K"
+  ) {
+    return `${eventTypeLabel(signal.event_type)} · ${
+      trigger?.summary ?? "KDJ"
+    }`;
+  }
+
   if (signal.event_type === "STOP_LOSS_HIT") {
     const entryPrice = signal.payload?.entryPrice;
     const stopPrice = signal.payload?.stopPrice;
@@ -398,6 +407,8 @@ export function SignalTable({
           <option value="SHORT_ZONE_EXHAUST">空头区间衰竭</option>
           <option value="DIF_ZERO_UP">DIF 上穿零轴</option>
           <option value="DIF_ZERO_DOWN">DIF 下穿零轴</option>
+          <option value="KDJ_J_UP_K">J 上穿 K</option>
+          <option value="KDJ_J_DOWN_K">J 下穿 K</option>
           <option value="ADX_TREND">ADX 趋势</option>
           <option value="EMA_FAST_TURN">EMA 快线拐头</option>
           <option value="TREND_INVALIDATED">等待失效</option>

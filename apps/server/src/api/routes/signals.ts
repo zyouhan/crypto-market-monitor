@@ -726,6 +726,8 @@ const EVENT_TYPES: SignalEventType[] = [
   "SHORT_ZONE_EXHAUST",
   "DIF_ZERO_UP",
   "DIF_ZERO_DOWN",
+  "KDJ_J_UP_K",
+  "KDJ_J_DOWN_K",
   "ADX_TREND",
   "EMA_FAST_TURN",
   "STOP_LOSS_HIT",

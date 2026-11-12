@@ -117,6 +117,15 @@ signals              信号：监控项、条件快照、周期、方向、通�
 - 过滤状态：DEA 当前持续向上或持续向下，拐头发生在最近 `freshBars` 根内，并满足零轴位置要求；
 - 展示：DIF、DEA、MACD 柱、DEA 位置、DEA 斜率状态、拐头时效。
 
+### `KDJ_JK_CROSS`
+
+- 参数：`period`（默认 9）、`kSmooth`（默认 3）、`dSmooth`（默认 3）、`direction`（`up` / `down` / `both`）；
+- 触发事件：J 值上穿 K 值，或 J 值下穿 K 值；
+- 过滤状态：J 当前在 K 上方或下方；
+- J 下穿 K 常作为上涨动能耗尽的预警；
+- 展示：J/K/D、J/K 位置关系、交叉方向；
+- 可作为触发条件或过滤条件。
+
 ### `MACD_DIF_ZERO`
 
 - 参数：`fast`（默认 12）、`slow`（默认 26）、`signal`（默认 9）、`direction`（`up` / `down` / `both`）；
