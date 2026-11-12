@@ -12,6 +12,7 @@ import {
 } from "./api/middleware";
 import { authRouter } from "./api/routes/auth";
 import { conditionsRouter } from "./api/routes/conditions";
+import { casesRouter } from "./api/routes/cases";
 import { monitorsRouter } from "./api/routes/monitors";
 import { notesRouter } from "./api/routes/notes";
 import { settingsRouter } from "./api/routes/settings";
@@ -30,7 +31,7 @@ const HOST = process.env.HOST || "0.0.0.0";
 
 app.disable("x-powered-by");
 
-app.use(express.json({ limit: "100kb" }));
+app.use(express.json({ limit: "8mb" }));
 app.use(cookieParser());
 
 app.use("/api", apiOriginGuard);
@@ -62,6 +63,7 @@ app.use("/api/monitors", monitorsRouter);
 app.use("/api/conditions", conditionsRouter);
 app.use("/api/signals", signalsRouter);
 app.use("/api/notes", notesRouter);
+app.use("/api/cases", casesRouter);
 app.use("/api/settings", settingsRouter);
 
 app.use("/api", notFoundHandler);

@@ -3247,3 +3247,311 @@ option {
     min-width: 0;
   }
 }
+
+.cases-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cases-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.cases-search {
+  flex: 1 1 240px;
+}
+
+.cases-count {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.cases-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.case-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #0c121c;
+  cursor: pointer;
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+
+.case-card:hover {
+  border-color: #3a4b63;
+  transform: translateY(-1px);
+}
+
+.case-cover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 16 / 10;
+  background: #101822;
+  color: var(--muted);
+  font-size: 11px;
+  overflow: hidden;
+}
+
+.case-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.case-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 11px;
+}
+
+.case-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.case-card-head strong {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.case-card-head span,
+.case-card-foot > span {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.case-card-body p {
+  margin: 0;
+  min-height: 34px;
+  color: #b8c3d2;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.case-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.case-card-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.cases-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.case-detail-backdrop {
+  z-index: 84;
+}
+
+.case-detail-modal {
+  width: min(900px, 94vw);
+  max-height: 88vh;
+  overflow-y: auto;
+}
+
+.case-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.case-detail-head h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.case-detail-head p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.case-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.case-description {
+  margin: 14px 0;
+  color: #c7d0dd;
+  font-size: 12px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.case-upload-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.case-upload-button {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.case-upload-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.case-gallery {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.case-image {
+  position: relative;
+  margin: 0;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #0b111a;
+}
+
+.case-image-button {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.case-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.case-image-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 50%;
+  background: rgb(20 10 14 / 80%);
+  color: #ffbdc9;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.case-preview-backdrop {
+  z-index: 96;
+  align-items: center;
+  justify-content: center;
+}
+
+.case-preview-image {
+  max-width: 94vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #05080d;
+}
+
+.case-preview-close {
+  position: fixed;
+  top: 18px;
+  right: 22px;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgb(255 255 255 / 25%);
+  border-radius: 50%;
+  background: rgb(0 0 0 / 60%);
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.case-form-backdrop {
+  z-index: 92;
+}
+
+.case-form-modal {
+  width: min(640px, 94vw);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+@media (max-width: 900px) {
+  .cases-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .case-gallery {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .cases-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .case-gallery {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cases-toolbar {
+    align-items: stretch;
+  }
+
+  .cases-search {
+    flex-basis: 100%;
+  }
+
+  .case-detail-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}

@@ -217,6 +217,35 @@ const V5_SCHEMA_SQL = `
 
   CREATE INDEX IF NOT EXISTS idx_note_tags_tag
     ON note_tags(tag, note_id);
+
+  CREATE TABLE IF NOT EXISTS trade_cases (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_trade_cases_updated
+    ON trade_cases(updated_at DESC, id DESC);
+
+  CREATE TABLE IF NOT EXISTS trade_case_images (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    case_id INTEGER NOT NULL,
+    full_filename TEXT NOT NULL,
+    thumb_filename TEXT NOT NULL,
+    mime TEXT NOT NULL,
+    width INTEGER NOT NULL,
+    height INTEGER NOT NULL,
+    byte_size INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (case_id)
+      REFERENCES trade_cases(id)
+      ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_trade_case_images_case
+    ON trade_case_images(case_id, id);
 `;
 
 export function applySchema(database: Database.Database): void {

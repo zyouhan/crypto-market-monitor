@@ -52,6 +52,9 @@ export default function StrategyStatsPage() {
           <Link className="button" href="/">
             返回监控
           </Link>
+          <Link className="button" href="/cases">
+            交易案例
+          </Link>
         </div>
       </header>
 

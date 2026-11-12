@@ -844,6 +844,10 @@ export default function HomePage() {
             策略统计
           </Link>
 
+          <Link className="button" href="/cases">
+            交易案例
+          </Link>
+
           <button
             className="button primary"
             onClick={openAddModal}

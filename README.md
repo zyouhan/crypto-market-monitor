@@ -220,6 +220,11 @@ KDJ 入场信号会创建 `stop_watches` 止损观察：
 | GET/POST | `/api/notes` | 笔记列表/新建；列表支持 `page/limit/tag/search` |
 | PUT/DELETE | `/api/notes/:id` | 修改/删除笔记 |
 | GET | `/api/notes/tags` | 标签及使用次数 |
+| GET/POST | `/api/cases` | 交易案例列表/新建 |
+| GET/PUT/DELETE | `/api/cases/:id` | 案例详情/修改/删除 |
+| POST | `/api/cases/:id/images` | 上传案例截图 |
+| DELETE | `/api/cases/:id/images/:imageId` | 删除案例截图 |
+| GET | `/api/cases/images/:imageId` | 读取案例图片，`variant=thumb\|full` |
 | GET/PUT | `/api/settings` | 全局监控开关、全局微信通知开关 |
 
 ## 笔记
@@ -232,6 +237,17 @@ KDJ 入场信号会创建 `stop_watches` 止损观察：
 - 分页浏览，支持按标签和关键词组合查询。
 
 笔记数据存储在主数据库中，标签使用 `note_tags` 关联表；删除笔记会级联删除标签关系。
+
+## 交易案例库
+
+`/cases` 页面提供交易案例记录：
+
+- 添加标题和描述；
+- 上传多张截图，上传前在浏览器压缩为完整图和缩略图；
+- 列表和详情只加载缩略图，查看时才加载完整图；
+- 支持案例搜索、分页、编辑和删除；
+- 图片限制：单案例最多 50 张，总计最多 200 张；
+- 图片文件保存在 `data/case-images`，随 `monitor-data` 卷持久化。
 
 ## 通知与控制
 
