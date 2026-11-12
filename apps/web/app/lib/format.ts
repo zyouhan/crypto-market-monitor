@@ -143,6 +143,14 @@ export function eventTypeLabel(eventType: string): string {
       return "到达价位";
     case "MACD_DEA_TURN":
       return "MACD DEA 拐头";
+    case "LONG_ZONE_START":
+      return "进入多头区间";
+    case "LONG_ZONE_EXHAUST":
+      return "多头区间衰竭";
+    case "SHORT_ZONE_START":
+      return "进入空头区间";
+    case "SHORT_ZONE_EXHAUST":
+      return "空头区间衰竭";
     case "STOP_LOSS_HIT":
       return "止损触发";
     case "ADX_TREND":
@@ -228,6 +236,10 @@ export function isAlertSignal(signal: {
     signal.event_type === "VOLUME_SPIKE" ||
     signal.event_type === "PRICE_LEVEL" ||
     signal.event_type === "MACD_DEA_TURN" ||
+    signal.event_type === "LONG_ZONE_START" ||
+    signal.event_type === "LONG_ZONE_EXHAUST" ||
+    signal.event_type === "SHORT_ZONE_START" ||
+    signal.event_type === "SHORT_ZONE_EXHAUST" ||
     signal.event_type === "ADX_TREND" ||
     signal.event_type === "EMA_FAST_TURN"
   );

@@ -113,6 +113,14 @@ export function getSoundAlertKind(
         : settings.golden
           ? "golden"
           : null;
+    case "LONG_ZONE_START":
+      return settings.entryLong ? "entry-long" : null;
+    case "SHORT_ZONE_START":
+      return settings.entryShort ? "entry-short" : null;
+    case "LONG_ZONE_EXHAUST":
+      return settings.death ? "death" : null;
+    case "SHORT_ZONE_EXHAUST":
+      return settings.golden ? "golden" : null;
     case "STOP_LOSS_HIT":
       return settings.death ? "death" : null;
     case "ADX_TREND":

@@ -15,6 +15,7 @@ export type ConditionKind =
   | "VOLUME_SPIKE"
   | "PRICE_LEVEL"
   | "MACD_DEA_TURN"
+  | "MACD_DEA_ZONE"
   | "ADX_TREND"
   | "EMA_FAST_TURN";
 
@@ -147,6 +148,10 @@ export type SignalEventType =
   | "VOLUME_SPIKE"
   | "PRICE_LEVEL"
   | "MACD_DEA_TURN"
+  | "LONG_ZONE_START"
+  | "LONG_ZONE_EXHAUST"
+  | "SHORT_ZONE_START"
+  | "SHORT_ZONE_EXHAUST"
   | "ADX_TREND"
   | "EMA_FAST_TURN"
   | "STOP_LOSS_HIT"

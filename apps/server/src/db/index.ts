@@ -7,7 +7,6 @@ import { PROJECT_ROOT } from "../config/paths";
 import {
   ensurePresetColumns,
   ensureStatsColumns,
-  ensurePresetQualityFilters,
   ensureStopWatchProgressColumns,
   migrateToV5,
   seedDefaultMonitors
@@ -119,7 +118,6 @@ function openDatabase(dbFile: string): Database.Database {
   ensureStopWatchProgressColumns(database);
   ensurePresetColumns(database);
   ensureStatsColumns(database);
-  ensurePresetQualityFilters(database);
 
   seedSettings(database);
   seedDefaultMonitors(database);

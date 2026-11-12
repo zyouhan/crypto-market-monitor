@@ -50,6 +50,22 @@ function eventLabel(eventType: string): string {
     return "做空入场";
   }
 
+  if (eventType === "LONG_ZONE_START") {
+    return "进入多头区间";
+  }
+
+  if (eventType === "LONG_ZONE_EXHAUST") {
+    return "多头区间衰竭";
+  }
+
+  if (eventType === "SHORT_ZONE_START") {
+    return "进入空头区间";
+  }
+
+  if (eventType === "SHORT_ZONE_EXHAUST") {
+    return "空头区间衰竭";
+  }
+
   return eventType;
 }
 

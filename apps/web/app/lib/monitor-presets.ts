@@ -11,10 +11,15 @@ export interface MonitorPreset {
   id: string;
   title: string;
   description: string;
-  direction: "long" | "short";
+  direction: "long" | "short" | "both";
   defaultName: string;
   requiredKinds: ConditionKind[];
-  build: (catalog: ConditionCatalogItem[]) => ConditionDraft[] | null;
+  intervals?: string[];
+  trackStats?: boolean;
+  build: (
+    catalog: ConditionCatalogItem[],
+    interval?: string
+  ) => ConditionDraft[] | null;
 }
 
 function makeCondition(
@@ -46,10 +51,17 @@ function makePreset(
   id: string,
   title: string,
   description: string,
-  direction: "long" | "short",
+  direction: "long" | "short" | "both",
   defaultName: string,
   requiredKinds: ConditionKind[],
-  build: (catalog: ConditionCatalogItem[]) => ConditionDraft[] | null
+  build: (
+    catalog: ConditionCatalogItem[],
+    interval?: string
+  ) => ConditionDraft[] | null,
+  options: {
+    intervals?: string[];
+    trackStats?: boolean;
+  } = {}
 ): MonitorPreset {
   return {
     id,
@@ -58,117 +70,46 @@ function makePreset(
     direction,
     defaultName,
     requiredKinds,
+    intervals: options.intervals,
+    trackStats: options.trackStats,
     build
   };
 }
 
 export const MONITOR_PRESETS: MonitorPreset[] = [
   makePreset(
-    "short-dea-kdj",
-    "5m DEA + 1m KDJ（做空）",
-    "5m DEA 拐头向下第一根后，1m J>80 入场；5m MACD 柱需有足够幅度",
-    "short",
-    "5m DEA向下 + 1m J>80",
-    ["KDJ_EXTREME", "MACD_DEA_TURN"],
-    (catalog) => {
-      const kdj = makeCondition(
+    "dea-zone-mtf",
+    "15m / 1h / 4h DEA 区间",
+    "DEA 上拐进入多头区间，DIF 拐头提示衰竭，DEA 下拐进入空头区间；不再使用 KDJ",
+    "both",
+    "DEA 区间监控",
+    ["MACD_DEA_ZONE"],
+    (catalog, interval = "15m") => {
+      const zone = makeCondition(
         catalog,
-        "KDJ_EXTREME",
+        "MACD_DEA_ZONE",
         "trigger",
-        "1m",
-        {
-          period: 9,
-          kSmooth: 3,
-          dSmooth: 3,
-          oversold: 15,
-          overbought: 80,
-          longEnabled: false,
-          shortEnabled: true,
-          triggerMode: "cross"
-        }
-      );
-      const macd = makeCondition(
-        catalog,
-        "MACD_DEA_TURN",
-        "filter",
-        "5m",
+        interval,
         {
           fast: 12,
           slow: 26,
-          signal: 9,
-          direction: "down",
-          freshBars: 12,
-          zeroSide: "any",
-          minHistPct: 0.02
+          signal: 9
         }
       );
 
-      return kdj && macd ? [kdj, macd] : null;
-    }
-  ),
-  makePreset(
-    "long-dea-kdj",
-    "5m DEA + 1m KDJ（做多）",
-    "5m DEA 拐头向上第一根后，1m J<15 入场；价格不得过度偏离 5m 快线",
-    "long",
-    "5m DEA向上 + 1m J<15",
-    ["KDJ_EXTREME", "MACD_DEA_TURN", "EMA_CROSS"],
-    (catalog) => {
-      const kdj = makeCondition(
-        catalog,
-        "KDJ_EXTREME",
-        "trigger",
-        "1m",
-        {
-          period: 9,
-          kSmooth: 3,
-          dSmooth: 3,
-          oversold: 15,
-          overbought: 80,
-          longEnabled: true,
-          shortEnabled: false,
-          triggerMode: "cross"
-        }
-      );
-      const macd = makeCondition(
-        catalog,
-        "MACD_DEA_TURN",
-        "filter",
-        "5m",
-        {
-          fast: 12,
-          slow: 26,
-          signal: 9,
-          direction: "up",
-          freshBars: 12,
-          zeroSide: "any",
-          minHistPct: 0
-        }
-      );
-      const ema = makeCondition(
-        catalog,
-        "EMA_CROSS",
-        "filter",
-        "5m",
-        {
-          fast: 25,
-          slow: 60,
-          threshold: 0,
-          priceSide: "none",
-          maxPriceDistancePct: 1.5
-        }
-      );
-
-      return kdj && macd && ema
-        ? [kdj, macd, ema]
-        : null;
+      return zone ? [zone] : null;
+    },
+    {
+      intervals: ["15m", "1h", "4h"],
+      trackStats: false
     }
   )
 ];
 
 export function buildPresetConditions(
   preset: MonitorPreset,
-  catalog: ConditionCatalogItem[]
+  catalog: ConditionCatalogItem[],
+  interval?: string
 ): ConditionDraft[] | null {
   if (
     preset.requiredKinds.some(
@@ -178,5 +119,5 @@ export function buildPresetConditions(
     return null;
   }
 
-  return preset.build(catalog);
+  return preset.build(catalog, interval);
 }

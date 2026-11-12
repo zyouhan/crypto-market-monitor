@@ -51,6 +51,22 @@ function directionLabel(
 function displayDirection(
   signal: MonitorSignalRecord
 ): string {
+  if (signal.event_type === "LONG_ZONE_START") {
+    return "进入多头区间";
+  }
+
+  if (signal.event_type === "LONG_ZONE_EXHAUST") {
+    return "多头区间衰竭";
+  }
+
+  if (signal.event_type === "SHORT_ZONE_START") {
+    return "进入空头区间";
+  }
+
+  if (signal.event_type === "SHORT_ZONE_EXHAUST") {
+    return "空头区间衰竭";
+  }
+
   if (signal.event_type === "STOP_LOSS_HIT") {
     return "止损触发";
   }

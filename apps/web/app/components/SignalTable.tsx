@@ -138,6 +138,17 @@ function triggerDetail(signal: MonitorSignalItem): string {
     } · ${trigger?.summary ?? "MACD"}`;
   }
 
+  if (
+    signal.event_type === "LONG_ZONE_START" ||
+    signal.event_type === "LONG_ZONE_EXHAUST" ||
+    signal.event_type === "SHORT_ZONE_START" ||
+    signal.event_type === "SHORT_ZONE_EXHAUST"
+  ) {
+    return `${eventTypeLabel(signal.event_type)} · ${
+      trigger?.summary ?? "MACD"
+    }`;
+  }
+
   if (signal.event_type === "STOP_LOSS_HIT") {
     const entryPrice = signal.payload?.entryPrice;
     const stopPrice = signal.payload?.stopPrice;
@@ -372,6 +383,10 @@ export function SignalTable({
           <option value="VOLUME_SPIKE">成交量放量</option>
           <option value="PRICE_LEVEL">到达价位</option>
           <option value="MACD_DEA_TURN">MACD DEA 拐头</option>
+          <option value="LONG_ZONE_START">进入多头区间</option>
+          <option value="LONG_ZONE_EXHAUST">多头区间衰竭</option>
+          <option value="SHORT_ZONE_START">进入空头区间</option>
+          <option value="SHORT_ZONE_EXHAUST">空头区间衰竭</option>
           <option value="ADX_TREND">ADX 趋势</option>
           <option value="EMA_FAST_TURN">EMA 快线拐头</option>
           <option value="TREND_INVALIDATED">等待失效</option>

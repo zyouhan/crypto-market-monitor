@@ -2207,6 +2207,24 @@ option {
   margin-bottom: 10px;
 }
 
+.preset-multi-note {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 1px solid rgb(79 140 255 / 28%);
+  border-radius: 7px;
+  background: #101a2b;
+  color: #9dc0ff;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.condition-editor-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
 .preset-card {
   display: flex;
   flex-direction: column;
@@ -2261,6 +2279,11 @@ option {
 .preset-side.bear {
   color: var(--red);
   background: #3a202b;
+}
+
+.preset-side.neutral {
+  color: var(--muted);
+  background: #141c28;
 }
 
 .preset-badge {

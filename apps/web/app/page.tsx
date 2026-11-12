@@ -46,6 +46,7 @@ const TRIGGER_TAB_LABELS: Record<ConditionKind, string> = {
   VOLUME_SPIKE: "成交量",
   PRICE_LEVEL: "压力支撑",
   MACD_DEA_TURN: "MACD",
+  MACD_DEA_ZONE: "DEA 区间",
   ADX_TREND: "ADX",
   EMA_FAST_TURN: "EMA 快线"
 };
