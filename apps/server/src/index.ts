@@ -13,6 +13,7 @@ import {
 import { authRouter } from "./api/routes/auth";
 import { conditionsRouter } from "./api/routes/conditions";
 import { monitorsRouter } from "./api/routes/monitors";
+import { notesRouter } from "./api/routes/notes";
 import { settingsRouter } from "./api/routes/settings";
 import { signalsRouter } from "./api/routes/signals";
 import { db, resolvedDatabasePath } from "./db";
@@ -60,6 +61,7 @@ app.use("/api", requireAuth);
 app.use("/api/monitors", monitorsRouter);
 app.use("/api/conditions", conditionsRouter);
 app.use("/api/signals", signalsRouter);
+app.use("/api/notes", notesRouter);
 app.use("/api/settings", settingsRouter);
 
 app.use("/api", notFoundHandler);

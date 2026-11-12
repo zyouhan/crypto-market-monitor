@@ -217,7 +217,21 @@ KDJ 入场信号会创建 `stop_watches` 止损观察：
 | POST | `/api/signals/stats/backfill-trends` | 尝试还原历史信号的大级别趋势 |
 | PATCH | `/api/signals/:id/stats` | 修改统计备注或结果 |
 | DELETE | `/api/signals/:id/stats` | 从策略统计中软删除一条记录 |
+| GET/POST | `/api/notes` | 笔记列表/新建；列表支持 `page/limit/tag/search` |
+| PUT/DELETE | `/api/notes/:id` | 修改/删除笔记 |
+| GET | `/api/notes/tags` | 标签及使用次数 |
 | GET/PUT | `/api/settings` | 全局监控开关、全局微信通知开关 |
+
+## 笔记
+
+登录后页面右侧显示悬浮「笔记」按钮，打开后可以：
+
+- 新建、编辑、删除笔记；
+- 按标题/正文搜索；
+- 为笔记添加多个标签，点击标签快速筛选；
+- 分页浏览，支持按标签和关键词组合查询。
+
+笔记数据存储在主数据库中，标签使用 `note_tags` 关联表；删除笔记会级联删除标签关系。
 
 ## 通知与控制
 

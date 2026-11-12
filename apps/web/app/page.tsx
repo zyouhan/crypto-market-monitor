@@ -12,6 +12,7 @@ import {
 import { LoginCard } from "./components/LoginCard";
 import { MonitorList } from "./components/MonitorList";
 import { MonitorModal } from "./components/MonitorModal";
+import { NotesDock } from "./components/NotesDock";
 import { NotificationSettings } from "./components/NotificationSettings";
 import { SignalTable } from "./components/SignalTable";
 import { SignalToasts } from "./components/SignalToasts";
@@ -1000,6 +1001,8 @@ export default function HomePage() {
           onSave={handleSaveMonitor}
         />
       )}
+
+      <NotesDock />
     </main>
   );
 }

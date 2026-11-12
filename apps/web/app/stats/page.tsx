@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { StrategyStatsPanel } from "../components/StrategyStatsPanel";
+import { NotesDock } from "../components/NotesDock";
 import { api } from "../lib/api";
 
 export default function StrategyStatsPage() {
@@ -55,6 +56,8 @@ export default function StrategyStatsPage() {
       </header>
 
       <StrategyStatsPanel pageMode onChanged={() => undefined} />
+
+      <NotesDock />
     </main>
   );
 }

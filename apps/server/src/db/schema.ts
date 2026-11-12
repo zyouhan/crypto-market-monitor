@@ -194,6 +194,29 @@ const V5_SCHEMA_SQL = `
     value TEXT NOT NULL,
     updated_at INTEGER NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL DEFAULT '',
+    content TEXT NOT NULL DEFAULT '',
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_notes_updated
+    ON notes(updated_at DESC, id DESC);
+
+  CREATE TABLE IF NOT EXISTS note_tags (
+    note_id INTEGER NOT NULL,
+    tag TEXT NOT NULL,
+    PRIMARY KEY (note_id, tag),
+    FOREIGN KEY (note_id)
+      REFERENCES notes(id)
+      ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_note_tags_tag
+    ON note_tags(tag, note_id);
 `;
 
 export function applySchema(database: Database.Database): void {
