@@ -26,6 +26,7 @@ export interface MonitorSignalDraft {
   eventType: NonNullable<ConditionPoint["eventType"]>;
   direction: SignalDirection;
   price: number;
+  interval: string;
   eventTime: number;
   primaryCondition: string;
   conditions: Array<{
@@ -87,6 +88,70 @@ function conditionSnapshot(
   };
 }
 
+function evaluateZoneSignals(
+  input: {
+    monitor: MonitorRecord;
+    runtimes: ConditionRuntime[];
+  },
+  triggers: ConditionRuntime[]
+): MonitorSignalDraft[] {
+  const signals: MonitorSignalDraft[] = [];
+
+  for (const runtime of triggers) {
+    for (const point of runtime.result.points.values()) {
+      if (!point.eventType || !point.direction) {
+        continue;
+      }
+
+      const close = point.payload.close;
+
+      if (typeof close !== "number" || !Number.isFinite(close)) {
+        continue;
+      }
+
+      const conditions = input.runtimes.map((conditionRuntime) => {
+        const conditionPoint =
+          conditionRuntime === runtime
+            ? point
+            : conditionRuntime.result.latest &&
+                conditionRuntime.result.latest.time <= point.time
+              ? conditionRuntime.result.latest
+              : null;
+
+        return conditionSnapshot(
+          conditionRuntime,
+          conditionPoint
+        );
+      });
+
+      signals.push({
+        eventType: point.eventType,
+        direction: point.direction,
+        price: close,
+        interval: runtime.interval,
+        eventTime: point.time,
+        primaryCondition: runtime.kind,
+        conditions,
+        threshold: point.threshold,
+        stopPrice: null,
+        payload: {
+          conditions,
+          zone: point.payload.zone,
+          exhausted: point.payload.exhausted,
+          dif: point.payload.dif,
+          dea: point.payload.dea,
+          source: null,
+          stopPrice: null
+        }
+      });
+    }
+  }
+
+  return signals.sort(
+    (left, right) => left.eventTime - right.eventTime
+  );
+}
+
 /**
  * 把同一根入场 K 线上的条件组合成一条信号。
  * 多个 trigger 必须同时发生且方向一致；filter 必须同方向有效。
@@ -106,6 +171,21 @@ export function evaluateMonitorSignals(input: {
 
   if (triggers.length === 0) {
     return [];
+  }
+
+  if (
+    filters.length === 0 &&
+    triggers.every(
+      (runtime) => runtime.kind === "MACD_DEA_ZONE"
+    )
+  ) {
+    return evaluateZoneSignals(
+      {
+        monitor: input.monitor,
+        runtimes: input.runtimes
+      },
+      triggers
+    );
   }
 
   const signals: MonitorSignalDraft[] = [];
@@ -194,6 +274,7 @@ export function evaluateMonitorSignals(input: {
       >,
       direction: triggerDirection,
       price: kline.close,
+      interval: input.monitor.interval,
       eventTime: kline.closeTime,
       primaryCondition: primary.runtime.kind,
       conditions,

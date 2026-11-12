@@ -239,7 +239,7 @@ function toSignalRecord(
     stats_deleted: 0,
     reference_trends: referenceTrends,
     symbol: monitor.symbol,
-    interval: monitor.interval,
+    interval: draft.interval ?? monitor.interval,
     kind: "MONITOR",
     event_type: draft.eventType,
     direction: draft.direction,

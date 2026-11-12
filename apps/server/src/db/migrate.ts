@@ -578,6 +578,16 @@ export function ensureStatsColumns(
   }
 }
 
+export function ensureSignalIntervalUniqueIndex(
+  database: Database.Database
+): void {
+  database.exec(`
+    DROP INDEX IF EXISTS idx_signals_monitor_event;
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_signals_monitor_event_interval
+      ON signals(monitor_id, event_type, event_time, interval);
+  `);
+}
+
 export function ensurePresetQualityFilters(
   database: Database.Database
 ): void {

@@ -224,7 +224,12 @@ export async function dispatchMonitorNotification(
     return false;
   }
 
-  if (!isSignalFresh(signal.event_time, monitor.interval)) {
+  if (
+    !isSignalFresh(
+      signal.event_time,
+      signal.interval ?? monitor.interval
+    )
+  ) {
     updateSignalPush({
       id: signal.id,
       pushState: "SKIPPED",

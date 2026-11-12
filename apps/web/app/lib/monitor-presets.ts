@@ -16,6 +16,7 @@ export interface MonitorPreset {
   requiredKinds: ConditionKind[];
   intervals?: string[];
   trackStats?: boolean;
+  referenceIntervals?: Array<"15m" | "1h" | "4h">;
   build: (
     catalog: ConditionCatalogItem[],
     interval?: string
@@ -61,6 +62,7 @@ function makePreset(
   options: {
     intervals?: string[];
     trackStats?: boolean;
+    referenceIntervals?: Array<"15m" | "1h" | "4h">;
   } = {}
 ): MonitorPreset {
   return {
@@ -72,6 +74,7 @@ function makePreset(
     requiredKinds,
     intervals: options.intervals,
     trackStats: options.trackStats,
+    referenceIntervals: options.referenceIntervals,
     build
   };
 }
@@ -84,24 +87,33 @@ export const MONITOR_PRESETS: MonitorPreset[] = [
     "both",
     "DEA 区间监控",
     ["MACD_DEA_ZONE"],
-    (catalog, interval = "15m") => {
-      const zone = makeCondition(
-        catalog,
-        "MACD_DEA_ZONE",
-        "trigger",
-        interval,
-        {
-          fast: 12,
-          slow: 26,
-          signal: 9
-        }
+    (catalog) => {
+      const conditions = ["15m", "1h", "4h"].map(
+        (interval) =>
+          makeCondition(
+            catalog,
+            "MACD_DEA_ZONE",
+            "trigger",
+            interval,
+            {
+              fast: 12,
+              slow: 26,
+              signal: 9
+            }
+          )
       );
 
-      return zone ? [zone] : null;
+      return conditions.every(
+        (condition): condition is ConditionDraft =>
+          condition !== null
+      )
+        ? conditions
+        : null;
     },
     {
       intervals: ["15m", "1h", "4h"],
-      trackStats: false
+      trackStats: false,
+      referenceIntervals: []
     }
   )
 ];

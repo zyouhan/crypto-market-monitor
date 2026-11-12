@@ -139,6 +139,7 @@ function buildPoint(
     payload: {
       zone: info.zone,
       exhausted: info.exhausted,
+      close: macd.close,
       dif: macd.dif,
       dea: macd.dea,
       histogram: macd.histogram,

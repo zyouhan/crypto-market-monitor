@@ -147,24 +147,15 @@ export function MonitorModal({
     item?.preset_name ?? null
   );
   const [batchSymbols, setBatchSymbols] = useState("");
-  const [presetIntervals, setPresetIntervals] = useState<
-    string[]
-  >([]);
 
   const isEditing = item !== null;
   const baseInterval = baseIntervalFor(
     conditions,
     initialInterval
   );
-  const selectedPreset = MONITOR_PRESETS.find(
-    (preset) => preset.id === selectedPresetId
-  );
-  const isMultiIntervalPreset =
-    presetIntervals.length > 1;
 
   function detachPreset(): void {
     setSelectedPresetId(null);
-    setPresetIntervals([]);
     setPresetId(null);
     setPresetName(null);
     setTrackStats(false);
@@ -206,12 +197,7 @@ export function MonitorModal({
   }
 
   function applyPreset(preset: MonitorPreset): void {
-    const previewInterval = preset.intervals?.[0];
-    const next = buildPresetConditions(
-      preset,
-      catalog,
-      previewInterval
-    );
+    const next = buildPresetConditions(preset, catalog);
 
     if (!next) {
       setLocalError("当前条件目录缺少该预设所需条件");
@@ -220,10 +206,13 @@ export function MonitorModal({
 
     setConditions(next);
     setSelectedPresetId(preset.id);
-    setPresetIntervals(preset.intervals ?? []);
     setPresetId(preset.id);
     setPresetName(preset.defaultName);
     setTrackStats(preset.trackStats ?? true);
+
+    if (preset.referenceIntervals !== undefined) {
+      setReferenceIntervals(preset.referenceIntervals);
+    }
     setLocalError("");
 
     if (
@@ -286,57 +275,33 @@ export function MonitorModal({
       return;
     }
 
-    const intervalPlans =
-      isMultiIntervalPreset && selectedPreset
-        ? presetIntervals.map((interval) => {
-            const built = buildPresetConditions(
-              selectedPreset,
-              catalog,
-              interval
-            );
-
-            return built
-              ? { interval, conditions: built }
-              : null;
-          })
-        : [{ interval: baseInterval, conditions }];
-
-    if (intervalPlans.some((plan) => plan === null)) {
-      setLocalError("当前条件目录缺少该预设所需条件");
-      return;
-    }
-
-    const payloads: SaveMonitorPayload[] = symbols.flatMap(
-      (targetSymbol) =>
-        intervalPlans.map((plan) => {
-          const resolved = plan!;
-          const baseName =
-            name.trim() || presetName || "自定义监控";
-
-          return {
-            name: isMultiIntervalPreset
-              ? `${targetSymbol} ${baseName} ${resolved.interval}`
-              : symbols.length === 1
-                ? name.trim() ||
-                  `${targetSymbol} ${baseInterval} 监控`
-                : `${targetSymbol} ${baseName}`,
-            symbol: targetSymbol,
-            interval: resolved.interval,
-            enabled,
-            wechat_enabled: wechatEnabled,
-            sound_enabled: soundEnabled,
-            preset_id: presetId,
-            preset_name: presetName,
-            track_stats: trackStats,
-            reference_intervals: referenceIntervals,
-            conditions: resolved.conditions.map((condition) => ({
-              kind: condition.kind,
-              role: condition.role,
-              interval: condition.interval,
-              params: condition.params
-            }))
-          };
-        })
+    const payloads: SaveMonitorPayload[] = symbols.map(
+      (targetSymbol) => ({
+        name:
+          symbols.length === 1
+            ? name.trim() ||
+              `${targetSymbol} ${baseInterval} 监控`
+            : `${targetSymbol} ${
+                name.trim() ||
+                presetName ||
+                "自定义监控"
+              }`,
+        symbol: targetSymbol,
+        interval: baseInterval,
+        enabled,
+        wechat_enabled: wechatEnabled,
+        sound_enabled: soundEnabled,
+        preset_id: presetId,
+        preset_name: presetName,
+        track_stats: trackStats,
+        reference_intervals: referenceIntervals,
+        conditions: conditions.map((condition) => ({
+          kind: condition.kind,
+          role: condition.role,
+          interval: condition.interval,
+          params: condition.params
+        }))
+      })
     );
 
     try {
@@ -518,16 +483,8 @@ export function MonitorModal({
             <div className="form-field">
               <label>检查周期（自动）</label>
               <div className="auto-field">
-                <strong>
-                  {isMultiIntervalPreset
-                    ? presetIntervals.join(" / ")
-                    : baseInterval}
-                </strong>
-                <span>
-                  {isMultiIntervalPreset
-                    ? "每个周期创建一个独立监控项"
-                    : "取所有触发条件中的最小周期"}
-                </span>
+                <strong>{baseInterval}</strong>
+                <span>取所有触发条件中的最小周期</span>
               </div>
             </div>
           </div>
@@ -650,16 +607,9 @@ export function MonitorModal({
             检查周期自动取所有触发条件中的最小周期；每个条件可自由选择自己的 K 线周期。过滤条件使用更低周期时，会取检查时点最近一根已收盘数据。
           </div>
 
-          {isMultiIntervalPreset && (
-            <div className="preset-multi-note">
-              该预设会为每个标的创建 15m、1h、4h 三个独立监控项；当前显示 15m 条件预览。
-            </div>
-          )}
-
           <div className="condition-add">
             <select
               value={addKind}
-              disabled={isMultiIntervalPreset}
               onChange={(event) =>
                 setAddKind(
                   event.target.value as ConditionKind
@@ -679,7 +629,6 @@ export function MonitorModal({
             <button
               type="button"
               className="button small"
-              disabled={isMultiIntervalPreset}
               onClick={() => addCondition("trigger")}
             >
               + 添加为触发条件
@@ -688,34 +637,28 @@ export function MonitorModal({
             <button
               type="button"
               className="button small"
-              disabled={isMultiIntervalPreset}
               onClick={() => addCondition("filter")}
             >
               + 添加为过滤条件
             </button>
           </div>
 
-          <fieldset
-            className="condition-editor-fieldset"
-            disabled={isMultiIntervalPreset}
-          >
-            {conditions.map((condition, index) => (
-              <ConditionEditor
-                key={`${condition.kind}-${condition.role}-${index}`}
-                value={condition}
-                catalog={catalog}
-                intervals={INTERVALS}
-                onChange={(next) =>
-                  updateCondition(index, next)
-                }
-                onRemove={() => removeCondition(index)}
-              />
-            ))}
+          {conditions.map((condition, index) => (
+            <ConditionEditor
+              key={`${condition.kind}-${condition.role}-${index}`}
+              value={condition}
+              catalog={catalog}
+              intervals={INTERVALS}
+              onChange={(next) =>
+                updateCondition(index, next)
+              }
+              onRemove={() => removeCondition(index)}
+            />
+          ))}
 
-            {conditions.length === 0 && (
-              <div className="empty">还没有条件，请先添加</div>
-            )}
-          </fieldset>
+          {conditions.length === 0 && (
+            <div className="empty">还没有条件，请先添加</div>
+          )}
         </section>
 
         <div className="modal-footer">

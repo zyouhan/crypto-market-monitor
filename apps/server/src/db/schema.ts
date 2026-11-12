@@ -121,8 +121,8 @@ const V5_SCHEMA_SQL = `
       ON DELETE SET NULL
   );
 
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_signals_monitor_event
-    ON signals(monitor_id, event_type, event_time);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_signals_monitor_event_interval
+    ON signals(monitor_id, event_type, event_time, interval);
 
   CREATE INDEX IF NOT EXISTS idx_signals_monitor_time
     ON signals(monitor_id, event_time DESC);

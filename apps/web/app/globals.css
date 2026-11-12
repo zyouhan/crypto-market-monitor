@@ -2378,6 +2378,45 @@ option {
   margin-bottom: 5px;
 }
 
+.zone-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 5px;
+}
+
+.zone-status-tag {
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 9px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.zone-status-tag.bull {
+  border-color: rgb(54 211 153 / 35%);
+  background: #12372f;
+  color: var(--green);
+}
+
+.zone-status-tag.bear {
+  border-color: rgb(239 112 137 / 38%);
+  background: #3a202b;
+  color: var(--red);
+}
+
+.zone-status-tag.warn {
+  border-color: rgb(240 180 80 / 38%);
+  background: #332a16;
+  color: #e7bd69;
+}
+
+.zone-status-tag.neutral {
+  background: #141c28;
+  color: var(--muted);
+}
+
 .direction-badge {
   display: inline-flex;
   align-items: center;

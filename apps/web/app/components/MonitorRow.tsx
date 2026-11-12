@@ -118,6 +118,30 @@ export function MonitorRow({
           (reference) => reference.interval === interval
         )
     );
+  const zoneStatuses = item.conditions
+    .filter((condition) => condition.kind === "MACD_DEA_ZONE")
+    .map((condition) => {
+      const snapshot = item.snapshot?.conditions?.find(
+        (candidate) =>
+          candidate.kind === "MACD_DEA_ZONE" &&
+          candidate.interval === condition.interval
+      );
+      const text = snapshot?.statusText ?? "等待拐头";
+
+      return {
+        interval: condition.interval,
+        text,
+        tone: text.includes("多头")
+          ? text.includes("衰竭")
+            ? "warn"
+            : "bull"
+          : text.includes("空头")
+            ? text.includes("衰竭")
+              ? "warn"
+              : "bear"
+            : "neutral"
+      };
+    });
 
   return (
     <article
@@ -195,6 +219,19 @@ export function MonitorRow({
         </div>
 
         <div className="monitor-cell monitor-state-cell">
+          {zoneStatuses.length > 0 && (
+            <div className="zone-status-row">
+              {zoneStatuses.map((status) => (
+                <span
+                  className={`zone-status-tag ${status.tone}`}
+                  key={status.interval}
+                >
+                  {status.interval} {status.text}
+                </span>
+              ))}
+            </div>
+          )}
+
           {item.reference_intervals.length > 0 && (
             <div className="reference-status-row">
               {referenceItems.length > 0 && (
