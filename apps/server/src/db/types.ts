@@ -16,10 +16,13 @@ export type ConditionKind =
   | "PRICE_LEVEL"
   | "MACD_DEA_TURN"
   | "MACD_DEA_ZONE"
+  | "MACD_DIF_ZERO"
   | "ADX_TREND"
   | "EMA_FAST_TURN";
 
 export type ConditionRole = "trigger" | "filter";
+
+export type ConditionLogic = "AND" | "OR" | "NOT";
 
 export type MarketSource = "OKX" | "BINANCE" | "MIXED";
 
@@ -54,6 +57,7 @@ export interface MonitorConditionRecord {
   monitor_id: number;
   kind: ConditionKind;
   role: ConditionRole;
+  logic: ConditionLogic;
   interval: string | null;
   params: string;
   state: string | null;
@@ -73,6 +77,7 @@ export interface ConditionDisplayItem {
 export interface ConditionSnapshot {
   kind: ConditionKind;
   role: ConditionRole;
+  logic?: ConditionLogic;
   interval: string;
   summary: string;
   statusText: string;
@@ -152,6 +157,8 @@ export type SignalEventType =
   | "LONG_ZONE_EXHAUST"
   | "SHORT_ZONE_START"
   | "SHORT_ZONE_EXHAUST"
+  | "DIF_ZERO_UP"
+  | "DIF_ZERO_DOWN"
   | "ADX_TREND"
   | "EMA_FAST_TURN"
   | "STOP_LOSS_HIT"

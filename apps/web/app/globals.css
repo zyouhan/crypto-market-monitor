@@ -2080,7 +2080,8 @@ select,
 .filter-row select,
 .condition-add select,
 .form-field select,
-.interval-inline {
+.interval-inline,
+.logic-inline {
   appearance: none;
   -webkit-appearance: none;
   padding: 9px 34px 9px 12px;
@@ -2100,7 +2101,8 @@ select:hover,
 .filter-row select:hover,
 .condition-add select:hover,
 .form-field select:hover,
-.interval-inline:hover {
+.interval-inline:hover,
+.logic-inline:hover {
   border-color: #3a4b63;
 }
 
@@ -2108,7 +2110,8 @@ select:focus,
 .filter-row select:focus,
 .condition-add select:focus,
 .form-field select:focus,
-.interval-inline:focus {
+.interval-inline:focus,
+.logic-inline:focus {
   border-color: var(--blue);
   box-shadow: 0 0 0 2px rgb(109 158 255 / 15%);
 }
@@ -2128,6 +2131,14 @@ option {
   background-position: right 7px center;
   background-size: 10px;
   font-size: 11px;
+}
+
+.logic-inline {
+  padding: 5px 24px 5px 8px;
+  background-position: right 7px center;
+  background-size: 10px;
+  font-size: 11px;
+  min-width: 54px;
 }
 
 .signal-trigger-detail {

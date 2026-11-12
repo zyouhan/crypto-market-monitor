@@ -1,5 +1,6 @@
 import type {
   ConditionDisplayItem,
+  ConditionLogic,
   ConditionRole,
   MonitorRecord,
   SignalDirection
@@ -16,6 +17,7 @@ export interface ConditionRuntime {
   id: number;
   kind: string;
   role: ConditionRole;
+  logic: ConditionLogic;
   interval: string;
   params: Record<string, unknown>;
   definition: ConditionDefinition;
@@ -32,6 +34,7 @@ export interface MonitorSignalDraft {
   conditions: Array<{
     kind: string;
     role: ConditionRole;
+    logic: ConditionLogic;
     interval: string;
     summary: string;
     statusText: string;
@@ -77,6 +80,7 @@ function conditionSnapshot(
   return {
     kind: runtime.kind,
     role: runtime.role,
+    logic: runtime.logic,
     interval: runtime.interval,
     summary,
     statusText: point
@@ -152,6 +156,130 @@ function evaluateZoneSignals(
   );
 }
 
+function evaluateLogicalSignals(input: {
+  monitor: MonitorRecord;
+  runtimes: ConditionRuntime[];
+  newBaseKlines: Kline[];
+  source: string | null;
+}): MonitorSignalDraft[] {
+  const signals: MonitorSignalDraft[] = [];
+
+  for (const kline of input.newBaseKlines) {
+    const points = new Map<
+      ConditionRuntime,
+      ConditionPoint | null
+    >();
+
+    for (const runtime of input.runtimes) {
+      points.set(
+        runtime,
+        findPoint(
+          runtime,
+          kline.closeTime,
+          input.monitor.interval
+        )
+      );
+    }
+
+    const positiveTriggers = input.runtimes.filter((runtime) => {
+      const point = points.get(runtime);
+
+      return (
+        runtime.role === "trigger" &&
+        runtime.logic !== "NOT" &&
+        point?.eventType &&
+        point.direction
+      );
+    });
+
+    if (positiveTriggers.length === 0) {
+      continue;
+    }
+
+    const direction = points.get(positiveTriggers[0])
+      ?.direction as SignalDirection;
+    const directionMatches = positiveTriggers.every(
+      (runtime) => points.get(runtime)?.direction === direction
+    );
+
+    if (!directionMatches) {
+      continue;
+    }
+
+    let expression = false;
+    let first = true;
+
+    for (const runtime of input.runtimes) {
+      const point = points.get(runtime) ?? null;
+      const truth =
+        runtime.role === "trigger"
+          ? Boolean(
+              point?.eventType &&
+                point.direction === direction
+            )
+          : Boolean(
+              point?.active &&
+                directionForRole(point) === direction
+            );
+      const value =
+        !point
+          ? false
+          : runtime.logic === "NOT"
+            ? !truth
+            : truth;
+
+      if (first) {
+        expression = value;
+        first = false;
+        continue;
+      }
+
+      if (runtime.logic === "OR") {
+        expression = expression || truth;
+      } else {
+        expression = expression && value;
+      }
+    }
+
+    if (!expression) {
+      continue;
+    }
+
+    const primary = positiveTriggers[0];
+    const primaryPoint = points.get(primary) as ConditionPoint;
+    const rawStop = primaryPoint.payload.stopPrice;
+    const stopPrice =
+      typeof rawStop === "number" &&
+      Number.isFinite(rawStop)
+        ? rawStop
+        : null;
+    const conditions = input.runtimes.map((runtime) =>
+      conditionSnapshot(runtime, points.get(runtime) ?? null)
+    );
+
+    signals.push({
+      eventType: primaryPoint.eventType as NonNullable<
+        ConditionPoint["eventType"]
+      >,
+      direction,
+      price: kline.close,
+      interval: input.monitor.interval,
+      eventTime: kline.closeTime,
+      primaryCondition: primary.kind,
+      conditions,
+      threshold: primaryPoint.threshold,
+      stopPrice,
+      payload: {
+        conditions,
+        source: input.source,
+        stopPrice
+      }
+    });
+  }
+
+  return signals;
+}
+
 /**
  * 把同一根入场 K 线上的条件组合成一条信号。
  * 多个 trigger 必须同时发生且方向一致；filter 必须同方向有效。
@@ -176,7 +304,9 @@ export function evaluateMonitorSignals(input: {
   if (
     filters.length === 0 &&
     triggers.every(
-      (runtime) => runtime.kind === "MACD_DEA_ZONE"
+      (runtime) =>
+        runtime.kind === "MACD_DEA_ZONE" &&
+        runtime.logic === "AND"
     )
   ) {
     return evaluateZoneSignals(
@@ -186,6 +316,14 @@ export function evaluateMonitorSignals(input: {
       },
       triggers
     );
+  }
+
+  if (
+    input.runtimes.some(
+      (runtime) => runtime.logic !== "AND"
+    )
+  ) {
+    return evaluateLogicalSignals(input);
   }
 
   const signals: MonitorSignalDraft[] = [];

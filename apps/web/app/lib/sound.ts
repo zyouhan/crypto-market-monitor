@@ -121,6 +121,10 @@ export function getSoundAlertKind(
       return settings.death ? "death" : null;
     case "SHORT_ZONE_EXHAUST":
       return settings.golden ? "golden" : null;
+    case "DIF_ZERO_UP":
+      return settings.golden ? "golden" : null;
+    case "DIF_ZERO_DOWN":
+      return settings.death ? "death" : null;
     case "STOP_LOSS_HIT":
       return settings.death ? "death" : null;
     case "ADX_TREND":

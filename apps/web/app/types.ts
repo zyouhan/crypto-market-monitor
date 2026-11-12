@@ -16,6 +16,8 @@ export type SignalEventType =
   | "LONG_ZONE_EXHAUST"
   | "SHORT_ZONE_START"
   | "SHORT_ZONE_EXHAUST"
+  | "DIF_ZERO_UP"
+  | "DIF_ZERO_DOWN"
   | "ADX_TREND"
   | "EMA_FAST_TURN"
   | "STOP_LOSS_HIT"
@@ -208,10 +210,13 @@ export type ConditionKind =
   | "PRICE_LEVEL"
   | "MACD_DEA_TURN"
   | "MACD_DEA_ZONE"
+  | "MACD_DIF_ZERO"
   | "ADX_TREND"
   | "EMA_FAST_TURN";
 
 export type ConditionRole = "trigger" | "filter";
+
+export type ConditionLogic = "AND" | "OR" | "NOT";
 
 export interface ConditionField {
   key: string;
@@ -244,6 +249,7 @@ export interface ConditionDisplayItem {
 export interface ConditionSnapshot {
   kind: ConditionKind;
   role: ConditionRole;
+  logic?: ConditionLogic;
   interval: string;
   summary: string;
   statusText: string;
@@ -257,6 +263,7 @@ export interface MonitorConditionView {
   id: number;
   kind: ConditionKind;
   role: ConditionRole;
+  logic: ConditionLogic;
   interval: string;
   params: Record<string, unknown>;
   summary: string;
@@ -364,6 +371,7 @@ export interface MonitorItem {
 export interface SaveConditionInput {
   kind: ConditionKind;
   role: ConditionRole;
+  logic?: ConditionLogic;
   interval: string;
   params: Record<string, unknown>;
 }

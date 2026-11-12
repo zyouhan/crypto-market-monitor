@@ -578,6 +578,20 @@ export function ensureStatsColumns(
   }
 }
 
+export function ensureConditionLogicColumn(
+  database: Database.Database
+): void {
+  if (
+    tableExists(database, "monitor_conditions") &&
+    !hasColumn(database, "monitor_conditions", "logic")
+  ) {
+    database.exec(`
+      ALTER TABLE monitor_conditions
+      ADD COLUMN logic TEXT NOT NULL DEFAULT 'AND'
+    `);
+  }
+}
+
 export function ensureSignalIntervalUniqueIndex(
   database: Database.Database
 ): void {

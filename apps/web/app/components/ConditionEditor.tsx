@@ -4,12 +4,14 @@ import type {
   ConditionCatalogItem,
   ConditionField,
   ConditionKind,
+  ConditionLogic,
   ConditionRole
 } from "../types";
 
 export interface ConditionDraft {
   kind: ConditionKind;
   role: ConditionRole;
+  logic: ConditionLogic;
   interval: string;
   params: Record<string, unknown>;
 }
@@ -91,6 +93,21 @@ export function ConditionEditor({
         <span className={`row-role ${value.role}`}>
           {value.role === "filter" ? "过滤条件" : "触发条件"}
         </span>
+
+        <select
+          className="logic-inline"
+          value={value.logic}
+          onChange={(event) =>
+            onChange({
+              ...value,
+              logic: event.target.value as ConditionLogic
+            })
+          }
+        >
+          <option value="AND">与</option>
+          <option value="OR">或</option>
+          <option value="NOT">非</option>
+        </select>
 
         <strong>{definition.label}</strong>
 
@@ -206,6 +223,7 @@ export function createDefaultCondition(
   return {
     kind: definition.kind,
     role,
+    logic: "AND",
     interval,
     params: defaultsFor(definition)
   };

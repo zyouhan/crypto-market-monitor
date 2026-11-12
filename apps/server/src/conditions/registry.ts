@@ -6,6 +6,7 @@ import { emaFastTurnDefinition } from "./ema-fast-turn";
 import { kdjExtremeDefinition } from "./kdj-extreme";
 import { macdDeaTurnDefinition } from "./macd-dea-turn";
 import { macdDeaZoneDefinition } from "./macd-dea-zone";
+import { macdDifZeroDefinition } from "./macd-dif-zero";
 import { priceLevelDefinition } from "./price-level";
 import { volumeSpikeDefinition } from "./volume-spike";
 import type { ConditionDefinition } from "./types";
@@ -20,6 +21,7 @@ export const CONDITION_DEFINITIONS: Record<
   PRICE_LEVEL: priceLevelDefinition,
   MACD_DEA_TURN: macdDeaTurnDefinition,
   MACD_DEA_ZONE: macdDeaZoneDefinition,
+  MACD_DIF_ZERO: macdDifZeroDefinition,
   ADX_TREND: adxTrendDefinition,
   EMA_FAST_TURN: emaFastTurnDefinition
 };

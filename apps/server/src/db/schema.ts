@@ -56,6 +56,7 @@ const V5_SCHEMA_SQL = `
     monitor_id INTEGER NOT NULL,
     kind TEXT NOT NULL,
     role TEXT NOT NULL CHECK (role IN ('trigger', 'filter')),
+    logic TEXT NOT NULL DEFAULT 'AND',
     interval TEXT,
 
     params TEXT NOT NULL DEFAULT '{}',

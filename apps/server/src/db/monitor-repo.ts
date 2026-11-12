@@ -1,6 +1,7 @@
 import { db } from "./index";
 import type {
   ConditionKind,
+  ConditionLogic,
   ConditionRole,
   MonitorConditionRecord,
   MonitorRecord,
@@ -145,6 +146,7 @@ export function insertCondition(input: {
   monitorId: number;
   kind: ConditionKind;
   role: ConditionRole;
+  logic?: ConditionLogic;
   interval: string | null;
   params: string;
   sortOrder: number;
@@ -156,16 +158,18 @@ export function insertCondition(input: {
       monitor_id,
       kind,
       role,
+      logic,
       interval,
       params,
       sort_order,
       created_at,
       updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     input.monitorId,
     input.kind,
     input.role,
+    input.logic ?? "AND",
     input.interval,
     input.params,
     input.sortOrder,

@@ -183,6 +183,7 @@ function buildSnapshot(
       return {
         kind: runtime.kind,
         role: runtime.role,
+        logic: runtime.logic,
         interval: runtime.interval,
         summary: runtime.definition.summarize(runtime.params),
         statusText: runtime.result.statusText,
@@ -555,6 +556,7 @@ async function runMonitor(
       id: condition.id,
       kind: condition.kind,
       role: condition.role as ConditionRole,
+      logic: condition.logic ?? "AND",
       interval,
       params,
       definition,

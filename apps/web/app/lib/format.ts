@@ -151,6 +151,10 @@ export function eventTypeLabel(eventType: string): string {
       return "进入空头区间";
     case "SHORT_ZONE_EXHAUST":
       return "空头区间衰竭";
+    case "DIF_ZERO_UP":
+      return "DIF 上穿零轴";
+    case "DIF_ZERO_DOWN":
+      return "DIF 下穿零轴";
     case "STOP_LOSS_HIT":
       return "止损触发";
     case "ADX_TREND":
@@ -240,6 +244,8 @@ export function isAlertSignal(signal: {
     signal.event_type === "LONG_ZONE_EXHAUST" ||
     signal.event_type === "SHORT_ZONE_START" ||
     signal.event_type === "SHORT_ZONE_EXHAUST" ||
+    signal.event_type === "DIF_ZERO_UP" ||
+    signal.event_type === "DIF_ZERO_DOWN" ||
     signal.event_type === "ADX_TREND" ||
     signal.event_type === "EMA_FAST_TURN"
   );

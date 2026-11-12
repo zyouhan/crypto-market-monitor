@@ -149,6 +149,15 @@ function triggerDetail(signal: MonitorSignalItem): string {
     )} · ${trigger?.summary ?? "MACD"}`;
   }
 
+  if (
+    signal.event_type === "DIF_ZERO_UP" ||
+    signal.event_type === "DIF_ZERO_DOWN"
+  ) {
+    return `${eventTypeLabel(signal.event_type)} · ${
+      trigger?.summary ?? "MACD DIF"
+    }`;
+  }
+
   if (signal.event_type === "STOP_LOSS_HIT") {
     const entryPrice = signal.payload?.entryPrice;
     const stopPrice = signal.payload?.stopPrice;
@@ -387,6 +396,8 @@ export function SignalTable({
           <option value="LONG_ZONE_EXHAUST">多头区间衰竭</option>
           <option value="SHORT_ZONE_START">进入空头区间</option>
           <option value="SHORT_ZONE_EXHAUST">空头区间衰竭</option>
+          <option value="DIF_ZERO_UP">DIF 上穿零轴</option>
+          <option value="DIF_ZERO_DOWN">DIF 下穿零轴</option>
           <option value="ADX_TREND">ADX 趋势</option>
           <option value="EMA_FAST_TURN">EMA 快线拐头</option>
           <option value="TREND_INVALIDATED">等待失效</option>

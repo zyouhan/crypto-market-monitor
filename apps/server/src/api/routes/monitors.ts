@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import type {
   ConditionKind,
+  ConditionLogic,
   ConditionRole,
   MonitorConditionRecord,
   MonitorRecord
@@ -100,6 +101,7 @@ function normalizeConditionInput(
 ): {
   kind: ConditionKind;
   role: ConditionRole;
+  logic: ConditionLogic;
   interval: string;
   params: Record<string, unknown>;
 } {
@@ -114,6 +116,11 @@ function normalizeConditionInput(
   if (value.role !== "trigger" && value.role !== "filter") {
     throw new Error("条件角色必须为 trigger 或 filter");
   }
+
+  const logic =
+    value.logic === "OR" || value.logic === "NOT"
+      ? value.logic
+      : "AND";
 
   const interval =
     typeof value.interval === "string" && value.interval.trim()
@@ -133,6 +140,7 @@ function normalizeConditionInput(
   return {
     kind: value.kind,
     role: value.role,
+    logic,
     interval,
     params
   };
@@ -160,6 +168,7 @@ function buildConditionView(
     id: condition.id,
     kind: condition.kind,
     role: condition.role,
+    logic: condition.logic,
     interval,
     params,
     summary: definition.summarize(params),
@@ -270,6 +279,7 @@ function prepareConditions(
   conditions: Array<{
     kind: ConditionKind;
     role: ConditionRole;
+    logic: ConditionLogic;
     interval: string;
     params: Record<string, unknown>;
   }>;
@@ -325,6 +335,7 @@ function insertConditionRows(
   conditions: Array<{
     kind: ConditionKind;
     role: ConditionRole;
+    logic: ConditionLogic;
     interval: string;
     params: Record<string, unknown>;
   }>
@@ -334,6 +345,7 @@ function insertConditionRows(
       monitorId,
       kind: condition.kind,
       role: condition.role,
+      logic: condition.logic,
       interval: condition.interval,
       params: JSON.stringify(condition.params),
       sortOrder: index
@@ -515,6 +527,7 @@ monitorsRouter.put("/:id", (req, res) => {
       getMonitorConditions(id).map((condition) => ({
         kind: condition.kind,
         role: condition.role,
+        logic: condition.logic,
         interval: condition.interval || existing.interval,
         params: parseJson(condition.params)
       }))

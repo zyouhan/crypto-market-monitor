@@ -128,6 +128,7 @@ export function MonitorModal({
       ? item.conditions.map((condition) => ({
           kind: condition.kind,
           role: condition.role,
+          logic: condition.logic ?? "AND",
           interval: condition.interval,
           params: { ...condition.params }
         }))
@@ -298,6 +299,7 @@ export function MonitorModal({
         conditions: conditions.map((condition) => ({
           kind: condition.kind,
           role: condition.role,
+          logic: condition.logic,
           interval: condition.interval,
           params: condition.params
         }))
@@ -605,6 +607,10 @@ export function MonitorModal({
 
           <div className="section-help">
             检查周期自动取所有触发条件中的最小周期；每个条件可自由选择自己的 K 线周期。过滤条件使用更低周期时，会取检查时点最近一根已收盘数据。
+          </div>
+
+          <div className="section-help">
+            条件按列表顺序组合：与 = AND，或 = OR，非 = AND NOT；第一个条件的逻辑不参与运算。至少需要在一个正向触发条件上产生信号。
           </div>
 
           <div className="condition-add">

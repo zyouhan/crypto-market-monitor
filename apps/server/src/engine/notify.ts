@@ -67,6 +67,14 @@ function displayDirection(
     return "空头区间衰竭";
   }
 
+  if (signal.event_type === "DIF_ZERO_UP") {
+    return "DIF 上穿零轴";
+  }
+
+  if (signal.event_type === "DIF_ZERO_DOWN") {
+    return "DIF 下穿零轴";
+  }
+
   if (signal.event_type === "STOP_LOSS_HIT") {
     return "止损触发";
   }
