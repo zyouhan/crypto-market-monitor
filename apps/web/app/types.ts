@@ -145,6 +145,7 @@ export interface StrategyStatsEntry {
   symbol: string;
   preset_id: string | null;
   preset_name: string | null;
+  condition_summary: string;
   direction: "BULL" | "BEAR" | null;
   price: number;
   event_type: SignalEventType;

@@ -2697,6 +2697,16 @@ option {
   max-width: 420px;
 }
 
+.strategy-stats-conditions {
+  max-width: 320px;
+  min-width: 220px;
+  color: #c7d0dd;
+  font-size: 10px;
+  line-height: 1.5;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .strategy-stats-count {
   color: var(--muted);
   font-size: 11px;

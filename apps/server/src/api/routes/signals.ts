@@ -3,6 +3,7 @@ import { Router } from "express";
 import type { SignalEventType } from "../../db/types";
 import { db } from "../../db";
 import { getSignals } from "../../db/monitor-repo";
+import { summarizeSignalConditions } from "../../monitors/condition-summary";
 import {
   buildReferenceTrends,
   REFERENCE_INTERVALS
@@ -359,6 +360,7 @@ signalsRouter.get("/stats/export", async (req, res) => {
       event_type,
       stats_result,
       stats_note,
+      conditions,
       reference_trends
     FROM signals
     WHERE ${conditions.join(" AND ")}
@@ -374,6 +376,7 @@ signalsRouter.get("/stats/export", async (req, res) => {
     event_type: string;
     stats_result: string | null;
     stats_note: string | null;
+    conditions: string | null;
     reference_trends: string | null;
   }>;
 
@@ -445,8 +448,9 @@ signalsRouter.get("/stats/entries", (req, res) => {
       OR preset_name LIKE ?
       OR monitor_name LIKE ?
       OR stats_note LIKE ?
+      OR conditions LIKE ?
     )`);
-    params.push(pattern, pattern, pattern, pattern);
+    params.push(pattern, pattern, pattern, pattern, pattern);
   }
 
   if (symbol) {
@@ -501,6 +505,7 @@ signalsRouter.get("/stats/entries", (req, res) => {
       monitor_name,
       stats_note,
       stats_result,
+      conditions,
       reference_trends
     FROM signals
     ${where}
@@ -529,6 +534,14 @@ signalsRouter.get("/stats/entries", (req, res) => {
 
         return {
           ...item,
+          condition_summary: summarizeSignalConditions(
+            typeof item.conditions === "string"
+              ? item.conditions
+              : null,
+            typeof item.preset_name === "string"
+              ? item.preset_name
+              : null
+          ),
           reference_trends: referenceTrends
         };
       }),

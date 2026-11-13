@@ -567,7 +567,7 @@ export function StrategyStatsPanel({
             <span aria-hidden="true">⌕</span>
             <input
               value={query}
-              placeholder="搜索标的 / 预设 / 监控项 / 备注"
+              placeholder="搜索标的 / 触发条件 / 监控项 / 备注"
               onChange={(event) => setQuery(event.target.value)}
             />
           </label>
@@ -680,7 +680,7 @@ export function StrategyStatsPanel({
                 </th>
                 <th>时间</th>
                 <th>标的</th>
-                <th>预设</th>
+                <th>触发条件</th>
                 <th>方向</th>
                 <th>价格</th>
                 <th>类型</th>
@@ -737,7 +737,9 @@ export function StrategyStatsPanel({
                     </td>
                     <td>{formatTime(entry.event_time)}</td>
                     <td>{entry.symbol}</td>
-                    <td>{entry.preset_name ?? "自定义/历史"}</td>
+                    <td className="strategy-stats-conditions">
+                      {entry.condition_summary}
+                    </td>
                     <td>
                       <span
                         className={`direction-badge ${

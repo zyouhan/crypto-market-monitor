@@ -218,7 +218,7 @@ KDJ 入场信号会创建 `stop_watches` 止损观察：
 | POST | `/api/monitors/:id/refresh` | 单项立即请求，返回 pending |
 | GET | `/api/signals` | 信号记录，支持 `symbol/interval/monitor_id/event_type/triggered/limit/offset` |
 | GET | `/api/signals/stats` | 今日/累计信号，以及按预设分组的策略统计 |
-| GET | `/api/signals/stats/entries` | 策略统计明细，支持 `search/limit/offset`；备注也参与搜索 |
+| GET | `/api/signals/stats/entries` | 策略统计明细，支持 `search/limit/offset`；搜索覆盖触发条件和备注 |
 | GET | `/api/signals/stats/results` | 按标的统计已填写结果的数量和占比 |
 | GET | `/api/signals/stats/export` | 按标的和时间段导出 Excel |
 | POST | `/api/signals/stats/batch-delete` | 批量软删除策略统计记录 |
@@ -331,7 +331,7 @@ npm run build
 
 监控项和信号会记录 `preset_id` / `preset_name`。新建监控时可以打开「纳入策略统计」开关；只有打开开关的监控入场信号会进入策略统计。选择预设会自动打开，修改条件后会自动关闭，需要手动重新确认。
 
-首页通过「策略统计」进入独立统计页面，查看预设汇总、搜索、分页明细，并可从统计中软删除记录。统计明细支持备注和结果标注，备注在列表中省略显示，点击后在弹框查看和编辑完整内容。
+首页通过「策略统计」进入独立统计页面，查看预设汇总、搜索、分页明细，并可从统计中软删除记录。统计明细的「触发条件」列展示信号生成时实际满足的条件（含周期和与/或/非逻辑），不再只展示预设名称。统计明细支持备注和结果标注，备注在列表中省略显示，点击后在弹框查看和编辑完整内容。
 
 结果分类：
 

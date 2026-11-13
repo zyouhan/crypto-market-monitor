@@ -8,6 +8,8 @@ import {
   STATS_RESULT_VALUES
 } from "./stats-results";
 
+import { summarizeSignalConditions } from "./condition-summary";
+
 export interface StatsExportRow {
   event_time: number;
   symbol: string;
@@ -18,6 +20,7 @@ export interface StatsExportRow {
   event_type: string;
   stats_result: string | null;
   stats_note: string | null;
+  conditions: string | null;
   reference_trends: string | null;
 }
 
@@ -437,7 +440,7 @@ export async function buildStatsWorkbook(
   const detailColumns: SheetColumn[] = [
     { key: "time", label: "时间", width: 21 },
     { key: "symbol", label: "标的", width: 14 },
-    { key: "strategy", label: "策略", width: 22 },
+    { key: "strategy", label: "触发条件", width: 48 },
     { key: "monitor", label: "监控项", width: 22 },
     { key: "direction", label: "方向", width: 9 },
     { key: "price", label: "价格", width: 14, numeric: true },
@@ -449,7 +452,10 @@ export async function buildStatsWorkbook(
   const detailRows = rows.map((row) => ({
     time: formatTime(row.event_time),
     symbol: row.symbol,
-    strategy: row.preset_name ?? "自定义/历史",
+    strategy: summarizeSignalConditions(
+      row.conditions,
+      row.preset_name ?? "自定义/历史"
+    ),
     monitor: row.monitor_name ?? "—",
     direction: directionLabel(row.direction),
     price: row.price,
