@@ -18,6 +18,7 @@ export type ConditionKind =
   | "MACD_DEA_ZONE"
   | "MACD_DIF_ZERO"
   | "KDJ_JK_CROSS"
+  | "CANDLE_PATTERN"
   | "ADX_TREND"
   | "EMA_FAST_TURN";
 
@@ -162,6 +163,8 @@ export type SignalEventType =
   | "DIF_ZERO_DOWN"
   | "KDJ_J_UP_K"
   | "KDJ_J_DOWN_K"
+  | "CANDLE_TOP"
+  | "CANDLE_BOTTOM"
   | "ADX_TREND"
   | "EMA_FAST_TURN"
   | "STOP_LOSS_HIT"

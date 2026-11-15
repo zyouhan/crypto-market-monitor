@@ -741,6 +741,8 @@ const EVENT_TYPES: SignalEventType[] = [
   "DIF_ZERO_DOWN",
   "KDJ_J_UP_K",
   "KDJ_J_DOWN_K",
+  "CANDLE_TOP",
+  "CANDLE_BOTTOM",
   "ADX_TREND",
   "EMA_FAST_TURN",
   "STOP_LOSS_HIT",

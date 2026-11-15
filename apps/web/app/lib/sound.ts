@@ -129,6 +129,10 @@ export function getSoundAlertKind(
       return settings.golden ? "golden" : null;
     case "KDJ_J_DOWN_K":
       return settings.death ? "death" : null;
+    case "CANDLE_TOP":
+      return settings.death ? "death" : null;
+    case "CANDLE_BOTTOM":
+      return settings.golden ? "golden" : null;
     case "STOP_LOSS_HIT":
       return settings.death ? "death" : null;
     case "ADX_TREND":

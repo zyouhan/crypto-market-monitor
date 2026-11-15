@@ -167,6 +167,22 @@ function triggerDetail(signal: MonitorSignalItem): string {
     }`;
   }
 
+  if (
+    signal.event_type === "CANDLE_TOP" ||
+    signal.event_type === "CANDLE_BOTTOM"
+  ) {
+    const pattern =
+      typeof signal.payload?.pattern_label === "string"
+        ? signal.payload.pattern_label
+        : "";
+    const side =
+      signal.event_type === "CANDLE_TOP" ? "见顶" : "见底";
+
+    return pattern
+      ? `[${side}] ${pattern} · ${trigger?.summary ?? "K线形态"}`
+      : `[${side}] K线形态`;
+  }
+
   if (signal.event_type === "STOP_LOSS_HIT") {
     const entryPrice = signal.payload?.entryPrice;
     const stopPrice = signal.payload?.stopPrice;
@@ -409,6 +425,8 @@ export function SignalTable({
           <option value="DIF_ZERO_DOWN">DIF 下穿零轴</option>
           <option value="KDJ_J_UP_K">J 上穿 K</option>
           <option value="KDJ_J_DOWN_K">J 下穿 K</option>
+          <option value="CANDLE_TOP">K线见顶形态</option>
+          <option value="CANDLE_BOTTOM">K线见底形态</option>
           <option value="ADX_TREND">ADX 趋势</option>
           <option value="EMA_FAST_TURN">EMA 快线拐头</option>
           <option value="TREND_INVALIDATED">等待失效</option>

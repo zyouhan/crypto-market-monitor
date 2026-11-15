@@ -1,9 +1,9 @@
 "use client";
 
 import {
-  eventTypeLabel,
   formatPrice,
-  formatTime
+  formatTime,
+  signalEventLabel
 } from "../lib/format";
 import type { MonitorItem, MonitorSignalItem } from "../types";
 
@@ -49,7 +49,7 @@ export function SignalToasts({
               <strong>
                 {signal.symbol} ·{" "}
                 {signal.interval ? `${signal.interval} ` : ""}
-                {eventTypeLabel(signal.event_type)}
+                {signalEventLabel(signal)}
               </strong>
 
               <button

@@ -10,12 +10,12 @@ import type { Kline } from "../indicators/types";
 export interface ConditionField {
   key: string;
   label: string;
-  type: "number" | "boolean" | "select";
+  type: "number" | "boolean" | "select" | "multiselect";
   min?: number;
   max?: number;
   step?: number | "any";
   options?: Array<{ value: string; label: string }>;
-  defaultValue: number | boolean | string;
+  defaultValue: number | boolean | string | string[];
   help?: string;
 }
 

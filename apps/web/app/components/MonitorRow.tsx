@@ -5,7 +5,8 @@ import { useState } from "react";
 import {
   eventTypeLabel,
   formatPrice,
-  formatTime
+  formatTime,
+  signalEventLabel
 } from "../lib/format";
 import { referenceTagItems } from "../lib/reference-trends";
 import { ReferenceTags } from "./ReferenceTags";
@@ -281,7 +282,7 @@ export function MonitorRow({
                 {latestSignal.interval
                   ? `${latestSignal.interval} `
                   : ""}
-                {eventTypeLabel(latestSignal.event_type)}
+                {signalEventLabel(latestSignal)}
               </div>
               <div className="row-signal-meta">
                 {formatPrice(latestSignal.price)} ·{" "}

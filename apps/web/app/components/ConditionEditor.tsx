@@ -30,7 +30,9 @@ function defaultsFor(
   const params: Record<string, unknown> = {};
 
   for (const field of definition.fields) {
-    params[field.key] = field.defaultValue;
+    params[field.key] = Array.isArray(field.defaultValue)
+      ? [...field.defaultValue]
+      : field.defaultValue;
   }
 
   return params;
@@ -39,7 +41,7 @@ function defaultsFor(
 function fieldValue(
   value: Record<string, unknown>,
   field: ConditionField
-): string | number | boolean {
+): string | number | boolean | string[] {
   const current = value[field.key];
 
   if (field.type === "boolean") {
@@ -50,6 +52,18 @@ function fieldValue(
     return typeof current === "number"
       ? current
       : Number(field.defaultValue);
+  }
+
+  if (field.type === "multiselect") {
+    if (Array.isArray(current)) {
+      return current.filter(
+        (item): item is string => typeof item === "string"
+      );
+    }
+
+    return Array.isArray(field.defaultValue)
+      ? [...field.defaultValue]
+      : [];
   }
 
   return String(current ?? field.defaultValue);
@@ -71,15 +85,20 @@ export function ConditionEditor({
   }
 
   const parameterFields = definition.fields.filter(
-    (field) => field.type !== "boolean"
+    (field) =>
+      field.type !== "boolean" &&
+      field.type !== "multiselect"
   );
   const booleanFields = definition.fields.filter(
     (field) => field.type === "boolean"
   );
+  const multiFields = definition.fields.filter(
+    (field) => field.type === "multiselect"
+  );
 
   function updateParams(
     key: string,
-    next: string | number | boolean
+    next: string | number | boolean | string[]
   ): void {
     onChange({
       ...value,
@@ -184,6 +203,42 @@ export function ConditionEditor({
           </div>
         ))}
       </div>
+
+      {multiFields.map((field) => {
+        const selected = fieldValue(value.params, field);
+        const values = Array.isArray(selected) ? selected : [];
+
+        return (
+          <div className="condition-multiselect" key={field.key}>
+            <div className="direction-row-label">{field.label}</div>
+            <div className="condition-multiselect-options">
+              {(field.options ?? []).map((option) => (
+                <label
+                  className="condition-multiselect-option"
+                  key={option.value}
+                >
+                  <input
+                    type="checkbox"
+                    checked={values.includes(option.value)}
+                    onChange={(event) => {
+                      const next = event.target.checked
+                        ? [...values, option.value]
+                        : values.filter(
+                            (item) => item !== option.value
+                          );
+                      updateParams(field.key, next);
+                    }}
+                  />
+                  <span>{option.label}</span>
+                </label>
+              ))}
+            </div>
+            {field.help && (
+              <div className="field-help">{field.help}</div>
+            )}
+          </div>
+        );
+      })}
 
       {booleanFields.length > 0 && (
         <div className="condition-boolean-row">

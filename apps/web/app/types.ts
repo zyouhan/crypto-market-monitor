@@ -20,6 +20,8 @@ export type SignalEventType =
   | "DIF_ZERO_DOWN"
   | "KDJ_J_UP_K"
   | "KDJ_J_DOWN_K"
+  | "CANDLE_TOP"
+  | "CANDLE_BOTTOM"
   | "ADX_TREND"
   | "EMA_FAST_TURN"
   | "STOP_LOSS_HIT"
@@ -215,6 +217,7 @@ export type ConditionKind =
   | "MACD_DEA_ZONE"
   | "MACD_DIF_ZERO"
   | "KDJ_JK_CROSS"
+  | "CANDLE_PATTERN"
   | "ADX_TREND"
   | "EMA_FAST_TURN";
 
@@ -225,12 +228,12 @@ export type ConditionLogic = "AND" | "OR" | "NOT";
 export interface ConditionField {
   key: string;
   label: string;
-  type: "number" | "boolean" | "select";
+  type: "number" | "boolean" | "select" | "multiselect";
   min?: number;
   max?: number;
   step?: number | "any";
   options?: Array<{ value: string; label: string }>;
-  defaultValue: number | boolean | string;
+  defaultValue: number | boolean | string | string[];
   help?: string;
 }
 

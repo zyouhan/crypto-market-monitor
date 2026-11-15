@@ -159,6 +159,10 @@ export function eventTypeLabel(eventType: string): string {
       return "J 上穿 K";
     case "KDJ_J_DOWN_K":
       return "J 下穿 K";
+    case "CANDLE_TOP":
+      return "K线见顶";
+    case "CANDLE_BOTTOM":
+      return "K线见底";
     case "STOP_LOSS_HIT":
       return "止损触发";
     case "ADX_TREND":
@@ -172,6 +176,27 @@ export function eventTypeLabel(eventType: string): string {
     default:
       return eventType;
   }
+}
+
+export function signalEventLabel(signal: {
+  event_type: string;
+  payload?: Record<string, unknown> | null;
+}): string {
+  if (
+    signal.event_type === "CANDLE_TOP" ||
+    signal.event_type === "CANDLE_BOTTOM"
+  ) {
+    const pattern =
+      typeof signal.payload?.pattern_label === "string"
+        ? signal.payload.pattern_label
+        : "";
+    const side =
+      signal.event_type === "CANDLE_TOP" ? "见顶" : "见底";
+
+    return pattern ? `[${side}] ${pattern}` : `[${side}] K线形态`;
+  }
+
+  return eventTypeLabel(signal.event_type);
 }
 
 export function directionLabel(
@@ -252,6 +277,8 @@ export function isAlertSignal(signal: {
     signal.event_type === "DIF_ZERO_DOWN" ||
     signal.event_type === "KDJ_J_UP_K" ||
     signal.event_type === "KDJ_J_DOWN_K" ||
+    signal.event_type === "CANDLE_TOP" ||
+    signal.event_type === "CANDLE_BOTTOM" ||
     signal.event_type === "ADX_TREND" ||
     signal.event_type === "EMA_FAST_TURN"
   );

@@ -1,6 +1,7 @@
 import type { ConditionKind } from "../db/types";
 
 import { adxTrendDefinition } from "./adx-trend";
+import { candlePatternDefinition } from "./candle-pattern";
 import { emaCrossDefinition } from "./ema-cross";
 import { emaFastTurnDefinition } from "./ema-fast-turn";
 import { kdjExtremeDefinition } from "./kdj-extreme";
@@ -17,6 +18,7 @@ export const CONDITION_DEFINITIONS: Record<
   ConditionDefinition
 > = {
   EMA_CROSS: emaCrossDefinition,
+  CANDLE_PATTERN: candlePatternDefinition,
   KDJ_EXTREME: kdjExtremeDefinition,
   KDJ_JK_CROSS: kdjJkCrossDefinition,
   VOLUME_SPIKE: volumeSpikeDefinition,

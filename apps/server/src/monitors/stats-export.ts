@@ -85,6 +85,14 @@ function eventLabel(eventType: string): string {
     return "J 下穿 K";
   }
 
+  if (eventType === "CANDLE_TOP") {
+    return "K线见顶";
+  }
+
+  if (eventType === "CANDLE_BOTTOM") {
+    return "K线见底";
+  }
+
   return eventType;
 }
 

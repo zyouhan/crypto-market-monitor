@@ -51,6 +51,30 @@ function directionLabel(
 function displayDirection(
   signal: MonitorSignalRecord
 ): string {
+  if (
+    signal.event_type === "CANDLE_TOP" ||
+    signal.event_type === "CANDLE_BOTTOM"
+  ) {
+    let pattern = "";
+
+    try {
+      const payload = JSON.parse(signal.payload ?? "{}") as {
+        pattern_label?: unknown;
+      };
+
+      if (typeof payload.pattern_label === "string") {
+        pattern = payload.pattern_label;
+      }
+    } catch {
+      pattern = "";
+    }
+
+    const side =
+      signal.event_type === "CANDLE_TOP" ? "见顶" : "见底";
+
+    return pattern ? `[${side}] ${pattern}` : `[${side}] K线形态`;
+  }
+
   if (signal.event_type === "LONG_ZONE_START") {
     return "进入多头区间";
   }
