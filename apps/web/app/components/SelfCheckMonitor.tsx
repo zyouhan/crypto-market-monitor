@@ -9,7 +9,7 @@ import {
   SELF_CHECK_CHANGED_EVENT
 } from "../lib/self-check-events";
 
-const INTERVALS = ["5m", "15m", "1h", "4h"] as const;
+const INTERVALS = ["1m", "5m", "15m", "1h", "4h"] as const;
 
 interface IntervalSnapshot {
   interval: string;

@@ -9,9 +9,12 @@ import {
 
 import { api, errorMessage } from "../lib/api";
 import { formatTime } from "../lib/format";
-import { notifySelfCheckChanged } from "../lib/self-check-events";
+import {
+  notifySelfCheckChanged,
+  SELF_CHECK_CHANGED_EVENT
+} from "../lib/self-check-events";
 
-const INTERVALS = ["5m", "15m", "1h", "4h"] as const;
+const INTERVALS = ["1m", "5m", "15m", "1h", "4h"] as const;
 const MAX_ACTIVE = 2;
 
 interface IntervalSnapshot {
@@ -100,6 +103,32 @@ export function SelfCheckDock() {
   useEffect(() => {
     void loadActive();
   }, [loadActive]);
+
+  useEffect(() => {
+    if (open) {
+      void loadActive();
+    }
+  }, [open, loadActive]);
+
+  useEffect(() => {
+    const handleChanged = () => {
+      if (open) {
+        void loadActive();
+      }
+    };
+
+    window.addEventListener(
+      SELF_CHECK_CHANGED_EVENT,
+      handleChanged
+    );
+
+    return () => {
+      window.removeEventListener(
+        SELF_CHECK_CHANGED_EVENT,
+        handleChanged
+      );
+    };
+  }, [open, loadActive]);
 
   useEffect(() => {
     if (items.length === 0) {

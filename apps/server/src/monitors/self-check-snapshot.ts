@@ -2,7 +2,13 @@ import { calculateKDJ } from "../indicators/kdj";
 import { calculateMACD, DEFAULT_MACD_PARAMS } from "../indicators/macd";
 import { getMarketKlines } from "../market";
 
-export const SELF_CHECK_INTERVALS = ["5m", "15m", "1h", "4h"] as const;
+export const SELF_CHECK_INTERVALS = [
+  "1m",
+  "5m",
+  "15m",
+  "1h",
+  "4h"
+] as const;
 
 export type SelfCheckInterval =
   (typeof SELF_CHECK_INTERVALS)[number];
