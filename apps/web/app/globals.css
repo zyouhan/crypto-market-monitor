@@ -4051,7 +4051,7 @@ option {
 
 .self-check-target-label {
   color: #e7bd69;
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 600;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -4060,13 +4060,13 @@ option {
 .self-check-target-value {
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: 12px;
   margin: 0;
 }
 
 .self-check-target-value span {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 38px;
 }
 
 .self-check-target-value strong {
@@ -4103,13 +4103,13 @@ option {
 }
 
 .self-check-level-top b {
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .self-check-demand-mini {
   padding: 2px 5px;
   border-radius: 4px;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -4135,7 +4135,7 @@ option {
 
 .self-check-level-neutral {
   color: var(--muted);
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .self-check-level-detail {
@@ -4215,7 +4215,7 @@ option {
   border-radius: 6px;
   background: #0b111a;
   color: #e5c882;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -4227,7 +4227,7 @@ option {
   border-radius: 6px;
   background: #0f1520;
   color: #aeb9c8;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
