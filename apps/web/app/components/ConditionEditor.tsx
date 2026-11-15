@@ -242,7 +242,11 @@ export function ConditionEditor({
 
       {booleanFields.length > 0 && (
         <div className="condition-boolean-row">
-          <span className="direction-row-label">方向</span>
+          <span className="direction-row-label">
+            {booleanFields[0]?.key === "direction"
+              ? "方向"
+              : "选项"}
+          </span>
 
           {booleanFields.map((field) => (
             <label className="toggle-chip" key={field.key}>
