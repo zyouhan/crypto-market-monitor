@@ -222,11 +222,14 @@ export function SelfCheckMonitor() {
                 key={item.id}
               >
                 <div className="self-check-monitor-head">
-                  <div>
+                  <div className="self-check-monitor-title">
                     <strong>{item.symbol}</strong>
-                    <span>
-                      {item.direction === "BULL" ? "做多" : "做空"} · 目标{" "}
-                      {item.target_interval}
+                    <span
+                      className={`self-check-direction-tag ${
+                        item.direction === "BULL" ? "bull" : "bear"
+                      }`}
+                    >
+                      {item.direction === "BULL" ? "做多" : "做空"}
                     </span>
                   </div>
                   <span className="self-check-monitor-time">
