@@ -246,6 +246,29 @@ const V5_SCHEMA_SQL = `
 
   CREATE INDEX IF NOT EXISTS idx_trade_case_images_case
     ON trade_case_images(case_id, id);
+
+  CREATE TABLE IF NOT EXISTS self_checks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol TEXT NOT NULL,
+    direction TEXT NOT NULL CHECK (direction IN ('BULL', 'BEAR')),
+    target_interval TEXT NOT NULL,
+    stop_condition TEXT NOT NULL,
+    snapshot_json TEXT,
+    status TEXT NOT NULL DEFAULT 'active'
+      CHECK (status IN ('active', 'closed')),
+    result TEXT
+      CHECK (result IS NULL OR result IN ('success', 'failed')),
+    close_note TEXT,
+    closed_at INTEGER,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_self_checks_status_created
+    ON self_checks(status, created_at DESC, id DESC);
+
+  CREATE INDEX IF NOT EXISTS idx_self_checks_symbol
+    ON self_checks(symbol);
 `;
 
 export function applySchema(database: Database.Database): void {

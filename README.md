@@ -234,6 +234,11 @@ KDJ 入场信号会创建 `stop_watches` 止损观察：
 | POST | `/api/cases/:id/images` | 上传案例截图 |
 | DELETE | `/api/cases/:id/images/:imageId` | 删除案例截图 |
 | GET | `/api/cases/images/:imageId` | 读取案例图片，`variant=thumb\|full` |
+| GET/POST | `/api/self-checks` | 持仓中的开单自查列表/新建 |
+| GET | `/api/self-checks/live` | 持仓中的开单自查最新快照 |
+| GET | `/api/self-checks/records` | 开单记录分页，支持标的/结果筛选 |
+| PUT | `/api/self-checks/:id` | 修改持仓中的止损条件 |
+| POST | `/api/self-checks/:id/close` | 关闭开单并填写成功/失败和备注 |
 | GET/PUT | `/api/settings` | 全局监控开关、全局微信通知开关 |
 
 ## 笔记
@@ -246,6 +251,18 @@ KDJ 入场信号会创建 `stop_watches` 止损观察：
 - 分页浏览，支持按标签和关键词组合查询。
 
 笔记数据存储在主数据库中，标签使用 `note_tags` 关联表；删除笔记会级联删除标签关系。
+
+## 开单自查
+
+登录后右侧笔记按钮上方提供「开单自查」：
+
+- 最多同时保留 2 条持仓中的自查；
+- 新建时记录标的、方向、目标级别和止损条件；
+- 自动获取 5m/15m/1h/4h 的趋势、强度和 J 值；
+- J<5 提示上涨需求，J>80 提示下跌需求；
+- 固定便利贴展示目标级别 J 值和止损条件；
+- 关闭时必须填写成功/失败，可选备注；
+- `/self-checks` 页面分页查看开单记录，支持按标的和结果筛选。
 
 ## 交易案例库
 

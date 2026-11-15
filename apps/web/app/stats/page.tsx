@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { StrategyStatsPanel } from "../components/StrategyStatsPanel";
 import { NotesDock } from "../components/NotesDock";
+import { SelfCheckDock } from "../components/SelfCheckDock";
 import { api } from "../lib/api";
 
 export default function StrategyStatsPage() {
@@ -55,11 +56,15 @@ export default function StrategyStatsPage() {
           <Link className="button" href="/cases">
             交易案例
           </Link>
+          <Link className="button" href="/self-checks">
+            开单记录
+          </Link>
         </div>
       </header>
 
       <StrategyStatsPanel pageMode onChanged={() => undefined} />
 
+      <SelfCheckDock />
       <NotesDock />
     </main>
   );

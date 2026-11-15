@@ -13,6 +13,7 @@ import { LoginCard } from "./components/LoginCard";
 import { MonitorList } from "./components/MonitorList";
 import { MonitorModal } from "./components/MonitorModal";
 import { NotesDock } from "./components/NotesDock";
+import { SelfCheckDock } from "./components/SelfCheckDock";
 import { NotificationSettings } from "./components/NotificationSettings";
 import { SignalTable } from "./components/SignalTable";
 import { SignalToasts } from "./components/SignalToasts";
@@ -849,6 +850,10 @@ export default function HomePage() {
             交易案例
           </Link>
 
+          <Link className="button" href="/self-checks">
+            开单记录
+          </Link>
+
           <button
             className="button primary"
             onClick={openAddModal}
@@ -1007,6 +1012,7 @@ export default function HomePage() {
         />
       )}
 
+      <SelfCheckDock />
       <NotesDock />
     </main>
   );

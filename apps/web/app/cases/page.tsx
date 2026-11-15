@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { CasesPanel } from "../components/CasesPanel";
 import { NotesDock } from "../components/NotesDock";
+import { SelfCheckDock } from "../components/SelfCheckDock";
 import { api } from "../lib/api";
 
 export default function CasesPage() {
@@ -54,10 +55,14 @@ export default function CasesPage() {
           <a className="button" href="/stats">
             策略统计
           </a>
+          <a className="button" href="/self-checks">
+            开单记录
+          </a>
         </div>
       </header>
 
       <CasesPanel />
+      <SelfCheckDock />
       <NotesDock />
     </main>
   );

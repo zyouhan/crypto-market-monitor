@@ -15,6 +15,7 @@ import { conditionsRouter } from "./api/routes/conditions";
 import { casesRouter } from "./api/routes/cases";
 import { monitorsRouter } from "./api/routes/monitors";
 import { notesRouter } from "./api/routes/notes";
+import { selfChecksRouter } from "./api/routes/self-checks";
 import { settingsRouter } from "./api/routes/settings";
 import { signalsRouter } from "./api/routes/signals";
 import { db, resolvedDatabasePath } from "./db";
@@ -64,6 +65,7 @@ app.use("/api/conditions", conditionsRouter);
 app.use("/api/signals", signalsRouter);
 app.use("/api/notes", notesRouter);
 app.use("/api/cases", casesRouter);
+app.use("/api/self-checks", selfChecksRouter);
 app.use("/api/settings", settingsRouter);
 
 app.use("/api", notFoundHandler);
