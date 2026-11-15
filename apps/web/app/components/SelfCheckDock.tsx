@@ -52,13 +52,15 @@ interface CreateForm {
   direction: "BULL" | "BEAR";
   target_interval: string;
   stop_condition: string;
+  note: string;
 }
 
 const EMPTY_FORM: CreateForm = {
   symbol: "",
   direction: "BULL",
   target_interval: "15m",
-  stop_condition: ""
+  stop_condition: "",
+  note: ""
 };
 
 export function SelfCheckDock() {
@@ -201,7 +203,8 @@ export function SelfCheckDock() {
           symbol: form.symbol,
           direction: form.direction,
           target_interval: form.target_interval,
-          stop_condition: form.stop_condition
+          stop_condition: form.stop_condition,
+          note: form.note
         })
       });
       setForm(EMPTY_FORM);
@@ -225,10 +228,22 @@ export function SelfCheckDock() {
       return;
     }
 
+    const nextNote = window.prompt(
+      "修改备注（可选）",
+      item.close_note ?? ""
+    );
+
+    if (nextNote === null) {
+      return;
+    }
+
     try {
       await api(`/api/self-checks/${item.id}`, {
         method: "PUT",
-        body: JSON.stringify({ stop_condition: next })
+        body: JSON.stringify({
+          stop_condition: next,
+          note: nextNote
+        })
       });
       await loadActive();
       notifySelfCheckChanged();
@@ -386,6 +401,21 @@ export function SelfCheckDock() {
                     }
                   />
                 </label>
+                <label>
+                  备注（可选）
+                  <textarea
+                    rows={4}
+                    value={form.note}
+                    maxLength={1000}
+                    placeholder="记录开单理由或计划"
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        note: event.target.value
+                      }))
+                    }
+                  />
+                </label>
                 <div className="note-form-actions">
                   <button
                     type="button"
@@ -445,7 +475,7 @@ export function SelfCheckDock() {
                             className="button small"
                             onClick={() => void editStop(item)}
                           >
-                            修改止损
+                            编辑止损/备注
                           </button>
                           <button
                             type="button"
@@ -453,7 +483,7 @@ export function SelfCheckDock() {
                             onClick={() => {
                               setClosing(item);
                               setCloseResult("success");
-                              setCloseNote("");
+                              setCloseNote(item.close_note ?? "");
                               setError("");
                             }}
                           >

@@ -68,6 +68,7 @@ function readCreateInput(body: unknown): {
   direction: SelfCheckDirection;
   targetInterval: string;
   stopCondition: string;
+  note: string;
 } {
   const input =
     typeof body === "object" && body !== null
@@ -88,6 +89,10 @@ function readCreateInput(body: unknown): {
   const stopCondition =
     typeof input.stop_condition === "string"
       ? input.stop_condition.trim()
+      : "";
+  const note =
+    typeof input.note === "string"
+      ? input.note.trim()
       : "";
 
   if (!/^[A-Z0-9]{2,30}$/.test(symbol)) {
@@ -114,7 +119,11 @@ function readCreateInput(body: unknown): {
     throw new Error(`止损条件不能超过 ${MAX_STOP_LENGTH} 个字符`);
   }
 
-  return { symbol, direction, targetInterval, stopCondition };
+  if (note.length > MAX_NOTE_LENGTH) {
+    throw new Error(`备注不能超过 ${MAX_NOTE_LENGTH} 个字符`);
+  }
+
+  return { symbol, direction, targetInterval, stopCondition, note };
 }
 
 function getRow(id: number): SelfCheckRow | null {
@@ -253,13 +262,14 @@ selfChecksRouter.post("/", async (req, res) => {
   const result = db.prepare(`
     INSERT INTO self_checks (
       symbol, direction, target_interval, stop_condition,
-      snapshot_json, status, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, 'active', ?, ?)
+      close_note, snapshot_json, status, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)
   `).run(
     input.symbol,
     input.direction,
     input.targetInterval,
     input.stopCondition,
+    input.note || null,
     JSON.stringify(snapshot),
     now,
     now
@@ -300,13 +310,28 @@ selfChecksRouter.put("/:id", (req, res) => {
     return;
   }
 
+  const note =
+    typeof req.body?.note === "string"
+      ? req.body.note.trim()
+      : row.close_note ?? "";
+
+  if (note.length > MAX_NOTE_LENGTH) {
+    res.status(400).json(failure("备注不能超过 1000 个字符"));
+    return;
+  }
+
   db.prepare(`
     UPDATE self_checks
-    SET stop_condition = ?, updated_at = ?
+    SET stop_condition = ?, close_note = ?, updated_at = ?
     WHERE id = ?
-  `).run(stopCondition, Date.now(), id);
+  `).run(
+    stopCondition,
+    note || null,
+    Date.now(),
+    id
+  );
 
-  res.json(success(toView(getRow(id)!), "止损条件已更新"));
+  res.json(success(toView(getRow(id)!), "止损和备注已更新"));
 });
 
 selfChecksRouter.delete("/:id", (req, res) => {
@@ -361,7 +386,7 @@ selfChecksRouter.post("/:id/close", (req, res) => {
   const note =
     typeof req.body?.note === "string"
       ? req.body.note.trim()
-      : "";
+      : row.close_note ?? "";
 
   if (!result) {
     res.status(400).json(failure("请选择成功或失败"));

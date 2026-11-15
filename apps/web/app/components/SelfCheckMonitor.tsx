@@ -28,6 +28,7 @@ interface ActiveSelfCheck {
   stop_condition: string;
   snapshot: IntervalSnapshot[] | null;
   live?: IntervalSnapshot[] | null;
+  close_note: string | null;
   created_at: number;
 }
 
@@ -59,6 +60,11 @@ export function SelfCheckMonitor() {
   >("success");
   const [closeNote, setCloseNote] = useState("");
   const [closingSaving, setClosingSaving] = useState(false);
+  const [editing, setEditing] =
+    useState<ActiveSelfCheck | null>(null);
+  const [editStop, setEditStop] = useState("");
+  const [editNote, setEditNote] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
 
   const load = useCallback(async (initial = false) => {
     if (initial) {
@@ -118,6 +124,37 @@ export function SelfCheckMonitor() {
       document.removeEventListener("visibilitychange", refresh);
     };
   }, [load]);
+
+  async function saveEdit(): Promise<void> {
+    if (!editing || editSaving) {
+      return;
+    }
+
+    if (!editStop.trim()) {
+      setError("请输入止损条件");
+      return;
+    }
+
+    setEditSaving(true);
+    setError("");
+
+    try {
+      await api(`/api/self-checks/${editing.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          stop_condition: editStop,
+          note: editNote
+        })
+      });
+      setEditing(null);
+      await load();
+      notifySelfCheckChanged();
+    } catch (editError) {
+      setError(errorMessage(editError));
+    } finally {
+      setEditSaving(false);
+    }
+  }
 
   async function closeCheck(): Promise<void> {
     if (!closing || closingSaving) {
@@ -252,11 +289,23 @@ export function SelfCheckMonitor() {
                 <div className="self-check-monitor-actions">
                   <button
                     type="button"
+                    className="button small"
+                    onClick={() => {
+                      setEditing(item);
+                      setEditStop(item.stop_condition);
+                      setEditNote(item.close_note ?? "");
+                      setError("");
+                    }}
+                  >
+                    编辑止损/备注
+                  </button>
+                  <button
+                    type="button"
                     className="button small primary"
                     onClick={() => {
                       setClosing(item);
                       setCloseResult("success");
-                      setCloseNote("");
+                      setCloseNote(item.close_note ?? "");
                       setError("");
                     }}
                   >
@@ -266,6 +315,84 @@ export function SelfCheckMonitor() {
               </article>
             );
           })}
+        </div>
+      )}
+
+      {editing && (
+        <div
+          className="modal-backdrop self-check-close-backdrop"
+          onMouseDown={(event) => {
+            if (
+              event.target === event.currentTarget &&
+              !editSaving
+            ) {
+              setEditing(null);
+            }
+          }}
+        >
+          <section className="modal self-check-close-modal">
+            <div className="self-check-modal-head">
+              <div>
+                <h2>编辑止损和备注</h2>
+                <p>
+                  {editing.symbol} · {editing.target_interval}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="notes-close"
+                aria-label="关闭"
+                onClick={() => setEditing(null)}
+              >
+                ×
+              </button>
+            </div>
+
+            {error && <div className="error-box">{error}</div>}
+
+            <div className="note-form">
+              <label>
+                止损条件
+                <textarea
+                  rows={4}
+                  value={editStop}
+                  maxLength={1000}
+                  onChange={(event) =>
+                    setEditStop(event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                备注
+                <textarea
+                  rows={4}
+                  value={editNote}
+                  maxLength={1000}
+                  onChange={(event) =>
+                    setEditNote(event.target.value)
+                  }
+                />
+              </label>
+              <div className="note-form-actions">
+                <button
+                  type="button"
+                  className="button small"
+                  disabled={editSaving}
+                  onClick={() => setEditing(null)}
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  className="button small primary"
+                  disabled={editSaving}
+                  onClick={() => void saveEdit()}
+                >
+                  {editSaving ? "保存中…" : "保存"}
+                </button>
+              </div>
+            </div>
+          </section>
         </div>
       )}
 
