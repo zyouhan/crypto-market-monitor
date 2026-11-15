@@ -3562,6 +3562,63 @@ option {
   color: #fff;
   font-size: 24px;
   cursor: pointer;
+  z-index: 97;
+}
+
+.case-preview-nav {
+  position: fixed;
+  top: 50%;
+  z-index: 97;
+  width: 46px;
+  height: 76px;
+  transform: translateY(-50%);
+  border: 1px solid rgb(255 255 255 / 22%);
+  border-radius: 8px;
+  background: rgb(0 0 0 / 55%);
+  color: #fff;
+  font-size: 36px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.case-preview-nav:hover:not(:disabled) {
+  background: rgb(30 45 65 / 85%);
+  border-color: rgb(255 255 255 / 45%);
+}
+
+.case-preview-nav:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.case-preview-nav.prev {
+  left: 18px;
+}
+
+.case-preview-nav.next {
+  right: 18px;
+}
+
+.case-preview-counter {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  z-index: 97;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 60%);
+  color: #fff;
+  font-size: 12px;
+}
+
+.case-preview-counter span {
+  color: #9aa6b5;
+  font-size: 10px;
 }
 
 .case-form-backdrop {

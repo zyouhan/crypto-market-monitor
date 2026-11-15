@@ -147,6 +147,61 @@ export function CasesPanel() {
   const [uploadTotal, setUploadTotal] = useState(0);
   const requestIdRef = useRef(0);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
+  const previewIndex =
+    previewImageId === null || !detail
+      ? -1
+      : detail.images.findIndex(
+          (image) => image.id === previewImageId
+        );
+
+  const movePreview = useCallback(
+    (delta: number): void => {
+      if (!detail || previewIndex < 0) {
+        return;
+      }
+
+      const nextIndex = previewIndex + delta;
+
+      if (
+        nextIndex < 0 ||
+        nextIndex >= detail.images.length
+      ) {
+        return;
+      }
+
+      setPreviewImageId(detail.images[nextIndex].id);
+    },
+    [detail, previewIndex]
+  );
+
+  useEffect(() => {
+    if (previewImageId === null || !detail) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+      }
+
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        movePreview(-1);
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        movePreview(1);
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        setPreviewImageId(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [previewImageId, detail, previewIndex, movePreview]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -592,11 +647,42 @@ export function CasesPanel() {
           >
             ×
           </button>
+          {detail && detail.images.length > 1 && (
+            <>
+              <button
+                type="button"
+                className="case-preview-nav prev"
+                aria-label="上一张"
+                disabled={previewIndex <= 0}
+                onClick={() => movePreview(-1)}
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                className="case-preview-nav next"
+                aria-label="下一张"
+                disabled={
+                  previewIndex < 0 ||
+                  previewIndex >= detail.images.length - 1
+                }
+                onClick={() => movePreview(1)}
+              >
+                ›
+              </button>
+            </>
+          )}
           <img
             className="case-preview-image"
             src={imageUrl(previewImageId, "full")}
             alt=""
           />
+          {detail && detail.images.length > 0 && (
+            <div className="case-preview-counter">
+              {previewIndex + 1} / {detail.images.length}
+              <span>← → 切换</span>
+            </div>
+          )}
         </div>
       )}
 
