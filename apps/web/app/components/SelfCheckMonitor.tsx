@@ -4,6 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 
 import { api, errorMessage } from "../lib/api";
 import { formatTime } from "../lib/format";
+import {
+  notifySelfCheckChanged,
+  SELF_CHECK_CHANGED_EVENT
+} from "../lib/self-check-events";
 
 const INTERVALS = ["5m", "15m", "1h", "4h"] as const;
 
@@ -47,6 +51,14 @@ export function SelfCheckMonitor() {
   const [items, setItems] = useState<ActiveSelfCheck[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [closing, setClosing] = useState<ActiveSelfCheck | null>(
+    null
+  );
+  const [closeResult, setCloseResult] = useState<
+    "success" | "failed"
+  >("success");
+  const [closeNote, setCloseNote] = useState("");
+  const [closingSaving, setClosingSaving] = useState(false);
 
   const load = useCallback(async (initial = false) => {
     if (initial) {
@@ -75,6 +87,24 @@ export function SelfCheckMonitor() {
   }, [load]);
 
   useEffect(() => {
+    const handleChanged = () => {
+      void load();
+    };
+
+    window.addEventListener(
+      SELF_CHECK_CHANGED_EVENT,
+      handleChanged
+    );
+
+    return () => {
+      window.removeEventListener(
+        SELF_CHECK_CHANGED_EVENT,
+        handleChanged
+      );
+    };
+  }, [load]);
+
+  useEffect(() => {
     const refresh = () => {
       if (!document.hidden) {
         void load();
@@ -88,6 +118,34 @@ export function SelfCheckMonitor() {
       document.removeEventListener("visibilitychange", refresh);
     };
   }, [load]);
+
+  async function closeCheck(): Promise<void> {
+    if (!closing || closingSaving) {
+      return;
+    }
+
+    setClosingSaving(true);
+    setError("");
+
+    try {
+      await api(`/api/self-checks/${closing.id}/close`, {
+        method: "POST",
+        body: JSON.stringify({
+          result: closeResult,
+          note: closeNote
+        })
+      });
+      setClosing(null);
+      setCloseNote("");
+      setCloseResult("success");
+      await load();
+      notifySelfCheckChanged();
+    } catch (closeError) {
+      setError(errorMessage(closeError));
+    } finally {
+      setClosingSaving(false);
+    }
+  }
 
   return (
     <section className="panel self-check-monitor-panel">
@@ -190,9 +248,109 @@ export function SelfCheckMonitor() {
                 <div className="self-check-monitor-stop">
                   止损：{item.stop_condition}
                 </div>
+
+                <div className="self-check-monitor-actions">
+                  <button
+                    type="button"
+                    className="button small primary"
+                    onClick={() => {
+                      setClosing(item);
+                      setCloseResult("success");
+                      setCloseNote("");
+                      setError("");
+                    }}
+                  >
+                    关闭开单
+                  </button>
+                </div>
               </article>
             );
           })}
+        </div>
+      )}
+
+      {closing && (
+        <div
+          className="modal-backdrop self-check-close-backdrop"
+          onMouseDown={(event) => {
+            if (
+              event.target === event.currentTarget &&
+              !closingSaving
+            ) {
+              setClosing(null);
+            }
+          }}
+        >
+          <section className="modal self-check-close-modal">
+            <div className="self-check-modal-head">
+              <div>
+                <h2>关闭开单监控</h2>
+                <p>
+                  {closing.symbol} · {closing.target_interval}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="notes-close"
+                aria-label="关闭"
+                onClick={() => setClosing(null)}
+              >
+                ×
+              </button>
+            </div>
+
+            {error && <div className="error-box">{error}</div>}
+
+            <div className="self-check-result-row">
+              <span>结果</span>
+              <label>
+                <input
+                  type="radio"
+                  checked={closeResult === "success"}
+                  onChange={() => setCloseResult("success")}
+                />
+                成功
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  checked={closeResult === "failed"}
+                  onChange={() => setCloseResult("failed")}
+                />
+                失败
+              </label>
+            </div>
+
+            <label className="self-check-note-label">
+              备注（可选）
+              <textarea
+                rows={4}
+                value={closeNote}
+                maxLength={1000}
+                placeholder="记录平仓原因或复盘"
+                onChange={(event) => setCloseNote(event.target.value)}
+              />
+            </label>
+
+            <div className="note-form-actions">
+              <button
+                type="button"
+                className="button small"
+                disabled={closingSaving}
+                onClick={() => setClosing(null)}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                className="button small primary"
+                disabled={closingSaving}
+                onClick={() => void closeCheck()}
+              >
+                {closingSaving ? "关闭中…" : "确认关闭"}
+              </button>
+            </div>
+          </section>
         </div>
       )}
     </section>

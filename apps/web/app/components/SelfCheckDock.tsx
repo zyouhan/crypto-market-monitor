@@ -9,6 +9,7 @@ import {
 
 import { api, errorMessage } from "../lib/api";
 import { formatTime } from "../lib/format";
+import { notifySelfCheckChanged } from "../lib/self-check-events";
 
 const INTERVALS = ["5m", "15m", "1h", "4h"] as const;
 const MAX_ACTIVE = 2;
@@ -177,6 +178,7 @@ export function SelfCheckDock() {
       setForm(EMPTY_FORM);
       setMode("list");
       await loadActive();
+      notifySelfCheckChanged();
     } catch (createError) {
       setError(errorMessage(createError));
     } finally {
@@ -200,6 +202,7 @@ export function SelfCheckDock() {
         body: JSON.stringify({ stop_condition: next })
       });
       await loadActive();
+      notifySelfCheckChanged();
     } catch (updateError) {
       setError(errorMessage(updateError));
     }
@@ -225,6 +228,7 @@ export function SelfCheckDock() {
       setCloseNote("");
       setCloseResult("success");
       await loadActive();
+      notifySelfCheckChanged();
     } catch (closeError) {
       setError(errorMessage(closeError));
     } finally {

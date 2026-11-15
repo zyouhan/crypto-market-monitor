@@ -309,6 +309,30 @@ selfChecksRouter.put("/:id", (req, res) => {
   res.json(success(toView(getRow(id)!), "止损条件已更新"));
 });
 
+selfChecksRouter.delete("/:id", (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!isPositiveInteger(id)) {
+    res.status(400).json(failure("记录 ID 不正确"));
+    return;
+  }
+
+  const row = getRow(id);
+
+  if (!row) {
+    res.status(404).json(failure("开单自查不存在"));
+    return;
+  }
+
+  if (row.status === "active") {
+    res.status(400).json(failure("持仓中的开单请先关闭"));
+    return;
+  }
+
+  db.prepare("DELETE FROM self_checks WHERE id = ?").run(id);
+  res.json(success({ id }, "开单记录已删除"));
+});
+
 selfChecksRouter.post("/:id/close", (req, res) => {
   const id = Number(req.params.id);
 

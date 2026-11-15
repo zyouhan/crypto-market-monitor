@@ -4,6 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 
 import { api, errorMessage } from "../lib/api";
 import { formatTime } from "../lib/format";
+import {
+  notifySelfCheckChanged,
+  SELF_CHECK_CHANGED_EVENT
+} from "../lib/self-check-events";
 
 const PAGE_SIZE = 20;
 
@@ -102,6 +106,42 @@ export function SelfCheckRecords() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    const handleChanged = () => {
+      void load();
+    };
+
+    window.addEventListener(
+      SELF_CHECK_CHANGED_EVENT,
+      handleChanged
+    );
+
+    return () => {
+      window.removeEventListener(
+        SELF_CHECK_CHANGED_EVENT,
+        handleChanged
+      );
+    };
+  }, [load]);
+
+  async function deleteRecord(
+    item: SelfCheckRecord
+  ): Promise<void> {
+    if (!window.confirm(`删除 ${item.symbol} 的开单记录？`)) {
+      return;
+    }
+
+    try {
+      await api(`/api/self-checks/${item.id}`, {
+        method: "DELETE"
+      });
+      await load();
+      notifySelfCheckChanged();
+    } catch (deleteError) {
+      setError(errorMessage(deleteError));
+    }
+  }
+
   return (
     <section className="panel self-check-records-panel">
       <div className="panel-header">
@@ -156,6 +196,7 @@ export function SelfCheckRecords() {
                 <th>止损条件</th>
                 <th>备注</th>
                 <th>开单目标 J</th>
+                <th>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -204,6 +245,21 @@ export function SelfCheckRecords() {
                       {typeof targetJ === "number"
                         ? targetJ.toFixed(2)
                         : "--"}
+                    </td>
+                    <td>
+                      {item.status === "closed" ? (
+                        <button
+                          type="button"
+                          className="button small danger"
+                          onClick={() => void deleteRecord(item)}
+                        >
+                          删除
+                        </button>
+                      ) : (
+                        <span className="self-check-record-active">
+                          持仓中
+                        </span>
+                      )}
                     </td>
                   </tr>
                 );
