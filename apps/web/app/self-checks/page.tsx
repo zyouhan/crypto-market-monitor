@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { NotesDock } from "../components/NotesDock";
 import { SelfCheckDock } from "../components/SelfCheckDock";
+import { SelfCheckMonitor } from "../components/SelfCheckMonitor";
 import { SelfCheckRecords } from "../components/SelfCheckRecords";
 import { api } from "../lib/api";
 
@@ -60,6 +61,7 @@ export default function SelfCheckRecordsPage() {
         </div>
       </header>
 
+      <SelfCheckMonitor />
       <SelfCheckRecords />
       <SelfCheckDock />
       <NotesDock />
