@@ -3222,6 +3222,13 @@ option {
   line-height: 1.6;
 }
 
+.auto-grow-textarea,
+.note-form .auto-grow-textarea {
+  resize: none;
+  overflow-y: hidden;
+  min-height: 0;
+}
+
 .note-form input:focus,
 .note-form textarea:focus {
   border-color: var(--blue);
@@ -4002,6 +4009,110 @@ option {
   font-size: 11px !important;
 }
 
+.self-check-target-block {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid rgb(231 189 105 / 25%);
+  border-radius: 8px;
+  background: #141710;
+}
+
+.self-check-target-label {
+  color: #e7bd69;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.self-check-target-value {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin: 4px 0 8px;
+}
+
+.self-check-target-value span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.self-check-target-value strong {
+  color: #f1cf8a;
+  font-size: 38px;
+  line-height: 1;
+}
+
+.self-check-target-nodemand {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.self-check-level-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.self-check-level-card {
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #0b111a;
+}
+
+.self-check-level-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.self-check-level-top b {
+  font-size: 12px;
+}
+
+.self-check-demand-mini {
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.self-check-demand-mini.bull {
+  background: #12372f;
+  color: var(--green);
+}
+
+.self-check-demand-mini.bear {
+  background: #3a202b;
+  color: var(--red);
+}
+
+.self-check-demand-mini.bull-soft {
+  background: #0f241f;
+  color: #86d6b6;
+}
+
+.self-check-demand-mini.bear-soft {
+  background: #25151b;
+  color: #d994a2;
+}
+
+.self-check-level-neutral {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.self-check-level-detail {
+  margin-top: 5px;
+  color: #c7d0dd;
+  font-size: 11px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
 .self-check-monitor-target {
   display: flex;
   align-items: center;
@@ -4072,6 +4183,18 @@ option {
   background: #0b111a;
   color: #e5c882;
   font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.self-check-monitor-note {
+  margin-top: 7px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #0f1520;
+  color: #aeb9c8;
+  font-size: 12px;
   line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;

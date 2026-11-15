@@ -9,6 +9,7 @@ import {
 
 import { api, errorMessage } from "../lib/api";
 import { formatTime } from "../lib/format";
+import { AutoGrowTextarea } from "./AutoGrowTextarea";
 import {
   notifySelfCheckChanged,
   SELF_CHECK_CHANGED_EVENT
@@ -389,29 +390,28 @@ export function SelfCheckDock() {
                 </label>
                 <label>
                   止损条件
-                  <textarea
-                    rows={4}
+                  <AutoGrowTextarea
                     value={form.stop_condition}
+                    maxLength={1000}
                     placeholder="例如：跌破 62000 止损"
-                    onChange={(event) =>
+                    onChange={(value) =>
                       setForm((current) => ({
                         ...current,
-                        stop_condition: event.target.value
+                        stop_condition: value
                       }))
                     }
                   />
                 </label>
                 <label>
                   备注（可选）
-                  <textarea
-                    rows={4}
+                  <AutoGrowTextarea
                     value={form.note}
                     maxLength={1000}
                     placeholder="记录开单理由或计划"
-                    onChange={(event) =>
+                    onChange={(value) =>
                       setForm((current) => ({
                         ...current,
-                        note: event.target.value
+                        note: value
                       }))
                     }
                   />
@@ -552,12 +552,11 @@ export function SelfCheckDock() {
 
             <label className="self-check-note-label">
               备注（可选）
-              <textarea
-                rows={4}
+              <AutoGrowTextarea
                 value={closeNote}
                 maxLength={1000}
                 placeholder="记录平仓原因或复盘"
-                onChange={(event) => setCloseNote(event.target.value)}
+                onChange={setCloseNote}
               />
             </label>
 

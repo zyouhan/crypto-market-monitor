@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { api, errorMessage } from "../lib/api";
 import { formatTime } from "../lib/format";
+import { AutoGrowTextarea } from "./AutoGrowTextarea";
 import {
   notifySelfCheckChanged,
   SELF_CHECK_CHANGED_EVENT
@@ -233,21 +234,34 @@ export function SelfCheckMonitor() {
                   </span>
                 </div>
 
-                <div className="self-check-monitor-target">
-                  <span>目标 J</span>
-                  <strong>{formatJ(target?.j)}</strong>
-                  {target?.demand && (
+                <div className="self-check-target-block">
+                  <div className="self-check-target-label">
+                    主目标 · {item.target_interval}
+                  </div>
+                  <div className="self-check-target-value">
+                    <span>J</span>
+                    <strong>{formatJ(target?.j)}</strong>
+                  </div>
+                  {target?.demand ? (
                     <span
                       className={`self-check-j-tag ${tagTone(target)}`}
                     >
                       {target.trend === "up" ? "向上" : "向下"} ·{" "}
                       {target.strength} · {target.demand}
                     </span>
+                  ) : (
+                    <span className="self-check-target-nodemand">
+                      {target
+                        ? `${target.trend === "up" ? "向上" : "向下"} · ${target.strength}`
+                        : "数据不足"}
+                    </span>
                   )}
                 </div>
 
-                <div className="self-check-j-tags">
-                  {INTERVALS.map((interval) => {
+                <div className="self-check-level-grid">
+                  {INTERVALS.filter(
+                    (interval) => interval !== item.target_interval
+                  ).map((interval) => {
                     const snapshot = snapshots.find(
                       (entry) => entry.interval === interval
                     );
@@ -257,27 +271,34 @@ export function SelfCheckMonitor() {
                     }
 
                     return (
-                      <span
-                        className={`self-check-j-tag ${tagTone(
-                          snapshot
-                        )} ${
-                          interval === item.target_interval
-                            ? "target"
-                            : ""
-                        }`}
+                      <div
+                        className="self-check-level-card"
                         key={interval}
                       >
-                        {interval}{" "}
-                        {snapshot.error
-                          ? "数据失败"
-                          : `${snapshot.trend === "up" ? "向上" : "向下"} · ${
-                              snapshot.strength
-                            } · J ${formatJ(snapshot.j)}${
-                              snapshot.demand
-                                ? ` · ${snapshot.demand}`
-                                : ""
-                            }`}
-                      </span>
+                        <div className="self-check-level-top">
+                          <b>{interval}</b>
+                          {snapshot.demand ? (
+                            <span
+                              className={`self-check-demand-mini ${tagTone(
+                                snapshot
+                              )}`}
+                            >
+                              {snapshot.demand}
+                            </span>
+                          ) : (
+                            <span className="self-check-level-neutral">
+                              暂无需求
+                            </span>
+                          )}
+                        </div>
+                        <div className="self-check-level-detail">
+                          {snapshot.error
+                            ? "数据获取失败"
+                            : `${snapshot.trend === "up" ? "向上" : "向下"} · ${
+                                snapshot.strength
+                              } · J ${formatJ(snapshot.j)}`}
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
@@ -285,6 +306,12 @@ export function SelfCheckMonitor() {
                 <div className="self-check-monitor-stop">
                   止损：{item.stop_condition}
                 </div>
+
+                {item.close_note && (
+                  <div className="self-check-monitor-note">
+                    备注：{item.close_note}
+                  </div>
+                )}
 
                 <div className="self-check-monitor-actions">
                   <button
@@ -353,24 +380,18 @@ export function SelfCheckMonitor() {
             <div className="note-form">
               <label>
                 止损条件
-                <textarea
-                  rows={4}
+                <AutoGrowTextarea
                   value={editStop}
                   maxLength={1000}
-                  onChange={(event) =>
-                    setEditStop(event.target.value)
-                  }
+                  onChange={setEditStop}
                 />
               </label>
               <label>
                 备注
-                <textarea
-                  rows={4}
+                <AutoGrowTextarea
                   value={editNote}
                   maxLength={1000}
-                  onChange={(event) =>
-                    setEditNote(event.target.value)
-                  }
+                  onChange={setEditNote}
                 />
               </label>
               <div className="note-form-actions">
@@ -450,12 +471,11 @@ export function SelfCheckMonitor() {
 
             <label className="self-check-note-label">
               备注（可选）
-              <textarea
-                rows={4}
+              <AutoGrowTextarea
                 value={closeNote}
                 maxLength={1000}
                 placeholder="记录平仓原因或复盘"
-                onChange={(event) => setCloseNote(event.target.value)}
+                onChange={setCloseNote}
               />
             </label>
 
