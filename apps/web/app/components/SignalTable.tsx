@@ -174,7 +174,11 @@ function triggerDetail(signal: MonitorSignalItem): string {
     const pattern =
       typeof signal.payload?.pattern_label === "string"
         ? signal.payload.pattern_label
-        : "";
+        : trigger?.display?.find((item) => item.label === "形态")
+            ?.value?.split("·")
+            .slice(1)
+            .join("·")
+            .trim() ?? "";
     const side =
       signal.event_type === "CANDLE_TOP" ? "见顶" : "见底";
 

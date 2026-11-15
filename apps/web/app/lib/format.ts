@@ -181,15 +181,33 @@ export function eventTypeLabel(eventType: string): string {
 export function signalEventLabel(signal: {
   event_type: string;
   payload?: Record<string, unknown> | null;
+  conditions?: Array<{
+    kind?: string;
+    display?: Array<{ label?: string; value?: string }>;
+  }>;
 }): string {
   if (
     signal.event_type === "CANDLE_TOP" ||
     signal.event_type === "CANDLE_BOTTOM"
   ) {
-    const pattern =
+    let pattern =
       typeof signal.payload?.pattern_label === "string"
         ? signal.payload.pattern_label
         : "";
+
+    if (!pattern) {
+      const candleCondition = signal.conditions?.find(
+        (condition) => condition.kind === "CANDLE_PATTERN"
+      );
+      const displayValue = candleCondition?.display?.find(
+        (item) => item.label === "形态"
+      )?.value;
+
+      if (displayValue?.includes("·")) {
+        pattern = displayValue.split("·").slice(1).join("·").trim();
+      }
+    }
+
     const side =
       signal.event_type === "CANDLE_TOP" ? "见顶" : "见底";
 

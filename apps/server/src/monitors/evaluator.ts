@@ -270,6 +270,7 @@ function evaluateLogicalSignals(input: {
       threshold: primaryPoint.threshold,
       stopPrice,
       payload: {
+        ...primaryPoint.payload,
         conditions,
         source: input.source,
         stopPrice
@@ -419,6 +420,7 @@ export function evaluateMonitorSignals(input: {
       threshold: primary.point.threshold,
       stopPrice,
       payload: {
+        ...primary.point.payload,
         conditions,
         source: input.source,
         stopPrice
