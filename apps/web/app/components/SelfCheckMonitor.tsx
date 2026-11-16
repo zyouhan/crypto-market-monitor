@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { api, errorMessage } from "../lib/api";
-import { formatTime } from "../lib/format";
+import { formatPrice, formatTime } from "../lib/format";
 import { AutoGrowTextarea } from "./AutoGrowTextarea";
 import {
   notifySelfCheckChanged,
@@ -17,6 +17,9 @@ interface IntervalSnapshot {
   trend: "up" | "down";
   strength: "强" | "中" | "弱" | "拐头";
   j: number | null;
+  ema25: number | null;
+  ema60: number | null;
+  ema_arrangement: "bull" | "bear" | "flat";
   demand: "上涨需求" | "下跌需求" | null;
   error: string | null;
 }
@@ -35,6 +38,24 @@ interface ActiveSelfCheck {
 
 function formatJ(value: number | null | undefined): string {
   return typeof value === "number" ? value.toFixed(2) : "--";
+}
+
+function emaLabel(
+  arrangement: "bull" | "bear" | "flat" | undefined
+): string {
+  if (arrangement === "bull") {
+    return "多头排列";
+  }
+
+  if (arrangement === "bear") {
+    return "空头排列";
+  }
+
+  return "EMA 数据不足";
+}
+
+function formatEma(value: number | null | undefined): string {
+  return typeof value === "number" ? formatPrice(value) : "--";
 }
 
 function tagTone(snapshot: IntervalSnapshot): string {
@@ -259,6 +280,21 @@ export function SelfCheckMonitor() {
                         : "数据不足"}
                     </span>
                   )}
+                  <div className="self-check-target-ema">
+                    <span>EMA25 {formatEma(target?.ema25)}</span>
+                    <span>EMA60 {formatEma(target?.ema60)}</span>
+                    <b
+                      className={`self-check-ema-tag ${
+                        target?.ema_arrangement === "bull"
+                          ? "bull"
+                          : target?.ema_arrangement === "bear"
+                            ? "bear"
+                            : "flat"
+                      }`}
+                    >
+                      {emaLabel(target?.ema_arrangement)}
+                    </b>
+                  </div>
                 </div>
 
                 <div className="self-check-level-grid">
@@ -300,6 +336,21 @@ export function SelfCheckMonitor() {
                             : `${snapshot.trend === "up" ? "向上" : "向下"} · ${
                                 snapshot.strength
                               } · J ${formatJ(snapshot.j)}`}
+                        </div>
+                        <div className="self-check-level-ema">
+                          <span>EMA25 {formatEma(snapshot.ema25)}</span>
+                          <span>EMA60 {formatEma(snapshot.ema60)}</span>
+                          <b
+                            className={`self-check-ema-tag ${
+                              snapshot.ema_arrangement === "bull"
+                                ? "bull"
+                                : snapshot.ema_arrangement === "bear"
+                                  ? "bear"
+                                  : "flat"
+                            }`}
+                          >
+                            {emaLabel(snapshot.ema_arrangement)}
+                          </b>
                         </div>
                       </div>
                     );

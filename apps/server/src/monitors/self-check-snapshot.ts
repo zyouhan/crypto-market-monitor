@@ -1,4 +1,5 @@
 import { calculateKDJ } from "../indicators/kdj";
+import { calculateEMA } from "../indicators/ema";
 import { calculateMACD, DEFAULT_MACD_PARAMS } from "../indicators/macd";
 import { getMarketKlines } from "../market";
 
@@ -23,6 +24,9 @@ export interface SelfCheckIntervalSnapshot {
   j: number | null;
   k: number | null;
   d: number | null;
+  ema25: number | null;
+  ema60: number | null;
+  ema_arrangement: "bull" | "bear" | "flat";
   demand: SelfCheckDemand;
   source: string | null;
   time: number | null;
@@ -50,6 +54,9 @@ function emptySnapshot(
     j: null,
     k: null,
     d: null,
+    ema25: null,
+    ema60: null,
+    ema_arrangement: "flat",
     demand: null,
     source: null,
     time: null,
@@ -76,6 +83,19 @@ async function loadInterval(
       kSmooth: 3,
       dSmooth: 3
     });
+    const closes = market.klines.map((kline) => kline.close);
+    const ema25Values = calculateEMA(closes, 25);
+    const ema60Values = calculateEMA(closes, 60);
+    const ema25 = ema25Values[ema25Values.length - 1] ?? null;
+    const ema60 = ema60Values[ema60Values.length - 1] ?? null;
+    const emaArrangement =
+      ema25 === null || ema60 === null
+        ? "flat"
+        : ema25 > ema60
+          ? "bull"
+          : ema25 < ema60
+            ? "bear"
+            : "flat";
     const lastIndex = macd.length - 1;
     const last = macd[lastIndex];
     const previous = macd[lastIndex - 1];
@@ -124,6 +144,9 @@ async function loadInterval(
       j,
       k: lastKdj?.k ?? null,
       d: lastKdj?.d ?? null,
+      ema25,
+      ema60,
+      ema_arrangement: emaArrangement,
       demand:
         j !== null && j < 5
           ? "上涨需求"
