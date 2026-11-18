@@ -82,12 +82,12 @@ signals              信号：监控项、条件快照、周期、方向、通�
 
 - 参数：`period`、`kSmooth`、`dSmooth`、`oversold`、`overbought`、`longEnabled`、`shortEnabled`、`triggerMode`；
 - `triggerMode`：
-  - `cross`：J 首次进入超卖区 → 做多；首次进入超买区 → 做空；监控启动时如果 J 已在区域内，也会立即判定一次；
+  - `cross`：J 首次进入超卖区 → 做多；首次进入超买区 → 做空；同一段极值内出现更低低点或 J 继续走弱时仍会再次触发做多，出现更高高点或 J 继续走强时仍会再次触发做空；
   - `reversal`：J 在超卖区由下跌转为回升 → 做多；J 在超买区由上涨转为回落 → 做空；
 - 过滤状态：当前 J 低于超卖阈值（多头）或高于超买阈值（空头）；
 - 展示：J/K/D、超买/超卖状态、阈值、J钝化止损。
 
-`reversal` 更偏向拐点入场，`cross` 是进入极值触发；同一段极值内只触发一次，J 离开区域后重新进入才会再次触发。
+`reversal` 更偏向拐点入场，`cross` 是进入极值触发；同一段极值内默认首次触发，若继续创新高/新低或 J 同向延续，会继续触发。J 离开区域后重新进入会重新开始判断。
 
 监控启动时如果 J 已经在极值区，预热完成后会复核最新 K 线并立即判定一次，不需要等待下一次 J 重新进入。
 
@@ -523,7 +523,7 @@ chmod 600 ~/.ssh/authorized_keys
 并在本地直接测试：
 
 ```bash
-ssh -i ~/.ssh/crypto-monitor-ci -p 22 <DEPLOY_USER>@<DEPLOY_HOST>
+ssh -i ~/.ssh/crypto-monitor-ci -p <DEPLOY_HOST> <DEPLOY_USER>@<DEPLOY_HOST>
 ```
 
 服务器拉代码的 GitHub 权限单独配置，例如生成只读 Deploy Key：

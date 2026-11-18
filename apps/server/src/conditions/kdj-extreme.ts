@@ -189,7 +189,9 @@ function pointFrom(
   previousJ: number | null,
   previousPreviousJ: number | null,
   stop: StopInfo | null,
-  entryFlags: EntryFlags
+  entryFlags: EntryFlags,
+  currentKline: Kline,
+  previousKline: Kline | null
 ): ConditionPoint {
   const currentJ = point.j;
 
@@ -225,21 +227,35 @@ function pointFrom(
     } else {
       const inOversold = currentJ < params.oversold;
       const inOverbought = currentJ > params.overbought;
+      const jLower =
+        previousJ !== null && currentJ < previousJ;
+      const jHigher =
+        previousJ !== null && currentJ > previousJ;
+      const lowerLow =
+        previousKline !== null &&
+        currentKline.low < previousKline.low;
+      const higherHigh =
+        previousKline !== null &&
+        currentKline.high > previousKline.high;
 
-      if (
-        params.longEnabled &&
-        inOversold &&
-        !entryFlags.oversold
-      ) {
-        eventType = "ENTRY_LONG";
-        eventDirection = "BULL";
-      } else if (
-        params.shortEnabled &&
-        inOverbought &&
-        !entryFlags.overbought
-      ) {
-        eventType = "ENTRY_SHORT";
-        eventDirection = "BEAR";
+      if (params.longEnabled && inOversold) {
+        if (
+          !entryFlags.oversold ||
+          jLower ||
+          lowerLow
+        ) {
+          eventType = "ENTRY_LONG";
+          eventDirection = "BULL";
+        }
+      } else if (params.shortEnabled && inOverbought) {
+        if (
+          !entryFlags.overbought ||
+          jHigher ||
+          higherHigh
+        ) {
+          eventType = "ENTRY_SHORT";
+          eventDirection = "BEAR";
+        }
       }
     }
   }
@@ -400,13 +416,22 @@ function runKdjCondition(
       stopMaps.short.get(point.time) ??
       null;
 
+    const klineIndex = input.klines.findIndex(
+      (item) => item.closeTime === kline.closeTime
+    );
+    const previousKline =
+      klineIndex > 0
+        ? input.klines[klineIndex - 1] ?? null
+        : null;
     const conditionPoint = pointFrom(
       point,
       params,
       previousJ,
       previousPreviousJ,
       stop,
-      entryFlags
+      entryFlags,
+      kline,
+      previousKline
     );
 
     if (point.j < params.oversold) {
@@ -469,7 +494,7 @@ export const kdjExtremeDefinition: ConditionDefinition = {
   kind: "KDJ_EXTREME",
   label: "KDJ 极值",
   description:
-    "监控 J 值进入超卖/超买区，或从极值拐头；进入极值模式首次进入区域即判定一次。",
+    "监控 J 值进入超卖/超买区；进入极值后首次触发，之后同区域创新高/新低或 J 继续走强仍会触发。",
   roles: ["trigger", "filter"],
   defaultRole: "trigger",
   summaryTemplate:
@@ -524,14 +549,15 @@ export const kdjExtremeDefinition: ConditionDefinition = {
       options: [
         {
           value: "cross",
-          label: "进入极值（首次进入即判定）"
+          label: "进入极值（首次/创新高或 J 延续）"
         },
         {
           value: "reversal",
           label: "极值后拐头（J 回升/回落）"
         }
       ],
-      help: "进入极值模式会在首次观察到 J 进入区域时判定一次；拐头模式等待 J 转向"
+      help:
+        "首次进入极值触发；仍在超买区时创新高或 J 继续上升，或仍在超卖区时创新低或 J 继续下降，会再次触发"
     },
     {
       key: "longEnabled",
