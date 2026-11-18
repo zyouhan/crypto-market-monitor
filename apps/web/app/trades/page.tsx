@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { AppShell } from "../components/AppShell";
 import { NotesDock } from "../components/NotesDock";
 import { SelfCheckDock } from "../components/SelfCheckDock";
 import { TradesPanel } from "../components/TradesPanel";
@@ -41,31 +42,19 @@ export default function TradesPage() {
   }
 
   return (
-    <main className="page">
-      <header className="page-top">
-        <div className="brand">
-          <h1>Crypto Market Monitor</h1>
-          <p>交易记录与心态复盘</p>
-        </div>
-        <div className="top-actions">
-          <a className="button" href="/">
-            返回监控
-          </a>
-          <a className="button" href="/cases">
-            交易案例
-          </a>
-          <a className="button" href="/self-checks">
-            开单自查记录
-          </a>
-          <a className="button" href="/stats">
-            策略统计
-          </a>
-        </div>
-      </header>
+    <AppShell>
+      <main className="page">
+        <header className="page-top">
+          <div className="brand">
+            <h1>Crypto Market Monitor</h1>
+            <p>交易记录与心态复盘</p>
+          </div>
+        </header>
 
-      <TradesPanel />
-      <SelfCheckDock />
-      <NotesDock />
-    </main>
+        <TradesPanel />
+        <SelfCheckDock />
+        <NotesDock />
+      </main>
+    </AppShell>
   );
 }

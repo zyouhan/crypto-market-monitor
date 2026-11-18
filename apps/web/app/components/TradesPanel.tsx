@@ -621,18 +621,6 @@ export function TradesPanel() {
       <section className="panel">
         <div className="panel-header">
           <div>
-            <div className="panel-title">收益曲线</div>
-            <div className="panel-subtitle">
-              按当前筛选条件统计累计收益
-            </div>
-          </div>
-        </div>
-        <EquityCurve points={curve} />
-      </section>
-
-      <section className="panel">
-        <div className="panel-header">
-          <div>
             <div className="panel-title">交易记录</div>
             <div className="panel-subtitle">
               共 {total} 笔 · 搜索时间、标的和操作评价
@@ -864,6 +852,18 @@ export function TradesPanel() {
             </button>
           </div>
         </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel-header">
+          <div>
+            <div className="panel-title">收益曲线</div>
+            <div className="panel-subtitle">
+              按当前筛选条件统计累计收益
+            </div>
+          </div>
+        </div>
+        <EquityCurve points={curve} />
       </section>
 
       {formOpen && (

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   useCallback,
   useEffect,
@@ -9,6 +8,7 @@ import {
   useState
 } from "react";
 
+import { AppShell } from "./components/AppShell";
 import { LoginCard } from "./components/LoginCard";
 import { MonitorList } from "./components/MonitorList";
 import { MonitorModal } from "./components/MonitorModal";
@@ -826,52 +826,36 @@ export default function HomePage() {
   }
 
   return (
-    <main className="page">
-      <header className="page-top">
-        <div className="brand">
-          <h1>Crypto Market Monitor</h1>
-          <p>行情来源 OKX 优先 · Binance 备用</p>
-        </div>
+    <AppShell>
+      <main className="page">
+        <header className="page-top">
+          <div className="brand">
+            <h1>Crypto Market Monitor</h1>
+            <p>行情来源 OKX 优先 · Binance 备用</p>
+          </div>
 
-        <div className="top-actions">
-          <label className="search-box">
-            <span aria-hidden="true">⌕</span>
-            <input
-              value={search}
-              placeholder="搜索标的 / 名称"
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </label>
+          <div className="top-actions">
+            <label className="search-box">
+              <span aria-hidden="true">⌕</span>
+              <input
+                value={search}
+                placeholder="搜索标的 / 名称"
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </label>
 
-          <Link className="button" href="/trades">
-            交易记录
-            <span className="nav-badge">心态监控</span>
-          </Link>
+            <button
+              className="button primary"
+              onClick={openAddModal}
+            >
+              + 新建监控项
+            </button>
 
-          <Link className="button" href="/cases">
-            交易案例
-          </Link>
-
-          <Link className="button" href="/self-checks">
-            开单自查记录
-          </Link>
-
-          <Link className="button" href="/stats">
-            策略统计
-          </Link>
-
-          <button
-            className="button primary"
-            onClick={openAddModal}
-          >
-            + 新建监控项
-          </button>
-
-          <button className="button" onClick={handleLogout}>
-            退出
-          </button>
-        </div>
-      </header>
+            <button className="button" onClick={handleLogout}>
+              退出
+            </button>
+          </div>
+        </header>
 
       {(error || message) && (
         <div className={`message ${error ? "error" : ""}`}>
@@ -1020,6 +1004,7 @@ export default function HomePage() {
 
       <SelfCheckDock />
       <NotesDock />
-    </main>
+      </main>
+    </AppShell>
   );
 }

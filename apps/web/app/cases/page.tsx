@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { AppShell } from "../components/AppShell";
 import { CasesPanel } from "../components/CasesPanel";
 import { NotesDock } from "../components/NotesDock";
 import { SelfCheckDock } from "../components/SelfCheckDock";
@@ -41,33 +42,19 @@ export default function CasesPage() {
   }
 
   return (
-    <main className="page">
-      <header className="page-top">
-        <div className="brand">
-          <h1>Crypto Market Monitor</h1>
-          <p>交易案例与复盘截图</p>
-        </div>
+    <AppShell>
+      <main className="page">
+        <header className="page-top">
+          <div className="brand">
+            <h1>Crypto Market Monitor</h1>
+            <p>交易案例与复盘截图</p>
+          </div>
+        </header>
 
-        <div className="top-actions">
-          <a className="button" href="/">
-            返回监控
-          </a>
-          <a className="button" href="/trades">
-            交易记录
-            <span className="nav-badge">心态监控</span>
-          </a>
-          <a className="button" href="/self-checks">
-            开单自查记录
-          </a>
-          <a className="button" href="/stats">
-            策略统计
-          </a>
-        </div>
-      </header>
-
-      <CasesPanel />
-      <SelfCheckDock />
-      <NotesDock />
-    </main>
+        <CasesPanel />
+        <SelfCheckDock />
+        <NotesDock />
+      </main>
+    </AppShell>
   );
 }

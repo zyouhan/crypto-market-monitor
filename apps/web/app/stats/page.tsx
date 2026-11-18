@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { AppShell } from "../components/AppShell";
 import { StrategyStatsPanel } from "../components/StrategyStatsPanel";
 import { NotesDock } from "../components/NotesDock";
 import { SelfCheckDock } from "../components/SelfCheckDock";
@@ -42,34 +42,20 @@ export default function StrategyStatsPage() {
   }
 
   return (
-    <main className="page">
-      <header className="page-top">
-        <div className="brand">
-          <h1>Crypto Market Monitor</h1>
-          <p>策略统计与复盘</p>
-        </div>
+    <AppShell>
+      <main className="page">
+        <header className="page-top">
+          <div className="brand">
+            <h1>Crypto Market Monitor</h1>
+            <p>策略统计与复盘</p>
+          </div>
+        </header>
 
-        <div className="top-actions">
-          <Link className="button" href="/">
-            返回监控
-          </Link>
-          <Link className="button" href="/trades">
-            交易记录
-            <span className="nav-badge">心态监控</span>
-          </Link>
-          <Link className="button" href="/cases">
-            交易案例
-          </Link>
-          <Link className="button" href="/self-checks">
-            开单自查记录
-          </Link>
-        </div>
-      </header>
+        <StrategyStatsPanel pageMode onChanged={() => undefined} />
 
-      <StrategyStatsPanel pageMode onChanged={() => undefined} />
-
-      <SelfCheckDock />
-      <NotesDock />
-    </main>
+        <SelfCheckDock />
+        <NotesDock />
+      </main>
+    </AppShell>
   );
 }
