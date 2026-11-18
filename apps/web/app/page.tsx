@@ -843,8 +843,9 @@ export default function HomePage() {
             />
           </label>
 
-          <Link className="button" href="/stats">
-            策略统计
+          <Link className="button" href="/trades">
+            交易记录
+            <span className="nav-badge">心态监控</span>
           </Link>
 
           <Link className="button" href="/cases">
@@ -852,11 +853,11 @@ export default function HomePage() {
           </Link>
 
           <Link className="button" href="/self-checks">
-            开单记录
+            开单自查记录
           </Link>
 
-          <Link className="button" href="/trades">
-            交易记录
+          <Link className="button" href="/stats">
+            策略统计
           </Link>
 
           <button

@@ -53,14 +53,15 @@ export default function StrategyStatsPage() {
           <Link className="button" href="/">
             返回监控
           </Link>
+          <Link className="button" href="/trades">
+            交易记录
+            <span className="nav-badge">心态监控</span>
+          </Link>
           <Link className="button" href="/cases">
             交易案例
           </Link>
           <Link className="button" href="/self-checks">
-            开单记录
-          </Link>
-          <Link className="button" href="/trades">
-            交易记录
+            开单自查记录
           </Link>
         </div>
       </header>

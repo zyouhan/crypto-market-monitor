@@ -51,14 +51,14 @@ export default function TradesPage() {
           <a className="button" href="/">
             返回监控
           </a>
-          <a className="button" href="/stats">
-            策略统计
-          </a>
           <a className="button" href="/cases">
             交易案例
           </a>
           <a className="button" href="/self-checks">
-            开单记录
+            开单自查记录
+          </a>
+          <a className="button" href="/stats">
+            策略统计
           </a>
         </div>
       </header>

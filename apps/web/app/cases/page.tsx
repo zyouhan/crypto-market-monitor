@@ -52,14 +52,15 @@ export default function CasesPage() {
           <a className="button" href="/">
             返回监控
           </a>
-          <a className="button" href="/stats">
-            策略统计
-          </a>
-          <a className="button" href="/self-checks">
-            开单记录
-          </a>
           <a className="button" href="/trades">
             交易记录
+            <span className="nav-badge">心态监控</span>
+          </a>
+          <a className="button" href="/self-checks">
+            开单自查记录
+          </a>
+          <a className="button" href="/stats">
+            策略统计
           </a>
         </div>
       </header>
