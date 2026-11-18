@@ -819,11 +819,11 @@ export function StrategyStatsPanel({
           </table>
         </div>
 
-        <div className="strategy-stats-pagination">
-          <span>
+        <div className="pager">
+          <span className="pager-info">
             第 {page + 1} / {pageCount} 页
           </span>
-          <div>
+          <div className="pager-actions">
             <input
               className="stats-page-input"
               type="number"
@@ -842,7 +842,7 @@ export function StrategyStatsPanel({
             />
             <button
               type="button"
-              className="button"
+              className="button small"
               disabled={loading}
               onClick={goToPage}
             >
@@ -850,7 +850,7 @@ export function StrategyStatsPanel({
             </button>
             <button
               type="button"
-              className="button"
+              className="button small"
               disabled={page === 0 || loading}
               onClick={() =>
                 setPage((current) => Math.max(0, current - 1))
@@ -860,7 +860,7 @@ export function StrategyStatsPanel({
             </button>
             <button
               type="button"
-              className="button"
+              className="button small"
               disabled={page + 1 >= pageCount || loading}
               onClick={() => setPage((current) => current + 1)}
             >

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { api, errorMessage } from "../lib/api";
 import { formatTime } from "../lib/format";
+import { Pagination } from "./Pagination";
 import {
   notifySelfCheckChanged,
   SELF_CHECK_CHANGED_EVENT
@@ -269,29 +270,12 @@ export function SelfCheckRecords() {
         </div>
       )}
 
-      <div className="strategy-stats-pagination">
-        <span>
-          第 {page} / {totalPages} 页
-        </span>
-        <div>
-          <button
-            type="button"
-            className="button small"
-            disabled={page <= 1 || loading}
-            onClick={() => setPage((current) => current - 1)}
-          >
-            上一页
-          </button>
-          <button
-            type="button"
-            className="button small"
-            disabled={page >= totalPages || loading}
-            onClick={() => setPage((current) => current + 1)}
-          >
-            下一页
-          </button>
-        </div>
-      </div>
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        loading={loading}
+        onPage={setPage}
+      />
     </section>
   );
 }

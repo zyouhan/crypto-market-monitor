@@ -129,6 +129,7 @@ export default function HomePage() {
     ]);
 
     setMonitors(monitorData);
+    window.dispatchEvent(new Event("monitors-changed"));
     setSignals(signalData.items);
     setAlertSignals(alertData.items);
     setSettings(settingsData);
@@ -391,6 +392,7 @@ export default function HomePage() {
         }
 
         setMonitors(monitorData);
+        window.dispatchEvent(new Event("monitors-changed"));
 
         if (!monitorData.some((monitor) => monitor.pending)) {
           await loadDashboard();
@@ -446,19 +448,6 @@ export default function HomePage() {
       throw err;
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function handleLogout() {
-    try {
-      await api("/api/auth/logout", { method: "POST" });
-    } finally {
-      setAuthenticated(false);
-      setMonitors([]);
-      setSignals([]);
-      setAlertSignals([]);
-      setToasts([]);
-      seenSignalIdsRef.current = null;
     }
   }
 
@@ -849,10 +838,6 @@ export default function HomePage() {
               onClick={openAddModal}
             >
               + 新建监控项
-            </button>
-
-            <button className="button" onClick={handleLogout}>
-              退出
             </button>
           </div>
         </header>

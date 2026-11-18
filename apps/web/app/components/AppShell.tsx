@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
+import { api } from "../lib/api";
+
 type IconName =
   | "monitor"
   | "trades"
@@ -11,6 +13,7 @@ type IconName =
   | "checks"
   | "stats"
   | "menu"
+  | "logout"
   | "collapse"
   | "expand";
 
@@ -38,6 +41,12 @@ function Icon({ name }: { name: IconName }) {
     ),
     stats: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />,
     menu: <path d="M4 7h16M4 12h16M4 17h16" />,
+    logout: (
+      <>
+        <path d="M10 17l5-5-5-5M15 12H3" />
+        <path d="M14 4h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-5" />
+      </>
+    ),
     collapse: <path d="m14 6-6 6 6 6" />,
     expand: <path d="m10 6 6 6-6 6" />
   };
@@ -93,6 +102,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [monitorCount, setMonitorCount] = useState<number | null>(
+    null
+  );
 
   useEffect(() => {
     setCollapsed(
@@ -110,6 +122,58 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadCount = async () => {
+      try {
+        const monitors = await api<Array<{ enabled: boolean }>>(
+          "/api/monitors"
+        );
+
+        if (active) {
+          setMonitorCount(
+            monitors.filter((monitor) => monitor.enabled).length
+          );
+        }
+      } catch {
+        // 保持上一次可用数量
+      }
+    };
+
+    void loadCount();
+    const timer = window.setInterval(() => {
+      void loadCount();
+    }, 30_000);
+    const handleRefresh = () => {
+      void loadCount();
+    };
+
+    window.addEventListener("focus", handleRefresh);
+    window.addEventListener(
+      "monitors-changed",
+      handleRefresh
+    );
+
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", handleRefresh);
+      window.removeEventListener(
+        "monitors-changed",
+        handleRefresh
+      );
+    };
+  }, []);
+
+  async function handleLogout(): Promise<void> {
+    try {
+      await api("/api/auth/logout", { method: "POST" });
+    } finally {
+      window.location.assign("/");
+    }
+  }
 
   return (
     <div
@@ -153,6 +217,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <Icon name={item.icon} />
                 </span>
                 <span className="app-nav-label">{item.label}</span>
+                {item.href === "/" && monitorCount !== null && (
+                  <span className="app-nav-count">
+                    {monitorCount}
+                  </span>
+                )}
                 {item.badge && (
                   <span className="app-nav-badge">{item.badge}</span>
                 )}
@@ -169,6 +238,16 @@ export function AppShell({ children }: { children: ReactNode }) {
               <small>记录与复盘</small>
             </span>
           </div>
+          <button
+            type="button"
+            className="app-sidebar-logout"
+            aria-label="退出登录"
+            title="退出登录"
+            onClick={() => void handleLogout()}
+          >
+            <Icon name="logout" />
+            <span className="app-sidebar-logout-label">退出</span>
+          </button>
           <button
             type="button"
             className="app-sidebar-toggle"

@@ -9,6 +9,7 @@ import {
 
 import { api, errorMessage } from "../lib/api";
 import { formatTime } from "../lib/format";
+import { Pagination } from "./Pagination";
 
 const PAGE_SIZE = 8;
 
@@ -390,27 +391,12 @@ export function NotesDock() {
                   </div>
                 )}
 
-                <div className="notes-pagination">
-                  <button
-                    type="button"
-                    className="button small"
-                    disabled={page <= 1 || loading}
-                    onClick={() => setPage((current) => current - 1)}
-                  >
-                    上一页
-                  </button>
-                  <span>
-                    {page} / {totalPages}
-                  </span>
-                  <button
-                    type="button"
-                    className="button small"
-                    disabled={page >= totalPages || loading}
-                    onClick={() => setPage((current) => current + 1)}
-                  >
-                    下一页
-                  </button>
-                </div>
+                <Pagination
+                  page={page}
+                  totalPages={totalPages}
+                  loading={loading}
+                  onPage={setPage}
+                />
               </>
             ) : (
               <div className="note-form">
