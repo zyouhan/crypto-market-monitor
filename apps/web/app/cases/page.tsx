@@ -58,6 +58,9 @@ export default function CasesPage() {
           <a className="button" href="/self-checks">
             开单记录
           </a>
+          <a className="button" href="/trades">
+            交易记录
+          </a>
         </div>
       </header>
 

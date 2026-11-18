@@ -58,6 +58,9 @@ export default function SelfCheckRecordsPage() {
           <a className="button" href="/cases">
             交易案例
           </a>
+          <a className="button" href="/trades">
+            交易记录
+          </a>
         </div>
       </header>
 

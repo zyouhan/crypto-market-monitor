@@ -59,6 +59,9 @@ export default function StrategyStatsPage() {
           <Link className="button" href="/self-checks">
             开单记录
           </Link>
+          <Link className="button" href="/trades">
+            交易记录
+          </Link>
         </div>
       </header>
 

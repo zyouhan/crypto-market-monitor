@@ -855,6 +855,10 @@ export default function HomePage() {
             开单记录
           </Link>
 
+          <Link className="button" href="/trades">
+            交易记录
+          </Link>
+
           <button
             className="button primary"
             onClick={openAddModal}

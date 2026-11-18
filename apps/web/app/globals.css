@@ -4399,11 +4399,6 @@ option {
   margin-top: 10px;
 }
 
-.self-check-record-active {
-  color: #e7bd69;
-  font-size: 10px;
-}
-
 @media (max-width: 800px) {
   .self-check-monitor-grid {
     grid-template-columns: 1fr;
@@ -4425,5 +4420,393 @@ option {
 
   .self-check-j-tag {
     font-size: 11px;
+  }
+}
+
+.self-check-record-active {
+  color: #e7bd69;
+  font-size: 10px;
+}
+
+.trade-mindset-panel {
+  border-top: 3px solid #6d9eff;
+  margin-bottom: 14px;
+}
+
+.trade-mindset-panel.healthy {
+  border-top-color: var(--green);
+}
+
+.trade-mindset-panel.tired {
+  border-top-color: #e7bd69;
+}
+
+.trade-mindset-panel.unstable {
+  border-top-color: #f29b5b;
+}
+
+.trade-mindset-panel.stop {
+  border-top-color: var(--red);
+}
+
+.trade-mindset-head {
+  align-items: flex-start;
+}
+
+.trade-mind-date {
+  width: 150px;
+}
+
+.trade-mindset-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 24px;
+  margin-top: 12px;
+}
+
+.trade-mindset-score {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.trade-mindset-score > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.trade-mindset-score > strong {
+  color: #f1cf8a;
+  font-size: 44px;
+  line-height: 1;
+}
+
+.trade-mindset-status {
+  padding: 4px 9px;
+  border-radius: 5px;
+  font-size: 12px;
+}
+
+.trade-mindset-status.healthy {
+  background: #12372f;
+  color: var(--green);
+}
+
+.trade-mindset-status.tired {
+  background: #332a16;
+  color: #e7bd69;
+}
+
+.trade-mindset-status.unstable {
+  background: #3a2a17;
+  color: #f29b5b;
+}
+
+.trade-mindset-status.stop {
+  background: #3a202b;
+  color: var(--red);
+}
+
+.trade-mindset-status.unrated {
+  background: #242a31;
+  color: var(--muted);
+}
+
+.trade-mindset-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+
+.trade-mindset-metrics span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.trade-mindset-metrics b {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.positive {
+  color: var(--green) !important;
+}
+
+.negative {
+  color: var(--red) !important;
+}
+
+.neutral {
+  color: var(--muted) !important;
+}
+
+.trade-mindset-warning {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #0b111a;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.trade-mindset-warning.stop {
+  border-color: rgb(239 112 137 / 45%);
+  background: #231318;
+  color: #ff9fb1;
+}
+
+.trade-mindset-warning.unstable {
+  border-color: rgb(242 155 91 / 40%);
+  background: #21190f;
+  color: #f5b27f;
+}
+
+.trade-mindset-factors {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.trade-mindset-factor {
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #0c121c;
+}
+
+.trade-mindset-factor > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.trade-mindset-factor span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.trade-mindset-factor b {
+  color: var(--text);
+  font-size: 11px;
+}
+
+.trade-mindset-factor strong {
+  font-size: 14px;
+}
+
+.trade-mindset-factor p {
+  margin: 5px 0 0;
+  color: #8e9bad;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.trade-reset-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.trade-reset-row span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.trade-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.trade-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.trade-filters input,
+.trade-filters select {
+  min-width: 120px;
+}
+
+.trade-table td {
+  font-size: 11px;
+}
+
+.trade-table th {
+  white-space: nowrap;
+}
+
+.trade-note {
+  max-width: 190px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: 10px !important;
+  line-height: 1.5;
+}
+
+.trade-row-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.quality-tag {
+  display: inline-block;
+  min-width: 22px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 10px;
+}
+
+.quality-excellent {
+  background: #12372f;
+  color: var(--green);
+}
+
+.quality-good {
+  background: #15252a;
+  color: #8fd6b2;
+}
+
+.quality-fair {
+  background: #332a16;
+  color: #e7bd69;
+}
+
+.quality-poor {
+  background: #3a202b;
+  color: var(--red);
+}
+
+.trade-curve {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.trade-curve svg {
+  display: block;
+  width: 100%;
+  min-width: 520px;
+  height: auto;
+}
+
+.trade-curve-zero {
+  stroke: #475467;
+  stroke-dasharray: 4 4;
+  stroke-width: 1;
+}
+
+.trade-curve-area {
+  fill: rgb(109 158 255 / 12%);
+}
+
+.trade-curve-line {
+  fill: none;
+  stroke: #6d9eff;
+  stroke-width: 2;
+}
+
+.trade-curve-dot.bull {
+  fill: var(--green);
+}
+
+.trade-curve-dot.bear {
+  fill: var(--red);
+}
+
+.trade-curve-label {
+  fill: #7d8a9b;
+  font-size: 10px;
+}
+
+.trade-form-backdrop,
+.trade-reset-backdrop {
+  z-index: 94;
+}
+
+.trade-form-modal {
+  width: min(760px, 94vw);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.trade-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.trade-quality-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.trade-quality-grid label {
+  font-size: 10px;
+}
+
+.trade-form textarea {
+  min-height: 90px;
+}
+
+.trade-reset-modal {
+  width: min(520px, 94vw);
+}
+
+.trade-reset-desc {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+@media (max-width: 900px) {
+  .trade-mindset-factors {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .trade-quality-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .trade-mindset-summary {
+    gap: 14px;
+  }
+
+  .trade-mindset-score > strong {
+    font-size: 36px;
+  }
+
+  .trade-mindset-factors {
+    grid-template-columns: 1fr;
+  }
+
+  .trade-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .trade-filters label,
+  .trade-filters input,
+  .trade-filters select {
+    width: 100%;
   }
 }

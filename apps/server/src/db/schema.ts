@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 
-export const SCHEMA_VERSION = 14;
+export const SCHEMA_VERSION = 15;
 
 /**
  * v5 表结构。
@@ -269,6 +269,45 @@ const V5_SCHEMA_SQL = `
 
   CREATE INDEX IF NOT EXISTS idx_self_checks_symbol
     ON self_checks(symbol);
+
+  CREATE TABLE IF NOT EXISTS trade_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol TEXT NOT NULL,
+    direction TEXT NOT NULL CHECK (direction IN ('BULL', 'BEAR')),
+    open_time INTEGER NOT NULL,
+    close_time INTEGER NOT NULL,
+    pnl REAL NOT NULL,
+    open_quality TEXT NOT NULL
+      CHECK (open_quality IN ('excellent', 'good', 'fair', 'poor')),
+    close_quality TEXT NOT NULL
+      CHECK (close_quality IN ('excellent', 'good', 'fair', 'poor')),
+    take_profit_quality TEXT NOT NULL
+      CHECK (take_profit_quality IN ('excellent', 'good', 'fair', 'poor')),
+    stop_loss_quality TEXT NOT NULL
+      CHECK (stop_loss_quality IN ('excellent', 'good', 'fair', 'poor')),
+    note TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_trade_records_close_time
+    ON trade_records(close_time DESC, id DESC);
+
+  CREATE INDEX IF NOT EXISTS idx_trade_records_symbol
+    ON trade_records(symbol);
+
+  CREATE TABLE IF NOT EXISTS mindset_resets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trade_date TEXT NOT NULL,
+    before_score INTEGER NOT NULL,
+    after_score INTEGER NOT NULL,
+    note TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    cooldown_until INTEGER NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_mindset_resets_date
+    ON mindset_resets(trade_date, created_at DESC);
 `;
 
 export function applySchema(database: Database.Database): void {

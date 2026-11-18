@@ -112,6 +112,7 @@ export interface SignalItem {
 }
 
 export interface SettingsData {
+
   global_monitor_enabled: boolean;
   global_wechat_enabled: boolean;
   serverchan_configured: boolean;
@@ -395,4 +396,63 @@ export interface SaveMonitorPayload {
   track_stats: boolean;
   reference_intervals: Array<"15m" | "1h" | "4h">;
   conditions: SaveConditionInput[];
+}
+
+export type TradeQuality = "excellent" | "good" | "fair" | "poor";
+
+export interface TradeRecord {
+  id: number;
+  symbol: string;
+  direction: "BULL" | "BEAR";
+  open_time: number;
+  close_time: number;
+  pnl: number;
+  open_quality: TradeQuality;
+  close_quality: TradeQuality;
+  take_profit_quality: TradeQuality;
+  stop_loss_quality: TradeQuality;
+  note: string | null;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface TradePage {
+  items: TradeRecord[];
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+}
+
+export interface TradeCurvePoint {
+  time: number;
+  pnl: number;
+  cumulative: number;
+}
+
+export interface MindsetFactor {
+  key: string;
+  label: string;
+  value: string;
+  penalty: number;
+  detail: string;
+}
+
+export interface MindsetData {
+  date: string;
+  score: number | null;
+  status: "healthy" | "tired" | "unstable" | "stop" | "unrated";
+  trade_count: number;
+  pnl: number;
+  win_rate: number;
+  average_hold_minutes: number;
+  factors: MindsetFactor[];
+  warning: string;
+  reset: {
+    available: boolean;
+    reason: string;
+    count: number;
+    last_reset_at: number | null;
+    cooldown_until: number | null;
+  };
 }
