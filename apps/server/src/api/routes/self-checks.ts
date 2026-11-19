@@ -7,6 +7,10 @@ import {
   type SelfCheckIntervalSnapshot
 } from "../../monitors/self-check-snapshot";
 import {
+  evaluateExecutionResult,
+  type TradeQuality
+} from "../../trades/execution-result";
+import {
   failure,
   isPositiveInteger,
   success
@@ -31,6 +35,12 @@ interface SelfCheckRow {
   closed_at: number | null;
   created_at: number;
   updated_at: number;
+  trade_id?: number | null;
+  trade_pnl?: number | null;
+  trade_open_quality?: TradeQuality | null;
+  trade_close_quality?: TradeQuality | null;
+  trade_take_profit_quality?: TradeQuality | null;
+  trade_stop_loss_quality?: TradeQuality | null;
 }
 
 const MAX_ACTIVE = 2;
@@ -136,6 +146,64 @@ function getRow(id: number): SelfCheckRow | null {
   );
 }
 
+function closeQuality(value: unknown): TradeQuality | null {
+  return value === "excellent" ||
+    value === "good" ||
+    value === "fair" ||
+    value === "poor"
+    ? value
+    : null;
+}
+
+function readCloseInput(body: unknown): {
+  pnl: number;
+  openQuality: TradeQuality;
+  closeQuality: TradeQuality;
+  takeProfitQuality: TradeQuality;
+  stopLossQuality: TradeQuality;
+  note: string;
+} {
+  const input =
+    typeof body === "object" && body !== null
+      ? (body as Record<string, unknown>)
+      : {};
+  const pnl = Number(input.pnl);
+  const openQuality = closeQuality(input.open_quality);
+  const closeQualityValue = closeQuality(input.close_quality);
+  const takeProfitQuality = closeQuality(
+    input.take_profit_quality
+  );
+  const stopLossQuality = closeQuality(input.stop_loss_quality);
+  const note =
+    typeof input.note === "string" ? input.note.trim() : "";
+
+  if (!Number.isFinite(pnl)) {
+    throw new Error("收益必须是有效数字");
+  }
+
+  if (
+    !openQuality ||
+    !closeQualityValue ||
+    !takeProfitQuality ||
+    !stopLossQuality
+  ) {
+    throw new Error("请完成四项操作评价");
+  }
+
+  if (note.length > MAX_NOTE_LENGTH) {
+    throw new Error("备注不能超过 1000 个字符");
+  }
+
+  return {
+    pnl,
+    openQuality,
+    closeQuality: closeQualityValue,
+    takeProfitQuality,
+    stopLossQuality,
+    note
+  };
+}
+
 function listActive(): SelfCheckRow[] {
   return db.prepare(`
     SELECT *
@@ -189,12 +257,12 @@ selfChecksRouter.get("/records", (req, res) => {
   const params: Array<string | number> = [];
 
   if (symbol) {
-    whereParts.push("symbol LIKE ?");
+    whereParts.push("s.symbol LIKE ?");
     params.push(`%${symbol}%`);
   }
 
   if (result) {
-    whereParts.push("result = ?");
+    whereParts.push("s.result = ?");
     params.push(result);
   }
 
@@ -204,16 +272,24 @@ selfChecksRouter.get("/records", (req, res) => {
       : "";
   const totalRow = db.prepare(`
     SELECT COUNT(1) AS count
-    FROM self_checks
+    FROM self_checks s
     ${where}
   `).get(...params) as { count: number };
   const totalPages = Math.max(1, Math.ceil(totalRow.count / limit));
   const currentPage = Math.min(page, totalPages);
   const rows = db.prepare(`
-    SELECT *
-    FROM self_checks
+    SELECT
+      s.*,
+      t.id AS trade_id,
+      t.pnl AS trade_pnl,
+      t.open_quality AS trade_open_quality,
+      t.close_quality AS trade_close_quality,
+      t.take_profit_quality AS trade_take_profit_quality,
+      t.stop_loss_quality AS trade_stop_loss_quality
+    FROM self_checks s
+    LEFT JOIN trade_records t ON t.self_check_id = s.id
     ${where}
-    ORDER BY created_at DESC, id DESC
+    ORDER BY s.created_at DESC, s.id DESC
     LIMIT ? OFFSET ?
   `).all(
     ...params,
@@ -378,33 +454,95 @@ selfChecksRouter.post("/:id/close", (req, res) => {
     return;
   }
 
-  const result =
-    req.body?.result === "success" ||
-    req.body?.result === "failed"
-      ? req.body.result
-      : null;
-  const note =
-    typeof req.body?.note === "string"
-      ? req.body.note.trim()
-      : row.close_note ?? "";
+  const input = (() => {
+    try {
+      return readCloseInput(req.body);
+    } catch (error) {
+      res.status(400).json(
+        failure(
+          error instanceof Error ? error.message : "参数不正确"
+        )
+      );
+      return null;
+    }
+  })();
 
-  if (!result) {
-    res.status(400).json(failure("请选择成功或失败"));
+  if (!input) {
     return;
   }
 
-  if (note.length > MAX_NOTE_LENGTH) {
-    res.status(400).json(failure("备注不能超过 1000 个字符"));
-    return;
-  }
-
+  const result = evaluateExecutionResult([
+    input.openQuality,
+    input.closeQuality,
+    input.takeProfitQuality,
+    input.stopLossQuality
+  ]);
   const now = Date.now();
-  db.prepare(`
-    UPDATE self_checks
-    SET status = 'closed', result = ?, close_note = ?,
-        closed_at = ?, updated_at = ?
-    WHERE id = ?
-  `).run(result, note || null, now, now, id);
 
-  res.json(success(toView(getRow(id)!), "开单自查已关闭"));
+  try {
+    db.transaction(() => {
+      const updated = db.prepare(`
+        UPDATE self_checks
+        SET status = 'closed', result = ?, close_note = ?,
+            closed_at = ?, updated_at = ?
+        WHERE id = ? AND status = 'active'
+      `).run(
+        result,
+        input.note || null,
+        now,
+        now,
+        id
+      );
+
+      if (updated.changes !== 1) {
+        throw new Error("该开单已经关闭");
+      }
+
+      db.prepare(`
+        INSERT INTO trade_records (
+          symbol, direction, open_time, close_time, pnl,
+          open_quality, close_quality, take_profit_quality,
+          stop_loss_quality, note, self_check_id,
+          created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        row.symbol,
+        row.direction,
+        row.created_at,
+        now,
+        input.pnl,
+        input.openQuality,
+        input.closeQuality,
+        input.takeProfitQuality,
+        input.stopLossQuality,
+        input.note || null,
+        id,
+        now,
+        now
+      );
+    })();
+  } catch (error) {
+    res.status(400).json(
+      failure(
+        error instanceof Error ? error.message : "关闭开单失败"
+      )
+    );
+    return;
+  }
+
+  const trade = db.prepare(`
+    SELECT *
+    FROM trade_records
+    WHERE self_check_id = ?
+  `).get(id);
+
+  res.json(
+    success(
+      {
+        self_check: toView(getRow(id)!),
+        trade
+      },
+      "开单自查已关闭并生成交易记录"
+    )
+  );
 });

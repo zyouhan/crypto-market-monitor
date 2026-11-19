@@ -249,7 +249,7 @@ KDJ 入场信号会创建 `stop_watches` 止损观察：
 | GET | `/api/self-checks/live` | 持仓中的开单自查最新快照 |
 | GET | `/api/self-checks/records` | 开单记录分页，支持标的/结果筛选 |
 | PUT | `/api/self-checks/:id` | 修改持仓中的止损条件 |
-| POST | `/api/self-checks/:id/close` | 关闭开单并填写成功/失败和备注 |
+| POST | `/api/self-checks/:id/close` | 关闭开单、录入收益/四项评价并生成交易记录 |
 | GET/POST | `/api/trades` | 交易记录分页/新建 |
 | GET | `/api/trades/curve` | 筛选范围内的累计收益曲线 |
 | GET | `/api/trades/mindset` | 指定交易日的心态健康度 |
@@ -278,7 +278,9 @@ KDJ 入场信号会创建 `stop_watches` 止损观察：
 - 每个级别同时展示 EMA25/EMA60 及多头/空头排列；
 - J<5 提示上涨需求，J>80 提示下跌需求；
 - 开单记录页的开单监控展示目标级别 J 值和止损条件；
-- 关闭时必须填写成功/失败，可选备注；
+- 关闭时填写收益、开仓/清仓/止盈/止损四项评价，可选备注；
+- 任意一项「差」或至少三项「中」判定失败，其余判定成功，成功/失败不由盈亏决定；
+- 关闭后自动生成一条关联交易记录，关闭时间作为清仓时间；
 - `/self-checks` 页面分页查看开单记录，支持按标的和结果筛选。
 
 ## 交易记录与心态监控

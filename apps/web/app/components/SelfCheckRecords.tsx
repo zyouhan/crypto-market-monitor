@@ -30,6 +30,8 @@ interface SelfCheckRecord {
   closed_at: number | null;
   created_at: number;
   updated_at: number;
+  trade_id?: number | null;
+  trade_pnl?: number | null;
 }
 
 interface RecordsPage {
@@ -194,6 +196,7 @@ export function SelfCheckRecords() {
                 <th>开单时间</th>
                 <th>平仓时间</th>
                 <th>结果</th>
+                <th>收益</th>
                 <th>止损条件</th>
                 <th>备注</th>
                 <th>开单目标 J</th>
@@ -235,6 +238,17 @@ export function SelfCheckRecords() {
                       >
                         {resultLabel(item.result)}
                       </span>
+                    </td>
+                    <td
+                      className={
+                        (item.trade_pnl ?? 0) >= 0
+                          ? "positive"
+                          : "negative"
+                      }
+                    >
+                      {typeof item.trade_pnl === "number"
+                        ? `${item.trade_pnl >= 0 ? "+" : ""}${item.trade_pnl.toFixed(2)}`
+                        : "--"}
                     </td>
                     <td className="self-check-record-stop">
                       {item.stop_condition}

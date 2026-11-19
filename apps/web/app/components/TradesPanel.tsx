@@ -509,6 +509,12 @@ export function TradesPanel() {
   }
 
   const positive = (mindset?.pnl ?? 0) >= 0;
+  const editingRecord =
+    editingId === null
+      ? null
+      : records.find((record) => record.id === editingId) ?? null;
+  const editingLinked =
+    editingRecord?.self_check_id != null;
 
   return (
     <>
@@ -726,6 +732,7 @@ export function TradesPanel() {
                 <tr>
                   <th>标的</th>
                   <th>方向</th>
+                  <th>来源</th>
                   <th>开仓时间</th>
                   <th>清仓时间</th>
                   <th>持仓</th>
@@ -750,6 +757,20 @@ export function TradesPanel() {
                       >
                         {record.direction === "BULL" ? "做多" : "做空"}
                       </span>
+                    </td>
+                    <td>
+                      {record.self_check_id ? (
+                        <a
+                          className="trade-source-link"
+                          href="/self-checks"
+                        >
+                          开单自查
+                        </a>
+                      ) : (
+                        <span className="trade-source-manual">
+                          手动
+                        </span>
+                      )}
                     </td>
                     <td>{formatTime(record.open_time)}</td>
                     <td>{formatTime(record.close_time)}</td>
@@ -817,6 +838,12 @@ export function TradesPanel() {
                         <button
                           type="button"
                           className="button small danger"
+                          disabled={record.self_check_id !== null}
+                          title={
+                            record.self_check_id !== null
+                              ? "来自开单自查，不能直接删除"
+                              : undefined
+                          }
                           onClick={() => void deleteRecord(record)}
                         >
                           删除
@@ -874,12 +901,19 @@ export function TradesPanel() {
 
             {error && <div className="error-box">{error}</div>}
 
+            {editingLinked && (
+              <div className="trade-linked-hint">
+                来自开单自查，只能修改收益、四项评价和备注。
+              </div>
+            )}
+
             <div className="note-form trade-form">
               <div className="trade-form-grid">
                 <label>
                   标的
                   <input
                     value={form.symbol}
+                    disabled={editingLinked}
                     placeholder="例如 BTCUSDT"
                     onChange={(event) =>
                       setForm((current) => ({
@@ -893,6 +927,7 @@ export function TradesPanel() {
                   方向
                   <select
                     value={form.direction}
+                    disabled={editingLinked}
                     onChange={(event) =>
                       setForm((current) => ({
                         ...current,
@@ -911,6 +946,7 @@ export function TradesPanel() {
                   <input
                     type="datetime-local"
                     value={form.open_time}
+                    disabled={editingLinked}
                     onChange={(event) =>
                       setForm((current) => ({
                         ...current,
@@ -924,6 +960,7 @@ export function TradesPanel() {
                   <input
                     type="datetime-local"
                     value={form.close_time}
+                    disabled={editingLinked}
                     onChange={(event) =>
                       setForm((current) => ({
                         ...current,

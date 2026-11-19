@@ -3974,6 +3974,69 @@ option {
   cursor: pointer;
 }
 
+.self-check-close-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 12px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.self-check-close-pnl {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.self-check-close-pnl input,
+.self-check-close-qualities select {
+  width: 100%;
+  box-sizing: border-box;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #0d131d;
+  color: var(--text);
+  font-size: 12px;
+  outline: none;
+}
+
+.self-check-close-pnl input:focus,
+.self-check-close-qualities select:focus {
+  border-color: #5d8ee8;
+  box-shadow: 0 0 0 3px rgb(93 142 232 / 18%);
+}
+
+.self-check-close-qualities {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.self-check-close-qualities label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.self-check-close-rule {
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .self-check-note-label {
   display: flex;
   flex-direction: column;
@@ -4075,6 +4138,12 @@ option {
   color: #e7bd69;
   font-size: 12px;
   font-weight: 600;
+}
+
+.self-check-monitor-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .self-check-monitor-grid {
@@ -4689,6 +4758,35 @@ option {
 .trade-row-actions {
   display: flex;
   gap: 5px;
+}
+
+.trade-source-link {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #12372f;
+  color: #75e0b4;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.trade-source-link:hover {
+  text-decoration: underline;
+}
+
+.trade-source-manual {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.trade-linked-hint {
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border: 1px solid rgb(231 189 105 / 25%);
+  border-radius: 6px;
+  background: #1b1a13;
+  color: #e7bd69;
+  font-size: 12px;
 }
 
 .quality-tag {

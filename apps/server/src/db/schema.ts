@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 
-export const SCHEMA_VERSION = 15;
+export const SCHEMA_VERSION = 16;
 
 /**
  * v5 表结构。
@@ -286,6 +286,7 @@ const V5_SCHEMA_SQL = `
     stop_loss_quality TEXT NOT NULL
       CHECK (stop_loss_quality IN ('excellent', 'good', 'fair', 'poor')),
     note TEXT,
+    self_check_id INTEGER,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   );
@@ -312,6 +313,19 @@ const V5_SCHEMA_SQL = `
 
 export function applySchema(database: Database.Database): void {
   database.exec(V5_SCHEMA_SQL);
+
+  if (!hasColumn(database, "trade_records", "self_check_id")) {
+    database.exec(
+      "ALTER TABLE trade_records ADD COLUMN self_check_id INTEGER"
+    );
+  }
+
+  database.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_trade_records_self_check
+      ON trade_records(self_check_id)
+      WHERE self_check_id IS NOT NULL
+  `);
+
   database.pragma(`user_version = ${SCHEMA_VERSION}`);
 }
 

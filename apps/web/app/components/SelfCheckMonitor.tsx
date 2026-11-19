@@ -7,10 +7,41 @@ import { formatPrice, formatTime } from "../lib/format";
 import { AutoGrowTextarea } from "./AutoGrowTextarea";
 import {
   notifySelfCheckChanged,
+  requestSelfCheckCreate,
   SELF_CHECK_CHANGED_EVENT
 } from "../lib/self-check-events";
 
 const INTERVALS = ["1m", "5m", "15m", "1h", "4h"] as const;
+
+type TradeQuality = "excellent" | "good" | "fair" | "poor";
+
+const QUALITY_OPTIONS: Array<{
+  value: TradeQuality;
+  label: string;
+}> = [
+  { value: "excellent", label: "优" },
+  { value: "good", label: "良" },
+  { value: "fair", label: "中" },
+  { value: "poor", label: "差" }
+];
+
+interface CloseForm {
+  pnl: string;
+  open_quality: TradeQuality;
+  close_quality: TradeQuality;
+  take_profit_quality: TradeQuality;
+  stop_loss_quality: TradeQuality;
+  note: string;
+}
+
+const EMPTY_CLOSE_FORM: CloseForm = {
+  pnl: "",
+  open_quality: "good",
+  close_quality: "good",
+  take_profit_quality: "good",
+  stop_loss_quality: "good",
+  note: ""
+};
 
 interface IntervalSnapshot {
   interval: string;
@@ -77,10 +108,8 @@ export function SelfCheckMonitor() {
   const [closing, setClosing] = useState<ActiveSelfCheck | null>(
     null
   );
-  const [closeResult, setCloseResult] = useState<
-    "success" | "failed"
-  >("success");
-  const [closeNote, setCloseNote] = useState("");
+  const [closeForm, setCloseForm] =
+    useState<CloseForm>(EMPTY_CLOSE_FORM);
   const [closingSaving, setClosingSaving] = useState(false);
   const [editing, setEditing] =
     useState<ActiveSelfCheck | null>(null);
@@ -183,6 +212,18 @@ export function SelfCheckMonitor() {
       return;
     }
 
+    if (closeForm.pnl.trim() === "") {
+      setError("请输入收益");
+      return;
+    }
+
+    const pnl = Number(closeForm.pnl);
+
+    if (!Number.isFinite(pnl)) {
+      setError("收益必须是有效数字");
+      return;
+    }
+
     setClosingSaving(true);
     setError("");
 
@@ -190,13 +231,16 @@ export function SelfCheckMonitor() {
       await api(`/api/self-checks/${closing.id}/close`, {
         method: "POST",
         body: JSON.stringify({
-          result: closeResult,
-          note: closeNote
+          pnl,
+          open_quality: closeForm.open_quality,
+          close_quality: closeForm.close_quality,
+          take_profit_quality: closeForm.take_profit_quality,
+          stop_loss_quality: closeForm.stop_loss_quality,
+          note: closeForm.note
         })
       });
       setClosing(null);
-      setCloseNote("");
-      setCloseResult("success");
+      setCloseForm(EMPTY_CLOSE_FORM);
       await load();
       notifySelfCheckChanged();
     } catch (closeError) {
@@ -204,6 +248,15 @@ export function SelfCheckMonitor() {
     } finally {
       setClosingSaving(false);
     }
+  }
+
+  function openCloseForm(item: ActiveSelfCheck): void {
+    setClosing(item);
+    setCloseForm({
+      ...EMPTY_CLOSE_FORM,
+      note: item.close_note ?? ""
+    });
+    setError("");
   }
 
   return (
@@ -215,9 +268,18 @@ export function SelfCheckMonitor() {
             持仓中的开单自查，最多同时 2 条
           </div>
         </div>
-        <span className="self-check-monitor-count">
-          {items.length} / 2
-        </span>
+        <div className="self-check-monitor-head-actions">
+          <span className="self-check-monitor-count">
+            {items.length} / 2
+          </span>
+          <button
+            type="button"
+            className="button small primary"
+            onClick={requestSelfCheckCreate}
+          >
+            + 开单
+          </button>
+        </div>
       </div>
 
       {error && <div className="error-box">{error}</div>}
@@ -383,12 +445,7 @@ export function SelfCheckMonitor() {
                   <button
                     type="button"
                     className="button small primary"
-                    onClick={() => {
-                      setClosing(item);
-                      setCloseResult("success");
-                      setCloseNote(item.close_note ?? "");
-                      setError("");
-                    }}
+                    onClick={() => openCloseForm(item)}
                   >
                     关闭开单
                   </button>
@@ -503,33 +560,79 @@ export function SelfCheckMonitor() {
 
             {error && <div className="error-box">{error}</div>}
 
-            <div className="self-check-result-row">
-              <span>结果</span>
-              <label>
-                <input
-                  type="radio"
-                  checked={closeResult === "success"}
-                  onChange={() => setCloseResult("success")}
-                />
-                成功
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  checked={closeResult === "failed"}
-                  onChange={() => setCloseResult("failed")}
-                />
-                失败
-              </label>
+            <div className="self-check-close-meta">
+              <span>
+                开仓时间：{formatTime(closing.created_at)}
+              </span>
+              <span>清仓时间：现在</span>
+            </div>
+
+            <label className="self-check-close-pnl">
+              收益（USDT）
+              <input
+                type="number"
+                step="any"
+                value={closeForm.pnl}
+                placeholder="盈利填正数，亏损填负数"
+                onChange={(event) =>
+                  setCloseForm((current) => ({
+                    ...current,
+                    pnl: event.target.value
+                  }))
+                }
+              />
+            </label>
+
+            <div className="self-check-close-qualities">
+              {[
+                ["open_quality", "开仓时机"],
+                ["close_quality", "清仓时机"],
+                ["take_profit_quality", "止盈"],
+                ["stop_loss_quality", "止损"]
+              ].map(([key, label]) => (
+                <label key={key}>
+                  {label}
+                  <select
+                    value={
+                      closeForm[key as keyof CloseForm] as string
+                    }
+                    onChange={(event) =>
+                      setCloseForm((current) => ({
+                        ...current,
+                        [key]: event.target.value
+                      }))
+                    }
+                  >
+                    {QUALITY_OPTIONS.map((option) => (
+                      <option
+                        value={option.value}
+                        key={option.value}
+                      >
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+            </div>
+
+            <div className="self-check-close-rule">
+              任意一项为「差」或三项及以上为「中」判定失败，否则判定成功；
+              成功/失败不受盈亏影响。
             </div>
 
             <label className="self-check-note-label">
               备注（可选）
               <AutoGrowTextarea
-                value={closeNote}
+                value={closeForm.note}
                 maxLength={1000}
                 placeholder="记录平仓原因或复盘"
-                onChange={setCloseNote}
+                onChange={(value) =>
+                  setCloseForm((current) => ({
+                    ...current,
+                    note: value
+                  }))
+                }
               />
             </label>
 

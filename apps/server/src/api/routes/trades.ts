@@ -1,9 +1,12 @@
 import { Router } from "express";
 
+import {
+  evaluateExecutionResult,
+  type TradeQuality
+} from "../../trades/execution-result";
 import { db } from "../../db";
 import {
   buildMindsetScore,
-  type TradeQuality,
   type TradeRecordRow
 } from "../../trades/mindset";
 import {
@@ -507,27 +510,68 @@ tradesRouter.put("/:id", (req, res) => {
     return;
   }
 
-  db.prepare(`
-    UPDATE trade_records
-    SET symbol = ?, direction = ?, open_time = ?, close_time = ?,
-        pnl = ?, open_quality = ?, close_quality = ?,
-        take_profit_quality = ?, stop_loss_quality = ?,
-        note = ?, updated_at = ?
-    WHERE id = ?
-  `).run(
-    input.symbol,
-    input.direction,
-    input.open_time,
-    input.close_time,
-    input.pnl,
-    input.open_quality,
-    input.close_quality,
-    input.take_profit_quality,
-    input.stop_loss_quality,
-    input.note || null,
-    Date.now(),
-    id
-  );
+  const row = getRow(id)!;
+
+  if (row.self_check_id !== null) {
+    const result = evaluateExecutionResult([
+      input.open_quality,
+      input.close_quality,
+      input.take_profit_quality,
+      input.stop_loss_quality
+    ]);
+
+    db.transaction(() => {
+      db.prepare(`
+        UPDATE trade_records
+        SET pnl = ?, open_quality = ?, close_quality = ?,
+            take_profit_quality = ?, stop_loss_quality = ?,
+            note = ?, updated_at = ?
+        WHERE id = ?
+      `).run(
+        input.pnl,
+        input.open_quality,
+        input.close_quality,
+        input.take_profit_quality,
+        input.stop_loss_quality,
+        input.note || null,
+        Date.now(),
+        id
+      );
+
+      db.prepare(`
+        UPDATE self_checks
+        SET result = ?, close_note = ?, updated_at = ?
+        WHERE id = ?
+      `).run(
+        result,
+        input.note || null,
+        Date.now(),
+        row.self_check_id
+      );
+    })();
+  } else {
+    db.prepare(`
+      UPDATE trade_records
+      SET symbol = ?, direction = ?, open_time = ?, close_time = ?,
+          pnl = ?, open_quality = ?, close_quality = ?,
+          take_profit_quality = ?, stop_loss_quality = ?,
+          note = ?, updated_at = ?
+      WHERE id = ?
+    `).run(
+      input.symbol,
+      input.direction,
+      input.open_time,
+      input.close_time,
+      input.pnl,
+      input.open_quality,
+      input.close_quality,
+      input.take_profit_quality,
+      input.stop_loss_quality,
+      input.note || null,
+      Date.now(),
+      id
+    );
+  }
 
   res.json(success(getRow(id)!));
 });
@@ -540,8 +584,17 @@ tradesRouter.delete("/:id", (req, res) => {
     return;
   }
 
-  if (!getRow(id)) {
+  const row = getRow(id);
+
+  if (!row) {
     res.status(404).json(failure("交易记录不存在"));
+    return;
+  }
+
+  if (row.self_check_id !== null) {
+    res.status(400).json(
+      failure("来自开单自查的交易记录不能直接删除，请编辑修正")
+    );
     return;
   }
 

@@ -10,7 +10,8 @@ import { api, errorMessage } from "../lib/api";
 import { AutoGrowTextarea } from "./AutoGrowTextarea";
 import {
   notifySelfCheckChanged,
-  SELF_CHECK_CHANGED_EVENT
+  SELF_CHECK_CHANGED_EVENT,
+  SELF_CHECK_CREATE_EVENT
 } from "../lib/self-check-events";
 
 const INTERVALS = ["1m", "5m", "15m", "1h", "4h"] as const;
@@ -67,10 +68,20 @@ export function SelfCheckDock() {
         void loadActive();
       }
     };
+    const handleCreate = () => {
+      setOpen(true);
+      setForm(EMPTY_FORM);
+      setError("");
+      void loadActive();
+    };
 
     window.addEventListener(
       SELF_CHECK_CHANGED_EVENT,
       handleChanged
+    );
+    window.addEventListener(
+      SELF_CHECK_CREATE_EVENT,
+      handleCreate
     );
 
     return () => {
@@ -78,8 +89,19 @@ export function SelfCheckDock() {
         SELF_CHECK_CHANGED_EVENT,
         handleChanged
       );
+      window.removeEventListener(
+        SELF_CHECK_CREATE_EVENT,
+        handleCreate
+      );
     };
   }, [open, loadActive]);
+
+  function openCreateForm(): void {
+    setOpen(true);
+    setForm(EMPTY_FORM);
+    setError("");
+    void loadActive();
+  }
 
   async function createCheck(): Promise<void> {
     if (saving) {
@@ -134,12 +156,7 @@ export function SelfCheckDock() {
         type="button"
         className="self-check-fab"
         aria-label="新建开单自查"
-        onClick={() => {
-          setOpen(true);
-          setForm(EMPTY_FORM);
-          setError("");
-          void loadActive();
-        }}
+        onClick={openCreateForm}
       >
         <span aria-hidden="true">✓</span>
         开单自查
