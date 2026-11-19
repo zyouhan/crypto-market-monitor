@@ -4,32 +4,19 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState
 } from "react";
 
-import { AppShell } from "./components/AppShell";
-import { LoginCard } from "./components/LoginCard";
 import { MonitorList } from "./components/MonitorList";
 import { MonitorModal } from "./components/MonitorModal";
 import { NotesDock } from "./components/NotesDock";
 import { SelfCheckDock } from "./components/SelfCheckDock";
 import { NotificationSettings } from "./components/NotificationSettings";
 import { SignalTable } from "./components/SignalTable";
-import { SignalToasts } from "./components/SignalToasts";
 import { SoundSettings } from "./components/SoundSettings";
+import { useMonitorRuntime } from "./components/MonitorRuntimeProvider";
 import { api, errorMessage } from "./lib/api";
 import { isAlertSignal } from "./lib/format";
-import {
-  DEFAULT_SOUND_ALERT_SETTINGS,
-  getSoundAlertKind,
-  loadSoundAlertSettings,
-  playSignalSound,
-  saveSoundAlertSettings,
-  unlockAudio,
-  type SoundSignalKind,
-  type SoundAlertSettings
-} from "./lib/sound";
 import type {
   ConditionCatalogItem,
   ConditionKind,
@@ -67,14 +54,14 @@ function monitorCategory(
 }
 
 export default function HomePage() {
-  const [authenticated, setAuthenticated] = useState(false);
-  const [checkingAuth, setCheckingAuth] = useState(true);
+  const {
+    alerts,
+    soundSettings,
+    updateSoundSettings
+  } = useMonitorRuntime();
 
   const [monitors, setMonitors] = useState<MonitorItem[]>([]);
   const [signals, setSignals] = useState<MonitorSignalItem[]>([]);
-  const [alertSignals, setAlertSignals] = useState<
-    MonitorSignalItem[]
-  >([]);
   const [catalog, setCatalog] = useState<ConditionCatalogItem[]>([]);
   const [settings, setSettings] = useState<SettingsData>({
     global_monitor_enabled: true,
@@ -89,17 +76,6 @@ export default function HomePage() {
   const [category, setCategory] =
     useState<MonitorCategory>("all");
 
-  const [toasts, setToasts] = useState<MonitorSignalItem[]>([]);
-  const seenSignalIdsRef = useRef<Set<number> | null>(null);
-
-  const [soundSettings, setSoundSettings] =
-    useState<SoundAlertSettings>({
-      ...DEFAULT_SOUND_ALERT_SETTINGS
-    });
-  const soundSettingsRef = useRef<SoundAlertSettings>({
-    ...DEFAULT_SOUND_ALERT_SETTINGS
-  });
-
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<MonitorItem | null>(null);
 
@@ -111,7 +87,6 @@ export default function HomePage() {
     const [
       monitorData,
       signalData,
-      alertData,
       settingsData,
       catalogData,
       statsData
@@ -119,9 +94,6 @@ export default function HomePage() {
       api<MonitorItem[]>("/api/monitors"),
       api<{ items: MonitorSignalItem[] }>(
         "/api/signals?limit=100"
-      ),
-      api<{ items: MonitorSignalItem[] }>(
-        "/api/signals?limit=30&triggered=1"
       ),
       api<SettingsData>("/api/settings"),
       api<ConditionCatalogItem[]>("/api/conditions"),
@@ -131,69 +103,15 @@ export default function HomePage() {
     setMonitors(monitorData);
     window.dispatchEvent(new Event("monitors-changed"));
     setSignals(signalData.items);
-    setAlertSignals(alertData.items);
     setSettings(settingsData);
     setCatalog(catalogData);
     setStats(statsData);
-
-    const alerts = alertData.items.filter(isAlertSignal);
-    const monitorById = new Map(
-      monitorData.map((monitor) => [monitor.id, monitor])
-    );
-
-    if (seenSignalIdsRef.current === null) {
-      seenSignalIdsRef.current = new Set(
-        alerts.map((signal) => signal.id)
-      );
-      return;
-    }
-
-    const seen = seenSignalIdsRef.current;
-    const fresh = alerts.filter(
-      (signal) => !seen.has(signal.id)
-    );
-
-    if (fresh.length > 0) {
-      for (const signal of fresh) {
-        seen.add(signal.id);
-      }
-
-      let soundKind: SoundSignalKind | null = null;
-
-      for (const signal of fresh) {
-        const monitor = signal.monitor_id
-          ? monitorById.get(signal.monitor_id)
-          : undefined;
-
-        if (monitor?.sound_enabled !== 1) {
-          continue;
-        }
-
-        const kind = getSoundAlertKind(
-          signal,
-          soundSettingsRef.current
-        );
-
-        if (kind) {
-          soundKind = kind;
-          break;
-        }
-      }
-
-      if (soundKind) {
-        playSignalSound(soundKind);
-      }
-
-      setToasts((current) =>
-        [...current, ...fresh].slice(-4)
-      );
-    }
   }, []);
 
   const latestAlertByMonitor = useMemo(() => {
     const map = new Map<number, MonitorSignalItem>();
 
-    for (const signal of alertSignals) {
+    for (const signal of alerts) {
       if (!isAlertSignal(signal) || signal.monitor_id === null) {
         continue;
       }
@@ -204,7 +122,7 @@ export default function HomePage() {
     }
 
     return map;
-  }, [alertSignals]);
+  }, [alerts]);
 
   const categoryCounts = useMemo(() => {
     const counts = {
@@ -265,52 +183,9 @@ export default function HomePage() {
     latestAlertByMonitor
   ]);
 
-  const checkAuth = useCallback(async () => {
-    try {
-      await api("/api/auth/me");
-      setAuthenticated(true);
-    } catch {
-      setAuthenticated(false);
-    } finally {
-      setCheckingAuth(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void checkAuth();
-  }, [checkAuth]);
-
-  useEffect(() => {
-    const loaded = loadSoundAlertSettings();
-
-    setSoundSettings(loaded);
-    soundSettingsRef.current = loaded;
-
-    if (!loaded.enabled) {
-      return;
-    }
-
-    const handlePointerDown = () => unlockAudio();
-
-    window.addEventListener("pointerdown", handlePointerDown, {
-      once: true
-    });
-
-    return () => {
-      window.removeEventListener(
-        "pointerdown",
-        handlePointerDown
-      );
-    };
-  }, []);
-
   const hasPending = monitors.some((monitor) => monitor.pending);
 
   useEffect(() => {
-    if (!authenticated) {
-      return;
-    }
-
     let active = true;
 
     const refresh = async () => {
@@ -321,19 +196,8 @@ export default function HomePage() {
           setError("");
         }
       } catch (err) {
-        if (!active) {
-          return;
-        }
-
-        const text = errorMessage(err);
-
-        if (
-          text.includes("未登录") ||
-          text.includes("登录已过期")
-        ) {
-          setAuthenticated(false);
-        } else {
-          setError(text);
+        if (active) {
+          setError(errorMessage(err));
         }
       }
     };
@@ -363,12 +227,12 @@ export default function HomePage() {
         handleVisibilityChange
       );
     };
-  }, [authenticated, loadDashboard]);
+  }, [loadDashboard]);
 
   // pending 时单独快速轮询，但不要重建上面的 15 秒轮询；
   // 否则点击“立即请求”后的第一次 GET 会立刻清掉 pending，造成闪动。
   useEffect(() => {
-    if (!authenticated || !hasPending) {
+    if (!hasPending) {
       return;
     }
 
@@ -414,42 +278,7 @@ export default function HomePage() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [authenticated, hasPending, loadDashboard]);
-
-  useEffect(() => {
-    if (toasts.length === 0) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      setToasts((current) => current.slice(1));
-    }, 10000);
-
-    return () => window.clearTimeout(timer);
-  }, [toasts]);
-
-  async function handleLogin(
-    username: string,
-    password: string
-  ) {
-    setError("");
-    setLoading(true);
-
-    try {
-      await api("/api/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ username, password })
-      });
-
-      setAuthenticated(true);
-      setMessage("登录成功");
-    } catch (err) {
-      setError(errorMessage(err));
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }
+  }, [hasPending, loadDashboard]);
 
   async function toggleMonitor(
     id: number,
@@ -788,36 +617,9 @@ export default function HomePage() {
     }
   }
 
-  function handleSoundChange(
-    next: SoundAlertSettings
-  ): void {
-    soundSettingsRef.current = next;
-    setSoundSettings(next);
-    saveSoundAlertSettings(next);
-  }
-
-  if (checkingAuth) {
-    return (
-      <main className="login-page">
-        <div>正在检查登录状态...</div>
-      </main>
-    );
-  }
-
-  if (!authenticated) {
-    return (
-      <LoginCard
-        loading={loading}
-        error={error}
-        onLogin={handleLogin}
-      />
-    );
-  }
-
   return (
-    <AppShell>
-      <main className="page">
-        <header className="page-top">
+    <main className="page">
+      <header className="page-top">
           <div className="brand">
             <h1>Crypto Market Monitor</h1>
             <p>行情来源 OKX 优先 · Binance 备用</p>
@@ -942,7 +744,7 @@ export default function HomePage() {
 
       <SoundSettings
         value={soundSettings}
-        onChange={handleSoundChange}
+        onChange={updateSoundSettings}
       />
 
       <section className="panel">
@@ -964,16 +766,6 @@ export default function HomePage() {
         仅提供行情监控与信号提醒，不执行自动交易
       </footer>
 
-      <SignalToasts
-        toasts={toasts}
-        monitors={monitors}
-        onDismiss={(id) =>
-          setToasts((current) =>
-            current.filter((signal) => signal.id !== id)
-          )
-        }
-      />
-
       {modalOpen && (
         <MonitorModal
           key={editing?.id ?? "new"}
@@ -989,7 +781,6 @@ export default function HomePage() {
 
       <SelfCheckDock />
       <NotesDock />
-      </main>
-    </AppShell>
+    </main>
   );
 }
