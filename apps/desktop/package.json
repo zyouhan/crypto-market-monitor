@@ -8,9 +8,7 @@
   "scripts": {
     "dev": "electron .",
     "start": "electron .",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder --win nsis portable",
-    "dist:nsis": "electron-builder --win nsis"
+    "pack": "electron-builder --dir"
   },
   "devDependencies": {
     "electron": "33.4.11",
@@ -36,18 +34,6 @@
     ],
     "directories": {
       "output": "dist"
-    },
-    "win": {
-      "target": [
-        "nsis",
-        "portable"
-      ]
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
     }
   }
 }

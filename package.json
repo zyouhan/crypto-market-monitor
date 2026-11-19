@@ -13,8 +13,6 @@
         "desktop:install": "node scripts/install-desktop.cjs",
         "desktop:dev": "npm run desktop:install && npm run dev --prefix apps/desktop",
         "desktop:pack": "node scripts/package-desktop.cjs --dir",
-        "desktop:dist": "node scripts/package-desktop.cjs --win nsis portable",
-        "desktop:dist:nsis": "node scripts/package-desktop.cjs --win nsis",
         "typecheck": "npm run typecheck -w apps/server && npm run typecheck -w apps/web"
     },
     "devDependencies": {

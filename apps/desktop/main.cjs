@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const DEFAULT_URL = "http://localhost:3000";
+const FALLBACK_URL = "http://***prod-url***/";
 
 function readConfiguredUrl() {
   const candidates = [
@@ -90,16 +91,21 @@ if (!gotLock) {
     });
 
     mainWindow.loadURL(monitorUrl).catch(() => {
-      mainWindow.loadURL(
-        `data:text/html;charset=utf-8,${encodeURIComponent(
-          `<body style="background:#080d14;color:#dbe4ef;font-family:system-ui;padding:40px">
-            <h1>Crypto Market Monitor</h1>
-            <p>无法连接监控页面。</p>
-            <p>当前地址：${monitorUrl}</p>
-            <p>请确认 Web 服务已经启动，然后按 Ctrl+R 重试。</p>
-          </body>`
-        )}`
-      );
+      mainWindow
+        .loadURL(FALLBACK_URL)
+        .catch(() => {
+          mainWindow.loadURL(
+            `data:text/html;charset=utf-8,${encodeURIComponent(
+              `<body style="background:#080d14;color:#dbe4ef;font-family:system-ui;padding:40px">
+                <h1>Crypto Market Monitor</h1>
+                <p>无法连接监控页面。</p>
+                <p>当前地址：${monitorUrl}</p>
+                <p>备用地址：${FALLBACK_URL}</p>
+                <p>请确认服务已经启动，然后按 Ctrl+R 重试。</p>
+              </body>`
+            )}`
+          );
+        });
     });
 
     mainWindow.on("closed", () => {
