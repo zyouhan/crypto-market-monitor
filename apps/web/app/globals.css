@@ -4919,6 +4919,42 @@ option {
   overflow-x: auto;
 }
 
+.trade-chart {
+  width: 100%;
+  min-height: 280px;
+}
+
+.trade-chart-tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 150px;
+  padding: 9px 11px;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: #111a26;
+  box-shadow: 0 10px 28px rgb(0 0 0 / 35%);
+  color: #e5edf7;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.trade-chart-tooltip strong {
+  color: #cfe1ff;
+  font-weight: 600;
+}
+
+.trade-chart-tooltip span {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: #8d9aab;
+}
+
+.trade-chart-tooltip b {
+  font-weight: 600;
+}
+
 .trade-curve svg {
   display: block;
   width: 100%;
