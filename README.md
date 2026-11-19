@@ -367,6 +367,69 @@ npm run build
 
 登录后访问 <http://localhost:3000>。
 
+## 桌面壳（Electron）
+
+桌面壳用于保持页面在最小化时继续轮询和播放提示音，不改变现有 Web/API 功能。
+
+### 开发运行
+
+```bash
+npm run desktop:dev
+```
+
+首次运行会自动安装 `apps/desktop` 的依赖（Electron / electron-builder），后续直接启动。
+
+默认加载：
+
+```text
+http://localhost:3000
+```
+
+需要先启动 `npm run dev`，或保证该地址可访问。
+
+### 修改监控地址
+
+编辑：
+
+```text
+apps/desktop/config.json
+```
+
+```json
+{
+  "url": "https://your-monitor.example.com"
+}
+```
+
+也可以启动时覆盖：
+
+```bash
+MONITOR_URL=https://your-monitor.example.com npm run desktop:dev
+```
+
+打包后的配置位于安装目录资源中的 `app-config.json`。
+
+### 本地打包
+
+```bash
+npm run desktop:pack   # 仅生成免安装目录
+npm run desktop:dist   # 生成 NSIS 安装包 + 便携版
+```
+
+产物：
+
+```text
+apps/desktop/dist/
+```
+
+桌面壳与 Web/Server 的发布相互独立：
+
+- Web/Server 页面更新：正常部署 Web/Server，桌面壳无需重打包；
+- 桌面壳窗口配置、后台策略变化：重新打包桌面壳；
+- 桌面壳使用远程地址时，用户更新页面无需重新安装客户端。
+
+当前未接入代码签名和自动更新；未签名安装包在 Windows 上可能触发 SmartScreen 提示。
+
 ## 监控预设
 
 新建监控项提供 1 个区间预设：
