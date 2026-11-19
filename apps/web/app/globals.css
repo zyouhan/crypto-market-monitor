@@ -4779,12 +4779,100 @@ option {
   font-size: 12px;
 }
 
+.trade-source-broken {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #2b2520;
+  color: #d4a373;
+  font-size: 12px;
+}
+
 .cell-truncate {
   display: block;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  border-radius: 3px;
+  outline: none;
+}
+
+.cell-truncate:focus-visible {
+  box-shadow: 0 0 0 2px rgb(109 158 255 / 45%);
+}
+
+.ui-tooltip {
+  position: fixed;
+  z-index: 200;
+  width: max-content;
+  max-width: min(420px, calc(100vw - 24px));
+  padding: 8px 10px;
+  border: 1px solid #334155;
+  border-radius: 7px;
+  background: #111a26;
+  box-shadow:
+    0 10px 28px rgb(0 0 0 / 35%),
+    0 2px 6px rgb(0 0 0 / 25%);
+  color: #e5edf7;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  animation: tooltip-in 90ms ease-out;
+}
+
+.ui-tooltip.top {
+  transform: translateY(-100%);
+}
+
+.ui-tooltip::after {
+  position: absolute;
+  left: 14px;
+  width: 7px;
+  height: 7px;
+  border-right: 1px solid #334155;
+  border-bottom: 1px solid #334155;
+  background: #111a26;
+  content: "";
+  transform: rotate(45deg);
+}
+
+.ui-tooltip.bottom::after {
+  top: -4px;
+}
+
+.ui-tooltip.top::after {
+  bottom: -4px;
+  transform: rotate(225deg);
+}
+
+@keyframes tooltip-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.ui-tooltip.top {
+  animation-name: tooltip-in-top;
+}
+
+@keyframes tooltip-in-top {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-100% + 2px));
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(-100%);
+  }
 }
 
 .trade-linked-hint {
@@ -4842,6 +4930,16 @@ option {
   stroke: #475467;
   stroke-dasharray: 4 4;
   stroke-width: 1;
+}
+
+.trade-curve-axis {
+  stroke: #334155;
+  stroke-width: 1;
+}
+
+.trade-curve-axis-label {
+  fill: #7d8a9b;
+  font-size: 12px;
 }
 
 .trade-curve-area {

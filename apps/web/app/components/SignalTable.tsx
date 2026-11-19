@@ -10,6 +10,7 @@ import {
 import type { MonitorItem, MonitorSignalItem } from "../types";
 import { referenceTagItems } from "../lib/reference-trends";
 import { ReferenceTags } from "./ReferenceTags";
+import { TruncatedText } from "./TruncatedText";
 
 interface SignalTableProps {
   signals: MonitorSignalItem[];
@@ -465,20 +466,11 @@ export function SignalTable({
                   <td>{signal.interval ?? "--"}</td>
                   <td>{signal.monitor_name ?? "历史记录"}</td>
                   <td>{conditionLabel(signal.primary_condition)}</td>
-                  <td
-                    className="signal-trigger-detail"
-                    title={signal.conditions
-                      .map(
-                        (condition) =>
-                          `[${condition.interval}] ${
-                            condition.role === "filter"
-                              ? "过滤"
-                              : "触发"
-                          } ${condition.summary}`
-                      )
-                      .join(" · ")}
-                  >
-                    {triggerDetail(signal)}
+                  <td className="signal-trigger-detail">
+                    <TruncatedText
+                      value={triggerDetail(signal)}
+                      maxWidth={280}
+                    />
                   </td>
                   <td>
                     <ReferenceTags

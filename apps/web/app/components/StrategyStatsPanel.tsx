@@ -779,10 +779,13 @@ export function StrategyStatsPanel({
                         className={`stats-note ${
                           entry.stats_note ? "has-note" : ""
                         }`}
-                        title={entry.stats_note ?? "添加备注"}
                         onClick={() => openNoteEditor(entry)}
                       >
-                        {entry.stats_note || "添加备注"}
+                        <TruncatedText
+                          value={entry.stats_note}
+                          maxWidth={180}
+                          emptyText="添加备注"
+                        />
                       </button>
                     </td>
                     <td>

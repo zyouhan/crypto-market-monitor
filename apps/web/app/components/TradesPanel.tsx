@@ -139,6 +139,17 @@ function defaultForm(): TradeForm {
   };
 }
 
+function axisTime(timestamp: number): string {
+  return new Date(timestamp).toLocaleString("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  });
+}
+
 function EquityCurve({
   points
 }: {
@@ -148,10 +159,15 @@ function EquityCurve({
     return <div className="empty">暂无收益数据</div>;
   }
 
+  const sorted = [...points].sort(
+    (left, right) => left.time - right.time
+  );
   const width = 860;
-  const height = 240;
-  const padding = 34;
-  const values = points.map((point) => point.cumulative);
+  const height = 260;
+  const padding = 38;
+  const bottomPadding = 44;
+  const chartBottom = height - bottomPadding;
+  const values = sorted.map((point) => point.cumulative);
   let min = Math.min(0, ...values);
   let max = Math.max(0, ...values);
 
@@ -160,28 +176,34 @@ function EquityCurve({
     max += 1;
   }
 
-  const x = (index: number) =>
-    points.length === 1
+  const minTime = sorted[0].time;
+  const maxTime = sorted[sorted.length - 1].time;
+  const x = (time: number) =>
+    minTime === maxTime
       ? width / 2
       : padding +
-        (index / (points.length - 1)) *
+        ((time - minTime) / (maxTime - minTime)) *
           (width - padding * 2);
   const y = (value: number) =>
-    height -
-    padding -
-    ((value - min) / (max - min)) * (height - padding * 2);
-  const line = points
+    chartBottom -
+    ((value - min) / (max - min)) *
+      (chartBottom - padding);
+  const line = sorted
     .map(
       (point, index) =>
-        `${index === 0 ? "M" : "L"} ${x(index)} ${y(
+        `${index === 0 ? "M" : "L"} ${x(point.time)} ${y(
           point.cumulative
         )}`
     )
     .join(" ");
   const zeroY = y(0);
-  const area = `${line} L ${x(points.length - 1)} ${
-    height - padding
-  } L ${x(0)} ${height - padding} Z`;
+  const area = `${line} L ${x(sorted[sorted.length - 1].time)} ${
+    chartBottom
+  } L ${x(sorted[0].time)} ${chartBottom} Z`;
+  const ticks =
+    minTime === maxTime
+      ? [minTime]
+      : [minTime, (minTime + maxTime) / 2, maxTime];
 
   return (
     <div className="trade-curve">
@@ -197,14 +219,21 @@ function EquityCurve({
           y2={zeroY}
           className="trade-curve-zero"
         />
-        {points.length > 1 && (
+        <line
+          x1={padding}
+          x2={width - padding}
+          y1={chartBottom}
+          y2={chartBottom}
+          className="trade-curve-axis"
+        />
+        {sorted.length > 1 && (
           <path d={area} className="trade-curve-area" />
         )}
         <path d={line} className="trade-curve-line" />
-        {points.map((point, index) => (
+        {sorted.map((point, index) => (
           <circle
             key={`${point.time}-${index}`}
-            cx={x(index)}
+            cx={x(point.time)}
             cy={y(point.cumulative)}
             r={3.2}
             className={
@@ -221,12 +250,31 @@ function EquityCurve({
             </title>
           </circle>
         ))}
+        {ticks.map((tick, index) => (
+          <text
+            key={tick}
+            x={x(tick)}
+            y={height - 14}
+            textAnchor={
+              ticks.length === 1
+                ? "middle"
+                : index === 0
+                  ? "start"
+                  : index === ticks.length - 1
+                    ? "end"
+                    : "middle"
+            }
+            className="trade-curve-axis-label"
+          >
+            {axisTime(tick)}
+          </text>
+        ))}
         <text x={padding} y={16} className="trade-curve-label">
           {max.toFixed(2)}
         </text>
         <text
           x={padding}
-          y={height - 10}
+          y={chartBottom - 6}
           className="trade-curve-label"
         >
           {min.toFixed(2)}
@@ -515,7 +563,7 @@ export function TradesPanel() {
       ? null
       : records.find((record) => record.id === editingId) ?? null;
   const editingLinked =
-    editingRecord?.self_check_id != null;
+    editingRecord?.self_check_exists === 1;
 
   return (
     <>
@@ -761,12 +809,18 @@ export function TradesPanel() {
                     </td>
                     <td>
                       {record.self_check_id ? (
-                        <a
-                          className="trade-source-link"
-                          href="/self-checks"
-                        >
-                          开单自查
-                        </a>
+                        record.self_check_exists ? (
+                          <a
+                            className="trade-source-link"
+                            href="/self-checks"
+                          >
+                            开单自查
+                          </a>
+                        ) : (
+                          <span className="trade-source-broken">
+                            关联已删除
+                          </span>
+                        )
                       ) : (
                         <span className="trade-source-manual">
                           手动
@@ -842,9 +896,9 @@ export function TradesPanel() {
                         <button
                           type="button"
                           className="button small danger"
-                          disabled={record.self_check_id !== null}
+                          disabled={record.self_check_exists === 1}
                           title={
-                            record.self_check_id !== null
+                            record.self_check_exists === 1
                               ? "来自开单自查，不能直接删除"
                               : undefined
                           }

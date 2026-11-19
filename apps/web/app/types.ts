@@ -413,6 +413,7 @@ export interface TradeRecord {
   stop_loss_quality: TradeQuality;
   note: string | null;
   self_check_id: number | null;
+  self_check_exists?: number;
   created_at: number;
   updated_at: number;
 }

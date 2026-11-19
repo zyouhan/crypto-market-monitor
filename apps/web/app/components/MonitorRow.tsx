@@ -10,6 +10,7 @@ import {
 } from "../lib/format";
 import { referenceTagItems } from "../lib/reference-trends";
 import { ReferenceTags } from "./ReferenceTags";
+import { TruncatedText } from "./TruncatedText";
 import type {
   ConditionDisplayItem,
   MonitorItem,
@@ -261,8 +262,11 @@ export function MonitorRow({
           </div>
 
           {item.last_error && (
-            <div className="row-error" title={item.last_error}>
-              {item.last_error}
+            <div className="row-error">
+              <TruncatedText
+                value={item.last_error}
+                maxWidth={240}
+              />
             </div>
           )}
         </div>
