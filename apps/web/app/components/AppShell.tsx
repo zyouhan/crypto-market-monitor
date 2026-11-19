@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
-import { api } from "../lib/api";
+import { useAuth } from "./AuthProvider";
+import { useMonitorRuntime } from "./MonitorRuntimeProvider";
 
 type IconName =
   | "monitor"
@@ -100,11 +101,10 @@ function isActive(pathname: string, href: string): boolean {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const { monitorCount } = useMonitorRuntime();
+  const { logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [monitorCount, setMonitorCount] = useState<number | null>(
-    null
-  );
 
   useEffect(() => {
     setCollapsed(
@@ -123,56 +123,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     setMobileOpen(false);
   }, [pathname]);
 
-  useEffect(() => {
-    let active = true;
-
-    const loadCount = async () => {
-      try {
-        const monitors = await api<Array<{ enabled: boolean }>>(
-          "/api/monitors"
-        );
-
-        if (active) {
-          setMonitorCount(
-            monitors.filter((monitor) => monitor.enabled).length
-          );
-        }
-      } catch {
-        // 保持上一次可用数量
-      }
-    };
-
-    void loadCount();
-    const timer = window.setInterval(() => {
-      void loadCount();
-    }, 30_000);
-    const handleRefresh = () => {
-      void loadCount();
-    };
-
-    window.addEventListener("focus", handleRefresh);
-    window.addEventListener(
-      "monitors-changed",
-      handleRefresh
-    );
-
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-      window.removeEventListener("focus", handleRefresh);
-      window.removeEventListener(
-        "monitors-changed",
-        handleRefresh
-      );
-    };
-  }, []);
-
   async function handleLogout(): Promise<void> {
-    try {
-      await api("/api/auth/logout", { method: "POST" });
-    } finally {
-      window.location.assign("/");
-    }
+    await logout();
   }
 
   return (
