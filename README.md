@@ -379,13 +379,17 @@ npm run desktop:dev
 
 首次运行会自动安装 `apps/desktop` 的依赖（Electron / electron-builder），后续直接启动。
 
-默认加载：
+默认加载生产环境：
 
 ```text
-http://localhost:3000
+https://vvp.lancas174.us.ci/
 ```
 
-需要先启动 `npm run dev`，或保证该地址可访问。
+HTTPS 连接失败时自动尝试备用地址：
+
+```text
+http://65.49.233.243/
+```
 
 ### 修改监控地址
 
@@ -397,7 +401,7 @@ apps/desktop/config.json
 
 ```json
 {
-  "url": "https://your-monitor.example.com"
+  "url": "https://vvp.lancas174.us.ci/"
 }
 ```
 
@@ -407,28 +411,35 @@ apps/desktop/config.json
 MONITOR_URL=https://your-monitor.example.com npm run desktop:dev
 ```
 
-打包后的配置位于安装目录资源中的 `app-config.json`。
+打包后的配置位于免安装目录：
 
-### 本地打包
+```text
+apps/desktop/dist/win-unpacked/resources/app-config.json
+```
+
+### 免安装打包
 
 ```bash
-npm run desktop:pack   # 仅生成免安装目录
-npm run desktop:dist   # 生成 NSIS 安装包 + 便携版
+npm run desktop:pack
 ```
 
 产物：
 
 ```text
-apps/desktop/dist/
+apps/desktop/dist/win-unpacked/Crypto Market Monitor.exe
 ```
+
+直接双击运行即可，不生成安装包，不需要安装流程。
+
+以后只修改 Web/Server 时，不需要重新打包桌面端；只有修改 `main.cjs`、窗口配置或默认地址时才需要重新执行 `desktop:pack`。
 
 桌面壳与 Web/Server 的发布相互独立：
 
-- Web/Server 页面更新：正常部署 Web/Server，桌面壳无需重打包；
-- 桌面壳窗口配置、后台策略变化：重新打包桌面壳；
+- Web/Server 页面更新：正常部署 Web/Server，桌面壳无需重新打包；
+- 桌面壳窗口配置、后台策略变化：重新生成免安装目录；
 - 桌面壳使用远程地址时，用户更新页面无需重新安装客户端。
 
-当前未接入代码签名和自动更新；未签名安装包在 Windows 上可能触发 SmartScreen 提示。
+当前未接入代码签名和自动更新；免安装目录会被 Windows SmartScreen 提示，视系统策略而定。
 
 ## 监控预设
 
