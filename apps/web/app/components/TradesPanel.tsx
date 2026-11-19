@@ -10,6 +10,7 @@ import {
 import { api, errorMessage } from "../lib/api";
 import { formatTime } from "../lib/format";
 import { Pagination } from "./Pagination";
+import { TruncatedText } from "./TruncatedText";
 import type {
   MindsetData,
   TradeCurvePoint,
@@ -824,7 +825,10 @@ export function TradesPanel() {
                       </span>
                     </td>
                     <td className="trade-note">
-                      {record.note || "--"}
+                      <TruncatedText
+                        value={record.note}
+                        maxWidth={220}
+                      />
                     </td>
                     <td>
                       <div className="trade-row-actions">

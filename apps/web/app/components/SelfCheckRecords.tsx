@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, errorMessage } from "../lib/api";
 import { formatTime } from "../lib/format";
 import { Pagination } from "./Pagination";
+import { TruncatedText } from "./TruncatedText";
 import {
   notifySelfCheckChanged,
   SELF_CHECK_CHANGED_EVENT
@@ -199,18 +200,11 @@ export function SelfCheckRecords() {
                 <th>收益</th>
                 <th>止损条件</th>
                 <th>备注</th>
-                <th>开单目标 J</th>
                 <th>操作</th>
               </tr>
             </thead>
             <tbody>
               {items.map((item) => {
-                const targetJ =
-                  item.snapshot?.find(
-                    (snapshot) =>
-                      snapshot.interval === item.target_interval
-                  )?.j ?? null;
-
                 return (
                   <tr key={item.id}>
                     <td>{item.symbol}</td>
@@ -251,15 +245,16 @@ export function SelfCheckRecords() {
                         : "--"}
                     </td>
                     <td className="self-check-record-stop">
-                      {item.stop_condition}
+                      <TruncatedText
+                        value={item.stop_condition}
+                        maxWidth={220}
+                      />
                     </td>
                     <td className="self-check-record-note">
-                      {item.close_note || "--"}
-                    </td>
-                    <td>
-                      {typeof targetJ === "number"
-                        ? targetJ.toFixed(2)
-                        : "--"}
+                      <TruncatedText
+                        value={item.close_note}
+                        maxWidth={260}
+                      />
                     </td>
                     <td>
                       {item.status === "closed" ? (

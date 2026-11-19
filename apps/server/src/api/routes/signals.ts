@@ -532,8 +532,11 @@ signalsRouter.get("/stats/entries", (req, res) => {
           }
         }
 
+        const responseItem = { ...item };
+        delete responseItem.conditions;
+
         return {
-          ...item,
+          ...responseItem,
           condition_summary: summarizeSignalConditions(
             typeof item.conditions === "string"
               ? item.conditions

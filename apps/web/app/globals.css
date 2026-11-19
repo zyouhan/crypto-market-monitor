@@ -4779,6 +4779,14 @@ option {
   font-size: 12px;
 }
 
+.cell-truncate {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .trade-linked-hint {
   margin-bottom: 10px;
   padding: 8px 10px;

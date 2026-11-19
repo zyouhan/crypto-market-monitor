@@ -1,6 +1,7 @@
 import "./env";
 
 import express from "express";
+import compression from "compression";
 import cookieParser from "cookie-parser";
 
 import { requireAuth } from "./api/auth";
@@ -34,6 +35,7 @@ const HOST = process.env.HOST || "0.0.0.0";
 app.disable("x-powered-by");
 
 app.use(express.json({ limit: "8mb" }));
+app.use(compression());
 app.use(cookieParser());
 
 app.use("/api", apiOriginGuard);

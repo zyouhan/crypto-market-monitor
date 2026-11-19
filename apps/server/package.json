@@ -11,7 +11,9 @@
     "replay": "tsx src/scripts/replay.ts"
   },
   "dependencies": {
+    "@types/compression": "^1.8.1",
     "better-sqlite3": "^13.0.3",
+    "compression": "^1.8.2",
     "cookie-parser": "^1.4.7",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",

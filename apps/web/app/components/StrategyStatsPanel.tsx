@@ -14,6 +14,7 @@ import {
 import { referenceTagItems } from "../lib/reference-trends";
 import { ReferenceTags } from "./ReferenceTags";
 import { StatsExportModal } from "./StatsExportModal";
+import { TruncatedText } from "./TruncatedText";
 import type {
   SignalStats,
   StatsResult,
@@ -183,14 +184,14 @@ export function StrategyStatsPanel({
         body: JSON.stringify({ ids: pageSelectedIds })
       });
       setSelectedIds(new Set());
-      await loadStats();
-      await loadResultStats();
 
       if (entries.length === pageSelectedIds.length && page > 0) {
         setPage((current) => current - 1);
       } else {
         setReloadKey((current) => current + 1);
       }
+
+      await Promise.all([loadStats(), loadResultStats()]);
     } catch (deleteError) {
       setError(errorMessage(deleteError));
     }
@@ -315,15 +316,18 @@ export function StrategyStatsPanel({
       await api(`/api/signals/${entry.id}/stats`, {
         method: "DELETE"
       });
-      await loadStats();
-      await loadResultStats();
-      await Promise.resolve(onChanged());
 
       if (entries.length === 1 && page > 0) {
         setPage((current) => current - 1);
       } else {
         setReloadKey((current) => current + 1);
       }
+
+      await Promise.all([
+        loadStats(),
+        loadResultStats(),
+        Promise.resolve(onChanged())
+      ]);
     } catch (deleteError) {
       setError(errorMessage(deleteError));
     } finally {
@@ -738,7 +742,10 @@ export function StrategyStatsPanel({
                     <td>{formatTime(entry.event_time)}</td>
                     <td>{entry.symbol}</td>
                     <td className="strategy-stats-conditions">
-                      {entry.condition_summary}
+                      <TruncatedText
+                        value={entry.condition_summary}
+                        maxWidth={320}
+                      />
                     </td>
                     <td>
                       <span
