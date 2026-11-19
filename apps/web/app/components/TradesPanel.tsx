@@ -6,6 +6,16 @@ import {
   useMemo,
   useState
 } from "react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip as ChartTooltip,
+  XAxis,
+  YAxis
+} from "recharts";
 
 import { api, errorMessage } from "../lib/api";
 import { formatTime } from "../lib/format";
@@ -162,124 +172,119 @@ function EquityCurve({
   const sorted = [...points].sort(
     (left, right) => left.time - right.time
   );
-  const width = 860;
-  const height = 260;
-  const padding = 38;
-  const bottomPadding = 44;
-  const chartBottom = height - bottomPadding;
-  const values = sorted.map((point) => point.cumulative);
-  let min = Math.min(0, ...values);
-  let max = Math.max(0, ...values);
-
-  if (min === max) {
-    min -= 1;
-    max += 1;
-  }
-
-  const minTime = sorted[0].time;
-  const maxTime = sorted[sorted.length - 1].time;
-  const x = (time: number) =>
-    minTime === maxTime
-      ? width / 2
-      : padding +
-        ((time - minTime) / (maxTime - minTime)) *
-          (width - padding * 2);
-  const y = (value: number) =>
-    chartBottom -
-    ((value - min) / (max - min)) *
-      (chartBottom - padding);
-  const line = sorted
-    .map(
-      (point, index) =>
-        `${index === 0 ? "M" : "L"} ${x(point.time)} ${y(
-          point.cumulative
-        )}`
-    )
-    .join(" ");
-  const zeroY = y(0);
-  const area = `${line} L ${x(sorted[sorted.length - 1].time)} ${
-    chartBottom
-  } L ${x(sorted[0].time)} ${chartBottom} Z`;
-  const ticks =
-    minTime === maxTime
-      ? [minTime]
-      : [minTime, (minTime + maxTime) / 2, maxTime];
 
   return (
-    <div className="trade-curve">
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        role="img"
-        aria-label="累计收益曲线"
-      >
-        <line
-          x1={padding}
-          x2={width - padding}
-          y1={zeroY}
-          y2={zeroY}
-          className="trade-curve-zero"
-        />
-        <line
-          x1={padding}
-          x2={width - padding}
-          y1={chartBottom}
-          y2={chartBottom}
-          className="trade-curve-axis"
-        />
-        {sorted.length > 1 && (
-          <path d={area} className="trade-curve-area" />
-        )}
-        <path d={line} className="trade-curve-line" />
-        {sorted.map((point, index) => (
-          <circle
-            key={`${point.time}-${index}`}
-            cx={x(point.time)}
-            cy={y(point.cumulative)}
-            r={3.2}
-            className={
-              point.cumulative >= 0
-                ? "trade-curve-dot bull"
-                : "trade-curve-dot bear"
-            }
-          >
-            <title>
-              {formatTime(point.time)} · 单笔 {point.pnl >= 0 ? "+" : ""}
-              {point.pnl.toFixed(2)} · 累计{" "}
-              {point.cumulative >= 0 ? "+" : ""}
-              {point.cumulative.toFixed(2)}
-            </title>
-          </circle>
-        ))}
-        {ticks.map((tick, index) => (
-          <text
-            key={tick}
-            x={x(tick)}
-            y={height - 14}
-            textAnchor={
-              ticks.length === 1
-                ? "middle"
-                : index === 0
-                  ? "start"
-                  : index === ticks.length - 1
-                    ? "end"
-                    : "middle"
-            }
-            className="trade-curve-axis-label"
-          >
-            {axisTime(tick)}
-          </text>
-        ))}
-        <text x={padding} y={16} className="trade-curve-label">
-          {max.toFixed(2)}
-        </text>
-        <text
-          x={padding}
-          y={chartBottom - 6}
-          className="trade-curve-label"
+    <div className="trade-chart">
+      <ResponsiveContainer width="100%" height={280}>
+        <AreaChart
+          data={sorted}
+          margin={{ top: 16, right: 18, left: 0, bottom: 4 }}
         >
-          {min.toFixed(2)}
-        </text>
-      </svg>
+          <defs>
+            <linearGradient
+              id="tradeEquityFill"
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+            >
+              <stop
+                offset="0%"
+                stopColor="#6d9eff"
+                stopOpacity={0.32}
+              />
+              <stop
+                offset="100%"
+                stopColor="#6d9eff"
+                stopOpacity={0.02}
+              />
+            </linearGradient>
+          </defs>
+          <CartesianGrid
+            stroke="#263241"
+            strokeDasharray="3 3"
+            vertical={false}
+          />
+          <XAxis
+            dataKey="time"
+            type="number"
+            scale="time"
+            domain={
+              sorted.length === 1
+                ? [sorted[0].time - 1, sorted[0].time + 1]
+                : ["dataMin", "dataMax"]
+            }
+            minTickGap={48}
+            tick={{ fill: "#7d8a9b", fontSize: 12 }}
+            tickLine={false}
+            axisLine={{ stroke: "#334155" }}
+            tickFormatter={(value) => axisTime(Number(value))}
+          />
+          <YAxis
+            width={64}
+            tick={{ fill: "#7d8a9b", fontSize: 12 }}
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={(value) => Number(value).toFixed(2)}
+          />
+          <ChartTooltip
+            cursor={{ stroke: "#5d8ee8", strokeDasharray: "4 4" }}
+            content={({ active, payload }) => {
+              if (!active || !payload?.length) {
+                return null;
+              }
+
+              const point = payload[0]
+                ?.payload as TradeCurvePoint | undefined;
+
+              if (!point) {
+                return null;
+              }
+
+              return (
+                <div className="trade-chart-tooltip">
+                  <strong>{formatTime(point.time)}</strong>
+                  <span>
+                    单笔{" "}
+                    <b
+                      className={
+                        point.pnl >= 0 ? "positive" : "negative"
+                      }
+                    >
+                      {point.pnl >= 0 ? "+" : ""}
+                      {point.pnl.toFixed(2)}
+                    </b>
+                  </span>
+                  <span>
+                    累计{" "}
+                    <b
+                      className={
+                        point.cumulative >= 0
+                          ? "positive"
+                          : "negative"
+                      }
+                    >
+                      {point.cumulative >= 0 ? "+" : ""}
+                      {point.cumulative.toFixed(2)}
+                    </b>
+                  </span>
+                </div>
+              );
+            }}
+          />
+          <ReferenceLine y={0} stroke="#475467" strokeDasharray="4 4" />
+          <Area
+            type="monotone"
+            dataKey="cumulative"
+            stroke="#6d9eff"
+            strokeWidth={2}
+            fill="url(#tradeEquityFill)"
+            dot={{ r: 3, fill: "#6d9eff", strokeWidth: 0 }}
+            activeDot={{ r: 5, fill: "#f1cf8a", strokeWidth: 0 }}
+            isAnimationActive={false}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
     </div>
   );
 }
