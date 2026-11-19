@@ -430,8 +430,14 @@ selfChecksRouter.delete("/:id", (req, res) => {
     return;
   }
 
-  db.prepare("DELETE FROM self_checks WHERE id = ?").run(id);
-  res.json(success({ id }, "开单记录已删除"));
+  db.transaction(() => {
+    db.prepare(
+      "DELETE FROM trade_records WHERE self_check_id = ?"
+    ).run(id);
+    db.prepare("DELETE FROM self_checks WHERE id = ?").run(id);
+  })();
+
+  res.json(success({ id }, "开单记录及对应交易记录已删除"));
 });
 
 selfChecksRouter.post("/:id/close", (req, res) => {

@@ -317,10 +317,14 @@ tradesRouter.get("/", (req, res) => {
   const totalPages = Math.max(1, Math.ceil(totalRow.count / limit));
   const currentPage = Math.min(page, totalPages);
   const items = db.prepare(`
-    SELECT *
-    FROM trade_records
-    ${filter.where}
-    ORDER BY close_time DESC, id DESC
+    SELECT
+      t.*,
+      EXISTS(
+        SELECT 1 FROM self_checks s WHERE s.id = t.self_check_id
+      ) AS self_check_exists
+    FROM trade_records t
+    ${filter.where.replace(/\b(symbol|close_time|open_quality|close_quality|take_profit_quality|stop_loss_quality)\b/g, "t.$1")}
+    ORDER BY t.close_time DESC, t.id DESC
     LIMIT ? OFFSET ?
   `).all(
     ...filter.params,
@@ -511,8 +515,14 @@ tradesRouter.put("/:id", (req, res) => {
   }
 
   const row = getRow(id)!;
+  const linkedSelfCheck =
+    row.self_check_id !== null
+      ? (db.prepare(
+          "SELECT 1 AS found FROM self_checks WHERE id = ?"
+        ).get(row.self_check_id) as { found?: number } | undefined)
+      : undefined;
 
-  if (row.self_check_id !== null) {
+  if (linkedSelfCheck) {
     const result = evaluateExecutionResult([
       input.open_quality,
       input.close_quality,
@@ -555,7 +565,7 @@ tradesRouter.put("/:id", (req, res) => {
       SET symbol = ?, direction = ?, open_time = ?, close_time = ?,
           pnl = ?, open_quality = ?, close_quality = ?,
           take_profit_quality = ?, stop_loss_quality = ?,
-          note = ?, updated_at = ?
+          note = ?, self_check_id = NULL, updated_at = ?
       WHERE id = ?
     `).run(
       input.symbol,
@@ -592,10 +602,16 @@ tradesRouter.delete("/:id", (req, res) => {
   }
 
   if (row.self_check_id !== null) {
-    res.status(400).json(
-      failure("来自开单自查的交易记录不能直接删除，请编辑修正")
-    );
-    return;
+    const linked = db.prepare(`
+      SELECT 1 AS found FROM self_checks WHERE id = ?
+    `).get(row.self_check_id) as { found?: number } | undefined;
+
+    if (linked) {
+      res.status(400).json(
+        failure("来自开单自查的交易记录不能直接删除，请编辑修正")
+      );
+      return;
+    }
   }
 
   db.prepare("DELETE FROM trade_records WHERE id = ?").run(id);
