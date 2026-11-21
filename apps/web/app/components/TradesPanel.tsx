@@ -19,6 +19,7 @@ import {
 
 import { api, errorMessage } from "../lib/api";
 import { formatTime } from "../lib/format";
+import { useConfirm } from "./ConfirmDialog";
 import { Pagination } from "./Pagination";
 import { TruncatedText } from "./TruncatedText";
 import type {
@@ -290,6 +291,7 @@ function EquityCurve({
 }
 
 export function TradesPanel() {
+  const confirm = useConfirm();
   const [records, setRecords] = useState<TradeRecord[]>([]);
   const [curve, setCurve] = useState<TradeCurvePoint[]>([]);
   const [mindset, setMindset] = useState<MindsetData | null>(null);
@@ -510,11 +512,13 @@ export function TradesPanel() {
   }
 
   async function deleteRecord(record: TradeRecord): Promise<void> {
-    if (
-      !window.confirm(
-        `删除 ${record.symbol} ${formatTime(record.close_time)} 的交易记录？`
-      )
-    ) {
+    const ok = await confirm({
+      title: "删除交易记录",
+      message: `删除 ${record.symbol} ${formatTime(record.close_time)} 的交易记录？`,
+      confirmLabel: "删除"
+    });
+
+    if (!ok) {
       return;
     }
 

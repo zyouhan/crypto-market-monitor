@@ -9,6 +9,7 @@ import {
 
 import { api, errorMessage } from "../lib/api";
 import { formatTime } from "../lib/format";
+import { useConfirm } from "./ConfirmDialog";
 import { Pagination } from "./Pagination";
 
 const PAGE_SIZE = 8;
@@ -59,6 +60,7 @@ function parseTags(value: string): string[] {
 }
 
 export function NotesDock() {
+  const confirm = useConfirm();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"list" | "edit">("list");
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -233,7 +235,13 @@ export function NotesDock() {
   }
 
   async function deleteNote(note: NoteItem): Promise<void> {
-    if (!window.confirm(`删除笔记「${note.title || "无标题"}」？`)) {
+    const ok = await confirm({
+      title: "删除笔记",
+      message: `删除笔记「${note.title || "无标题"}」？`,
+      confirmLabel: "删除"
+    });
+
+    if (!ok) {
       return;
     }
 

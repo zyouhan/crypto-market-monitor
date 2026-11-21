@@ -11,6 +11,7 @@ import { MonitorList } from "./components/MonitorList";
 import { MonitorModal } from "./components/MonitorModal";
 import { NotesDock } from "./components/NotesDock";
 import { SelfCheckDock } from "./components/SelfCheckDock";
+import { useConfirm } from "./components/ConfirmDialog";
 import { NotificationSettings } from "./components/NotificationSettings";
 import { SignalTable } from "./components/SignalTable";
 import { SoundSettings } from "./components/SoundSettings";
@@ -59,6 +60,7 @@ export default function HomePage() {
     soundSettings,
     updateSoundSettings
   } = useMonitorRuntime();
+  const confirm = useConfirm();
 
   const [monitors, setMonitors] = useState<MonitorItem[]>([]);
   const [signals, setSignals] = useState<MonitorSignalItem[]>([]);
@@ -301,7 +303,13 @@ export default function HomePage() {
   }
 
   async function deleteMonitor(item: MonitorItem) {
-    if (!window.confirm(`确定删除监控项「${item.name}」吗？`)) {
+    const ok = await confirm({
+      title: "删除监控项",
+      message: `确定删除监控项「${item.name}」吗？`,
+      confirmLabel: "删除"
+    });
+
+    if (!ok) {
       return;
     }
 
@@ -323,11 +331,13 @@ export default function HomePage() {
   ) {
     const label = action === "T_LONG" ? "正T" : "反T";
 
-    if (
-      !window.confirm(
-        `确定记录「${item.name}」的${label}操作吗？`
-      )
-    ) {
+    const ok = await confirm({
+      title: `记录${label}操作`,
+      message: `确定记录「${item.name}」的${label}操作吗？`,
+      confirmLabel: "确认记录"
+    });
+
+    if (!ok) {
       return;
     }
 
@@ -345,11 +355,13 @@ export default function HomePage() {
   }
 
   async function closePosition(item: MonitorItem) {
-    if (
-      !window.confirm(
-        `确定将「${item.name}」标记为已平仓，并取消活动的止损观察吗？`
-      )
-    ) {
+    const ok = await confirm({
+      title: "标记平仓",
+      message: `确定将「${item.name}」标记为已平仓，并取消活动的止损观察吗？`,
+      confirmLabel: "标记平仓"
+    });
+
+    if (!ok) {
       return;
     }
 
@@ -428,11 +440,13 @@ export default function HomePage() {
       return;
     }
 
-    if (
-      !window.confirm(
-        `确定删除选中的 ${ids.length} 个监控项吗？`
-      )
-    ) {
+    const ok = await confirm({
+      title: "批量删除监控项",
+      message: `确定删除选中的 ${ids.length} 个监控项吗？`,
+      confirmLabel: "删除"
+    });
+
+    if (!ok) {
       return;
     }
 

@@ -12,6 +12,7 @@ import {
   formatTime
 } from "../lib/format";
 import { referenceTagItems } from "../lib/reference-trends";
+import { useConfirm } from "./ConfirmDialog";
 import { ReferenceTags } from "./ReferenceTags";
 import { StatsExportModal } from "./StatsExportModal";
 import { TruncatedText } from "./TruncatedText";
@@ -64,6 +65,7 @@ export function StrategyStatsPanel({
   onChanged,
   pageMode = false
 }: StrategyStatsPanelProps) {
+  const confirm = useConfirm();
   const [stats, setStats] = useState<SignalStats>({
     today: 0,
     total: 0,
@@ -168,11 +170,13 @@ export function StrategyStatsPanel({
       return;
     }
 
-    if (
-      !window.confirm(
-        `从策略统计中删除选中的 ${pageSelectedIds.length} 条记录？\n原始信号记录不会被删除。`
-      )
-    ) {
+    const ok = await confirm({
+      title: "批量删除统计记录",
+      message: `从策略统计中删除选中的 ${pageSelectedIds.length} 条记录？\n原始信号记录不会被删除。`,
+      confirmLabel: "删除"
+    });
+
+    if (!ok) {
       return;
     }
 
@@ -301,11 +305,13 @@ export function StrategyStatsPanel({
   ): Promise<void> {
     const label = `${entry.symbol} ${formatTime(entry.event_time)}`;
 
-    if (
-      !window.confirm(
-        `从策略统计中删除这条记录？\n\n${label}\n原始信号记录不会被删除。`
-      )
-    ) {
+    const ok = await confirm({
+      title: "删除统计记录",
+      message: `从策略统计中删除这条记录？\n\n${label}\n原始信号记录不会被删除。`,
+      confirmLabel: "删除"
+    });
+
+    if (!ok) {
       return;
     }
 

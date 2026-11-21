@@ -5,6 +5,7 @@ import { useEffect } from "react";
 
 import { AppShell } from "./AppShell";
 import { AuthProvider, useAuth } from "./AuthProvider";
+import { ConfirmProvider } from "./ConfirmDialog";
 import { LoginCard } from "./LoginCard";
 import { MonitorRuntimeProvider } from "./MonitorRuntimeProvider";
 
@@ -87,7 +88,9 @@ function AuthenticatedShell({
 export function RootShell({ children }: { children: ReactNode }) {
   return (
     <AuthProvider>
-      <AuthenticatedShell>{children}</AuthenticatedShell>
+      <ConfirmProvider>
+        <AuthenticatedShell>{children}</AuthenticatedShell>
+      </ConfirmProvider>
     </AuthProvider>
   );
 }
