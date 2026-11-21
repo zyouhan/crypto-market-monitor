@@ -168,12 +168,35 @@ function parseConditions(
   }
 }
 
+function signalTriggerInterval(
+  signal: MonitorSignalRecord,
+  monitor: MonitorRecord
+): string {
+  try {
+    const payload = JSON.parse(signal.payload ?? "{}") as {
+      trigger_interval?: unknown;
+    };
+
+    if (
+      typeof payload.trigger_interval === "string" &&
+      payload.trigger_interval
+    ) {
+      return payload.trigger_interval;
+    }
+  } catch {
+    // Fall back to the stored signal interval.
+  }
+
+  return signal.interval ?? monitor.interval;
+}
+
 export function buildMonitorMessage(
   signal: MonitorSignalRecord,
   monitor: MonitorRecord
 ): { title: string; description: string } {
+  const triggerInterval = signalTriggerInterval(signal, monitor);
   const title = `[监控] ${signal.symbol} ${
-    signal.interval ?? monitor.interval
+    triggerInterval
   } ${signal.monitor_name ?? monitor.name} ${displayDirection(
     signal
   )}`;
@@ -210,7 +233,7 @@ export function buildMonitorMessage(
 
   const description = [
     `交易标的：${signal.symbol}`,
-    `入场周期：${signal.interval ?? monitor.interval}`,
+    `入场周期：${triggerInterval}`,
     `监控项：${signal.monitor_name ?? monitor.name}`,
     `方向：${displayDirection(signal)}`,
     `触发价格：${formatNumber(signal.price)}`,
@@ -269,7 +292,7 @@ export async function dispatchMonitorNotification(
   if (
     !isSignalFresh(
       signal.event_time,
-      signal.interval ?? monitor.interval
+      signalTriggerInterval(signal, monitor)
     )
   ) {
     updateSignalPush({

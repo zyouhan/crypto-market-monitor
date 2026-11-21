@@ -5,7 +5,8 @@ import { useMemo, useState } from "react";
 import {
   eventTypeLabel,
   formatPrice,
-  formatTime
+  formatTime,
+  signalIntervalLabel
 } from "../lib/format";
 import type { MonitorItem, MonitorSignalItem } from "../types";
 import { referenceTagItems } from "../lib/reference-trends";
@@ -145,7 +146,7 @@ function triggerDetail(signal: MonitorSignalItem): string {
     signal.event_type === "SHORT_ZONE_START" ||
     signal.event_type === "SHORT_ZONE_EXHAUST"
   ) {
-    return `${signal.interval ? `${signal.interval} ` : ""}${eventTypeLabel(
+    return `${signalIntervalLabel(signal)} ${eventTypeLabel(
       signal.event_type
     )} · ${trigger?.summary ?? "MACD"}`;
   }
@@ -306,8 +307,10 @@ export function SignalTable({
     );
 
     for (const signal of signals) {
-      if (signal.interval) {
-        values.add(signal.interval);
+      const interval = signalIntervalLabel(signal);
+
+      if (interval !== "--") {
+        values.add(interval);
       }
     }
 
@@ -330,7 +333,7 @@ export function SignalTable({
 
         if (
           intervalFilter !== "ALL" &&
-          signal.interval !== intervalFilter
+          signalIntervalLabel(signal) !== intervalFilter
         ) {
           return false;
         }
@@ -463,7 +466,7 @@ export function SignalTable({
                 <tr key={signal.id}>
                   <td>{formatTime(signal.event_time)}</td>
                   <td>{signal.symbol}</td>
-                  <td>{signal.interval ?? "--"}</td>
+                  <td>{signalIntervalLabel(signal)}</td>
                   <td>{signal.monitor_name ?? "历史记录"}</td>
                   <td>{conditionLabel(signal.primary_condition)}</td>
                   <td className="signal-trigger-detail">

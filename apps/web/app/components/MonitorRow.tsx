@@ -6,7 +6,8 @@ import {
   eventTypeLabel,
   formatPrice,
   formatTime,
-  signalEventLabel
+  signalEventLabel,
+  signalIntervalLabel
 } from "../lib/format";
 import { referenceTagItems } from "../lib/reference-trends";
 import { ReferenceTags } from "./ReferenceTags";
@@ -120,6 +121,20 @@ export function MonitorRow({
           (reference) => reference.interval === interval
         )
     );
+  const latestSignalIsCurrent =
+    !latestSignal ||
+    !latestSignal.primary_condition ||
+    !(
+      item.conditions.find(
+        (condition) =>
+          condition.kind === latestSignal.primary_condition
+      )?.interval
+    ) ||
+    signalIntervalLabel(latestSignal) ===
+      item.conditions.find(
+        (condition) =>
+          condition.kind === latestSignal.primary_condition
+      )?.interval;
   const zoneStatuses = item.conditions
     .filter((condition) => condition.kind === "MACD_DEA_ZONE")
     .map((condition) => {
@@ -272,7 +287,7 @@ export function MonitorRow({
         </div>
 
         <div className="monitor-cell monitor-signal-cell">
-          {latestSignal ? (
+          {latestSignal && latestSignalIsCurrent ? (
             <>
               <div
                 className={`row-signal ${
@@ -283,9 +298,7 @@ export function MonitorRow({
                       : "neutral"
                 }`}
               >
-                {latestSignal.interval
-                  ? `${latestSignal.interval} `
-                  : ""}
+                {signalIntervalLabel(latestSignal)}{" "}
                 {signalEventLabel(latestSignal)}
               </div>
               <div className="row-signal-meta">

@@ -185,8 +185,7 @@ export function signalEventLabel(signal: {
     kind?: string;
     display?: Array<{ label?: string; value?: string }>;
   }>;
-}): string {
-  if (
+}): string {  if (
     signal.event_type === "CANDLE_TOP" ||
     signal.event_type === "CANDLE_BOTTOM"
   ) {
@@ -215,6 +214,19 @@ export function signalEventLabel(signal: {
   }
 
   return eventTypeLabel(signal.event_type);
+}
+
+export function signalIntervalLabel(signal: {
+  interval?: string | null;
+  payload?: Record<string, unknown> | null;
+}): string {
+  const triggerInterval = signal.payload?.trigger_interval;
+
+  if (typeof triggerInterval === "string" && triggerInterval) {
+    return triggerInterval;
+  }
+
+  return signal.interval ?? "--";
 }
 
 export function directionLabel(

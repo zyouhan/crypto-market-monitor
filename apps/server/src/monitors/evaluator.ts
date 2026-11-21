@@ -271,6 +271,8 @@ function evaluateLogicalSignals(input: {
       stopPrice,
       payload: {
         ...primaryPoint.payload,
+        trigger_interval: primary.interval,
+        monitor_interval: input.monitor.interval,
         conditions,
         source: input.source,
         stopPrice
@@ -421,6 +423,8 @@ export function evaluateMonitorSignals(input: {
       stopPrice,
       payload: {
         ...primary.point.payload,
+        trigger_interval: primary.runtime.interval,
+        monitor_interval: input.monitor.interval,
         conditions,
         source: input.source,
         stopPrice
