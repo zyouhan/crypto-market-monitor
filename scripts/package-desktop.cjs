@@ -119,7 +119,10 @@ if (fs.existsSync(outputAsar)) {
       "[desktop] app.asar 仍被其他进程占用，无法覆盖。"
     );
     console.error(
-      "[desktop] 请关闭 Crypto Market Monitor、等待杀毒/资源管理器扫描结束后重试。"
+      "[desktop] 常见占用者：VS Code 扩展/搜索索引、杀毒软件、资源管理器预览。"
+    );
+    console.error(
+      "[desktop] 可先退出编辑器或改用 npm run desktop:pack:next。"
     );
     process.exit(1);
   }
