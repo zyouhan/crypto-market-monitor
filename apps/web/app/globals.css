@@ -865,11 +865,12 @@ td {
   position: fixed;
   right: 20px;
   bottom: 20px;
-  z-index: 50;
+  z-index: 9;
   display: flex;
   flex-direction: column;
   gap: 10px;
   width: min(360px, calc(100vw - 40px));
+  pointer-events: none;
 }
 
 .toast {
@@ -880,6 +881,7 @@ td {
   border-radius: 10px;
   box-shadow: 0 12px 30px rgb(0 0 0 / 45%);
   animation: toast-in 0.18s ease-out;
+  pointer-events: auto;
 }
 
 .toast.bull {
