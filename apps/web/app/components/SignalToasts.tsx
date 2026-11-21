@@ -3,7 +3,8 @@
 import {
   formatPrice,
   formatTime,
-  signalEventLabel
+  signalEventLabel,
+  signalIntervalLabel
 } from "../lib/format";
 import type { MonitorItem, MonitorSignalItem } from "../types";
 
@@ -48,7 +49,7 @@ export function SignalToasts({
             <div className="toast-head">
               <strong>
                 {signal.symbol} ·{" "}
-                {signal.interval ? `${signal.interval} ` : ""}
+                {signalIntervalLabel(signal)}{" "}
                 {signalEventLabel(signal)}
               </strong>
 
