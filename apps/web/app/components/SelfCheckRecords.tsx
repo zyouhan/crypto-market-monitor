@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { api, errorMessage } from "../lib/api";
 import { formatTime } from "../lib/format";
+import { useConfirm } from "./ConfirmDialog";
 import { Pagination } from "./Pagination";
 import { TruncatedText } from "./TruncatedText";
 import {
@@ -55,6 +56,7 @@ function resultLabel(result: "success" | "failed" | null): string {
 }
 
 export function SelfCheckRecords() {
+  const confirm = useConfirm();
   const [items, setItems] = useState<SelfCheckRecord[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -131,7 +133,13 @@ export function SelfCheckRecords() {
   async function deleteRecord(
     item: SelfCheckRecord
   ): Promise<void> {
-    if (!window.confirm(`删除 ${item.symbol} 的开单记录？`)) {
+    const ok = await confirm({
+      title: "删除开单记录",
+      message: `删除 ${item.symbol} 的开单记录？关联交易记录也会一起删除。`,
+      confirmLabel: "删除"
+    });
+
+    if (!ok) {
       return;
     }
 

@@ -9,6 +9,7 @@ import {
 
 import { api, errorMessage } from "../lib/api";
 import { formatTime } from "../lib/format";
+import { useConfirm } from "./ConfirmDialog";
 import { Pagination } from "./Pagination";
 
 const PAGE_SIZE = 12;
@@ -125,6 +126,7 @@ function imageUrl(id: number, variant: "thumb" | "full"): string {
 }
 
 export function CasesPanel() {
+  const confirm = useConfirm();
   const [items, setItems] = useState<CaseItem[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -329,11 +331,13 @@ export function CasesPanel() {
   }
 
   async function deleteCase(item: CaseItem | CaseDetail): Promise<void> {
-    if (
-      !window.confirm(
-        `删除案例「${item.title || "无标题"}」及其全部截图？`
-      )
-    ) {
+    const ok = await confirm({
+      title: "删除案例",
+      message: `删除案例「${item.title || "无标题"}」及其全部截图？`,
+      confirmLabel: "删除"
+    });
+
+    if (!ok) {
       return;
     }
 
@@ -399,7 +403,17 @@ export function CasesPanel() {
   }
 
   async function deleteImage(image: CaseImage): Promise<void> {
-    if (!detail || !window.confirm("删除这张截图？")) {
+    if (!detail) {
+      return;
+    }
+
+    const ok = await confirm({
+      title: "删除截图",
+      message: "删除这张截图？",
+      confirmLabel: "删除"
+    });
+
+    if (!ok) {
       return;
     }
 
