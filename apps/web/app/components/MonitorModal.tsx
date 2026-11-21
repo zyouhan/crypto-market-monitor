@@ -456,6 +456,7 @@ export function MonitorModal({
               <label>监控项名称</label>
               <input
                 value={name}
+                autoFocus
                 placeholder="留空自动生成，如 BTCUSDT 5m"
                 onChange={(event) =>
                   setName(event.target.value)
