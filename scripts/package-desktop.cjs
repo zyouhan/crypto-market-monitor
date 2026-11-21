@@ -60,6 +60,19 @@ if (
 
 const cli = fs.existsSync(localCli) ? localCli : rootCli;
 const args = process.argv.slice(2);
+const outputArg = args.find((arg) =>
+  arg.startsWith("--config.directories.output=")
+);
+const outputDir =
+  outputArg?.split("=").slice(1).join("=") ||
+  process.env.DESKTOP_OUTPUT ||
+  "dist";
+
+if (!outputArg && process.env.DESKTOP_OUTPUT) {
+  args.push(
+    `--config.directories.output=${process.env.DESKTOP_OUTPUT}`
+  );
+}
 
 if (process.platform === "win32") {
   const running = spawnSync(
@@ -89,7 +102,7 @@ if (process.platform === "win32") {
 
 const outputAsar = path.join(
   desktop,
-  "dist",
+  outputDir,
   "win-unpacked",
   "resources",
   "app.asar"
