@@ -420,13 +420,25 @@ apps/desktop/dist/win-unpacked/resources/app-config.json
 ### 免安装打包
 
 ```bash
-npm run desktop:pack
+npm run desktop:pack   # 仅生成免安装目录
 ```
 
 产物：
 
 ```text
 apps/desktop/dist/win-unpacked/Crypto Market Monitor.exe
+```
+
+如果旧程序仍在运行导致 `app.asar` 被占用，可以先关闭程序和等待杀毒扫描结束；也可以生成到独立目录：
+
+```bash
+npm run desktop:pack:next
+```
+
+产物：
+
+```text
+apps/desktop/dist-next/win-unpacked/Crypto Market Monitor.exe
 ```
 
 直接双击运行即可，不生成安装包，不需要安装流程。
