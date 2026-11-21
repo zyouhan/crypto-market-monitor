@@ -121,20 +121,23 @@ export function MonitorRow({
           (reference) => reference.interval === interval
         )
     );
+  const latestSignalInterval = latestSignal
+    ? signalIntervalLabel(latestSignal)
+    : null;
+  const latestSignalConditions = latestSignal?.primary_condition
+    ? item.conditions.filter(
+        (condition) =>
+          condition.kind === latestSignal.primary_condition
+      )
+    : [];
   const latestSignalIsCurrent =
     !latestSignal ||
     !latestSignal.primary_condition ||
-    !(
-      item.conditions.find(
-        (condition) =>
-          condition.kind === latestSignal.primary_condition
-      )?.interval
-    ) ||
-    signalIntervalLabel(latestSignal) ===
-      item.conditions.find(
-        (condition) =>
-          condition.kind === latestSignal.primary_condition
-      )?.interval;
+    latestSignalConditions.length === 0 ||
+    latestSignalConditions.some(
+      (condition) =>
+        condition.interval === latestSignalInterval
+    );
   const zoneStatuses = item.conditions
     .filter((condition) => condition.kind === "MACD_DEA_ZONE")
     .map((condition) => {
