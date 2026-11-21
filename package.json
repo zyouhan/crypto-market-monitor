@@ -13,7 +13,6 @@
         "desktop:install": "node scripts/install-desktop.cjs",
         "desktop:dev": "npm run desktop:install && npm run dev --prefix apps/desktop",
         "desktop:pack": "node scripts/package-desktop.cjs --dir",
-        "desktop:pack:next": "node scripts/package-desktop.cjs --dir --config.directories.output=dist-next",
         "typecheck": "npm run typecheck -w apps/server && npm run typecheck -w apps/web"
     },
     "devDependencies": {

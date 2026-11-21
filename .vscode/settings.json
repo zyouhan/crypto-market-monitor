@@ -1,10 +1,8 @@
 {
   "files.watcherExclude": {
-    "**/apps/desktop/dist/**": true,
-    "**/apps/desktop/dist-next/**": true
+    "**/apps/desktop/dist/**": true
   },
   "search.exclude": {
-    "**/apps/desktop/dist/**": true,
-    "**/apps/desktop/dist-next/**": true
+    "**/apps/desktop/dist/**": true
   }
 }
