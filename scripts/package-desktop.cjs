@@ -60,19 +60,6 @@ if (
 
 const cli = fs.existsSync(localCli) ? localCli : rootCli;
 const args = process.argv.slice(2);
-const outputArg = args.find((arg) =>
-  arg.startsWith("--config.directories.output=")
-);
-const outputDir =
-  outputArg?.split("=").slice(1).join("=") ||
-  process.env.DESKTOP_OUTPUT ||
-  "dist";
-
-if (!outputArg && process.env.DESKTOP_OUTPUT) {
-  args.push(
-    `--config.directories.output=${process.env.DESKTOP_OUTPUT}`
-  );
-}
 
 if (process.platform === "win32") {
   const running = spawnSync(
@@ -102,7 +89,7 @@ if (process.platform === "win32") {
 
 const outputAsar = path.join(
   desktop,
-  outputDir,
+  "dist",
   "win-unpacked",
   "resources",
   "app.asar"
@@ -122,7 +109,7 @@ if (fs.existsSync(outputAsar)) {
       "[desktop] 常见占用者：VS Code 扩展/搜索索引、杀毒软件、资源管理器预览。"
     );
     console.error(
-      "[desktop] 可先退出编辑器或改用 npm run desktop:pack:next。"
+      "[desktop] 可先退出编辑器或等待占用结束。"
     );
     process.exit(1);
   }
