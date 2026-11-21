@@ -88,13 +88,8 @@ if (!gotLock) {
       mainWindow.webContents.focus();
     });
 
-    mainWindow.on("focus", () => {
-      mainWindow.webContents.focus();
-    });
-
     mainWindow.on("restore", () => {
       mainWindow.focus();
-      mainWindow.webContents.focus();
     });
 
     mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -146,10 +141,6 @@ if (!gotLock) {
   app.whenReady().then(() => {
     Menu.setApplicationMenu(null);
     createWindow();
-
-    app.on("browser-window-focus", (_event, window) => {
-      window.webContents.focus();
-    });
 
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) {
