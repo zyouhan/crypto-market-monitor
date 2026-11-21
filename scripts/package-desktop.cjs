@@ -61,6 +61,57 @@ if (
 const cli = fs.existsSync(localCli) ? localCli : rootCli;
 const args = process.argv.slice(2);
 
+if (process.platform === "win32") {
+  const running = spawnSync(
+    "tasklist",
+    [
+      "/FI",
+      "IMAGENAME eq Crypto Market Monitor.exe",
+      "/NH"
+    ],
+    { encoding: "utf8", shell: false }
+  );
+
+  if (
+    (running.stdout ?? "")
+      .toLowerCase()
+      .includes("crypto market monitor.exe")
+  ) {
+    console.error(
+      "[desktop] Crypto Market Monitor 正在运行，app.asar 被占用。"
+    );
+    console.error(
+      "[desktop] 请先完全退出程序后再执行 npm run desktop:pack。"
+    );
+    process.exit(1);
+  }
+}
+
+const outputAsar = path.join(
+  desktop,
+  "dist",
+  "win-unpacked",
+  "resources",
+  "app.asar"
+);
+
+if (fs.existsSync(outputAsar)) {
+  const lockProbe = `${outputAsar}.locktest`;
+
+  try {
+    fs.renameSync(outputAsar, lockProbe);
+    fs.renameSync(lockProbe, outputAsar);
+  } catch {
+    console.error(
+      "[desktop] app.asar 仍被其他进程占用，无法覆盖。"
+    );
+    console.error(
+      "[desktop] 请关闭 Crypto Market Monitor、等待杀毒/资源管理器扫描结束后重试。"
+    );
+    process.exit(1);
+  }
+}
+
 const result = spawnSync(process.execPath, [cli, ...args], {
   cwd: desktop,
   env: {
