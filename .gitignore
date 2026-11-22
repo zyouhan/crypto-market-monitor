@@ -9,6 +9,7 @@ data/*
 !data/.gitkeep
 
 backups/
+apps/desktop/config.json
 
 # 本地部署笔记，不纳入版本库
 DEPLOY.md
