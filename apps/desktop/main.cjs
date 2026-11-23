@@ -68,6 +68,8 @@ if (!gotLock) {
 
   function createWindow() {
     mainWindow = new BrowserWindow({
+      name: 'main-window',
+      windowStatePersistence: true,
       width: 1440,
       height: 900,
       minWidth: 960,
