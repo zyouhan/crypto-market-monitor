@@ -274,6 +274,12 @@ export function ConditionEditor({
   );
 }
 
+export function defaultConditionLogic(
+  role: ConditionRole
+): ConditionLogic {
+  return role === "filter" ? "AND" : "OR";
+}
+
 export function createDefaultCondition(
   definition: ConditionCatalogItem,
   interval: string,
@@ -282,7 +288,7 @@ export function createDefaultCondition(
   return {
     kind: definition.kind,
     role,
-    logic: "AND",
+    logic: defaultConditionLogic(role),
     interval,
     params: defaultsFor(definition)
   };

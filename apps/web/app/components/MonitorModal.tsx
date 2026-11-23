@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 import {
   ConditionEditor,
   createDefaultCondition,
+  defaultConditionLogic,
   type ConditionDraft
 } from "./ConditionEditor";
 import {
@@ -128,7 +129,9 @@ export function MonitorModal({
       ? item.conditions.map((condition) => ({
           kind: condition.kind,
           role: condition.role,
-          logic: condition.logic ?? "AND",
+          logic:
+            condition.logic ??
+            defaultConditionLogic(condition.role),
           interval: condition.interval,
           params: { ...condition.params }
         }))
@@ -611,7 +614,7 @@ export function MonitorModal({
           </div>
 
           <div className="section-help">
-            条件按列表顺序组合：与 = AND，或 = OR，非 = AND NOT；第一个条件的逻辑不参与运算。至少需要在一个正向触发条件上产生信号。
+            条件按列表顺序组合：与 = AND，或 = OR，非 = AND NOT；第一个条件的逻辑不参与运算。新增触发条件默认「或」，新增过滤条件默认「与」。至少需要在一个正向触发条件上产生信号。
           </div>
 
           <div className="condition-add">

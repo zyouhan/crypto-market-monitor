@@ -4,7 +4,8 @@ import {
 } from "../components/ConditionEditor";
 import type {
   ConditionCatalogItem,
-  ConditionKind
+  ConditionKind,
+  ConditionLogic
 } from "../types";
 
 export interface MonitorPreset {
@@ -28,7 +29,8 @@ function makeCondition(
   kind: ConditionKind,
   role: "trigger" | "filter",
   interval: string,
-  params: Record<string, unknown>
+  params: Record<string, unknown>,
+  logic: ConditionLogic = "AND"
 ): ConditionDraft | null {
   const definition = catalog.find((item) => item.kind === kind);
 
@@ -44,6 +46,7 @@ function makeCondition(
 
   return {
     ...draft,
+    logic,
     params: { ...draft.params, ...params }
   };
 }
@@ -99,7 +102,8 @@ export const MONITOR_PRESETS: MonitorPreset[] = [
               fast: 12,
               slow: 26,
               signal: 9
-            }
+            },
+            "AND"
           )
       );
 
