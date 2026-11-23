@@ -3201,11 +3201,34 @@ option {
   background: #0c121c;
 }
 
+.note-card.pinned {
+  border-color: rgb(255 196 92 / 32%);
+}
+
 .note-card-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
+}
+
+.note-card-head .note-card-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.note-card-head .note-pin-badge {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border: 1px solid rgb(255 196 92 / 35%);
+  border-radius: 8px;
+  background: rgb(255 196 92 / 12%);
+  color: #ffc45c;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
 }
 
 .note-card-head strong {

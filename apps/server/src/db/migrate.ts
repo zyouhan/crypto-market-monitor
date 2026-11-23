@@ -592,6 +592,26 @@ export function ensureConditionLogicColumn(
   }
 }
 
+export function ensureNotesPinnedColumn(
+  database: Database.Database
+): void {
+  if (!tableExists(database, "notes")) {
+    return;
+  }
+
+  if (!hasColumn(database, "notes", "pinned")) {
+    database.exec(`
+      ALTER TABLE notes
+      ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0
+    `);
+  }
+
+  database.exec(`
+    CREATE INDEX IF NOT EXISTS idx_notes_pinned_updated
+      ON notes(pinned DESC, updated_at DESC, id DESC)
+  `);
+}
+
 export function ensureSignalIntervalUniqueIndex(
   database: Database.Database
 ): void {

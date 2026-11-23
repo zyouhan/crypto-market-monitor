@@ -18,6 +18,7 @@ interface NoteItem {
   id: number;
   title: string;
   content: string;
+  pinned: number;
   tags: string[];
   created_at: number;
   updated_at: number;
@@ -75,6 +76,7 @@ export function NotesDock() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [pinningId, setPinningId] = useState<number | null>(null);
   const [error, setError] = useState("");
   const requestIdRef = useRef(0);
 
@@ -261,6 +263,27 @@ export function NotesDock() {
     }
   }
 
+  async function togglePin(note: NoteItem): Promise<void> {
+    if (pinningId !== null) {
+      return;
+    }
+
+    setPinningId(note.id);
+    setError("");
+
+    try {
+      await api(`/api/notes/${note.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ pinned: note.pinned === 0 })
+      });
+      await loadNotes();
+    } catch (pinError) {
+      setError(errorMessage(pinError));
+    } finally {
+      setPinningId(null);
+    }
+  }
+
   const activeTagCount = tags.find(
     (item) => item.tag === tagFilter
   )?.count;
@@ -351,9 +374,21 @@ export function NotesDock() {
                 ) : (
                   <div className="notes-list">
                     {items.map((note) => (
-                      <article className="note-card" key={note.id}>
+                      <article
+                        className={`note-card${
+                          note.pinned ? " pinned" : ""
+                        }`}
+                        key={note.id}
+                      >
                         <div className="note-card-head">
-                          <strong>{note.title || "无标题"}</strong>
+                          <div className="note-card-title">
+                            <strong>{note.title || "无标题"}</strong>
+                            {note.pinned ? (
+                              <span className="note-pin-badge">
+                                置顶
+                              </span>
+                            ) : null}
+                          </div>
                           <span>{formatTime(note.updated_at)}</span>
                         </div>
                         <p className="note-content">
@@ -379,6 +414,14 @@ export function NotesDock() {
                           </div>
                         )}
                         <div className="note-actions">
+                          <button
+                            type="button"
+                            className="button small"
+                            disabled={pinningId === note.id}
+                            onClick={() => void togglePin(note)}
+                          >
+                            {note.pinned ? "取消置顶" : "置顶"}
+                          </button>
                           <button
                             type="button"
                             className="button small"

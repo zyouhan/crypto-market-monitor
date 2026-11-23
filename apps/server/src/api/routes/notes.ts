@@ -13,6 +13,7 @@ interface NoteRow {
   id: number;
   title: string;
   content: string;
+  pinned: number;
   created_at: number;
   updated_at: number;
 }
@@ -134,7 +135,7 @@ function toNoteView(
 
 function getNote(id: number): NoteView | null {
   const row = db.prepare(`
-    SELECT id, title, content, created_at, updated_at
+    SELECT id, title, content, pinned, created_at, updated_at
     FROM notes
     WHERE id = ?
   `).get(id) as NoteRow | undefined;
@@ -232,10 +233,10 @@ notesRouter.get("/", (req, res) => {
   const currentPage = Math.min(page, totalPages);
   const offset = (currentPage - 1) * limit;
   const rows = db.prepare(`
-    SELECT id, title, content, created_at, updated_at
+    SELECT id, title, content, pinned, created_at, updated_at
     FROM notes
     ${where}
-    ORDER BY updated_at DESC, id DESC
+    ORDER BY pinned DESC, updated_at DESC, id DESC
     LIMIT ? OFFSET ?
   `).all(...params, limit, offset) as NoteRow[];
   const tagMap = tagsForNotes(rows.map((row) => row.id));
@@ -329,6 +330,46 @@ notesRouter.put("/:id", (req, res) => {
   }
 
   res.json(success(note, "笔记已更新"));
+});
+
+notesRouter.patch("/:id", (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!isPositiveInteger(id)) {
+    res.status(400).json(failure("笔记 ID 不正确"));
+    return;
+  }
+
+  if (!getNote(id)) {
+    res.status(404).json(failure("笔记不存在"));
+    return;
+  }
+
+  const body =
+    typeof req.body === "object" && req.body !== null
+      ? (req.body as Record<string, unknown>)
+      : {};
+
+  if (typeof body.pinned !== "boolean") {
+    res.status(400).json(failure("pinned 必须为布尔值"));
+    return;
+  }
+
+  db.prepare("UPDATE notes SET pinned = ? WHERE id = ?").run(
+    body.pinned ? 1 : 0,
+    id
+  );
+
+  const note = getNote(id);
+
+  if (!note) {
+    res.status(404).json(failure("笔记不存在"));
+    return;
+  }
+
+  res.json(
+    success(note, body.pinned ? "笔记已置顶" : "已取消置顶")
+  );
 });
 
 notesRouter.delete("/:id", (req, res) => {

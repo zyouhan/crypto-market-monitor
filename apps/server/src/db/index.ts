@@ -6,6 +6,7 @@ import Database from "better-sqlite3";
 import { PROJECT_ROOT } from "../config/paths";
 import {
   ensureConditionLogicColumn,
+  ensureNotesPinnedColumn,
   ensurePresetColumns,
   ensureSignalIntervalUniqueIndex,
   ensureStatsColumns,
@@ -119,6 +120,7 @@ function openDatabase(dbFile: string): Database.Database {
 
   ensureStopWatchProgressColumns(database);
   ensureConditionLogicColumn(database);
+  ensureNotesPinnedColumn(database);
   ensurePresetColumns(database);
   ensureStatsColumns(database);
   ensureSignalIntervalUniqueIndex(database);
