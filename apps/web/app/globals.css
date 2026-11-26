@@ -971,6 +971,18 @@ td {
   color: var(--muted);
 }
 
+.realtime-tag {
+  margin-left: 5px;
+  padding: 1px 5px;
+  border: 1px solid rgb(255 196 92 / 35%);
+  border-radius: 7px;
+  background: rgb(255 196 92 / 12%);
+  color: #ffc45c;
+  font-size: 10px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
 @keyframes toast-in {
   from {
     opacity: 0;

@@ -291,6 +291,7 @@ export interface MonitorSignalItem {
   direction: "BULL" | "BEAR" | null;
   price: number;
   event_time: number;
+  candle_time?: number | null;
   primary_condition: string | null;
   conditions: ConditionSnapshot[];
   source: string | null;

@@ -104,6 +104,7 @@ export interface MonitorSignalRecord {
   direction: SignalDirection | null;
   price: number;
   event_time: number;
+  candle_time: number | null;
   primary_condition: string | null;
   conditions: string | null;
   source: string | null;
@@ -133,6 +134,7 @@ export interface NewMonitorSignalRecord {
   direction: SignalDirection | null;
   price: number;
   event_time: number;
+  candle_time: number | null;
   primary_condition: string | null;
   conditions: string;
   source: string | null;

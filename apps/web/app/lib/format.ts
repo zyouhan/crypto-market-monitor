@@ -35,6 +35,12 @@ export function formatTime(
   });
 }
 
+export function isRealtimeSignal(
+  payload: Record<string, unknown> | null | undefined
+): boolean {
+  return payload?.realtime === true;
+}
+
 export function crossName(
   type: string | null | undefined
 ): string {

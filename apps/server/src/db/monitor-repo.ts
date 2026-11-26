@@ -397,6 +397,7 @@ export function insertSignalIgnore(
       direction,
       price,
       event_time,
+      candle_time,
       primary_condition,
       conditions,
       source,
@@ -408,7 +409,7 @@ export function insertSignalIgnore(
       reason,
       payload,
       created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     input.monitor_id,
     input.monitor_name,
@@ -424,6 +425,7 @@ export function insertSignalIgnore(
     input.direction,
     input.price,
     input.event_time,
+    input.candle_time,
     input.primary_condition,
     input.conditions,
     input.source,

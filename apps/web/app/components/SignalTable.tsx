@@ -6,6 +6,7 @@ import {
   eventTypeLabel,
   formatPrice,
   formatTime,
+  isRealtimeSignal,
   signalIntervalLabel
 } from "../lib/format";
 import type { MonitorItem, MonitorSignalItem } from "../types";
@@ -464,7 +465,12 @@ export function SignalTable({
             <tbody>
               {filtered.map((signal) => (
                 <tr key={signal.id}>
-                  <td>{formatTime(signal.event_time)}</td>
+                  <td>
+                    {formatTime(signal.event_time)}
+                    {isRealtimeSignal(signal.payload) ? (
+                      <span className="realtime-tag">盘中</span>
+                    ) : null}
+                  </td>
                   <td>{signal.symbol}</td>
                   <td>{signalIntervalLabel(signal)}</td>
                   <td>{signal.monitor_name ?? "历史记录"}</td>

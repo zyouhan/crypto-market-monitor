@@ -622,6 +622,27 @@ export function ensureSignalIntervalUniqueIndex(
   `);
 }
 
+export function ensureSignalCandleTimeColumn(
+  database: Database.Database
+): void {
+  if (!tableExists(database, "signals")) {
+    return;
+  }
+
+  if (!hasColumn(database, "signals", "candle_time")) {
+    database.exec(`
+      ALTER TABLE signals
+      ADD COLUMN candle_time INTEGER
+    `);
+  }
+
+  database.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_signals_monitor_event_candle
+      ON signals(monitor_id, event_type, interval, candle_time)
+      WHERE candle_time IS NOT NULL
+  `);
+}
+
 export function ensurePresetQualityFilters(
   database: Database.Database
 ): void {

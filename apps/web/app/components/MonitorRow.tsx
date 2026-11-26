@@ -6,6 +6,7 @@ import {
   eventTypeLabel,
   formatPrice,
   formatTime,
+  isRealtimeSignal,
   signalEventLabel,
   signalIntervalLabel
 } from "../lib/format";
@@ -307,6 +308,9 @@ export function MonitorRow({
               <div className="row-signal-meta">
                 {formatPrice(latestSignal.price)} ·{" "}
                 {formatTime(latestSignal.event_time)}
+                {isRealtimeSignal(latestSignal.payload)
+                  ? "（盘中）"
+                  : ""}
               </div>
             </>
           ) : (

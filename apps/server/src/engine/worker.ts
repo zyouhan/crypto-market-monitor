@@ -60,6 +60,18 @@ const MAX_CONCURRENT_MONITORS = Math.min(
   10
 );
 
+const rawIntradayInterval =
+  process.env.INTRADAY_INTERVAL_MS?.trim();
+
+const configuredIntradayInterval =
+  rawIntradayInterval ? Number(rawIntradayInterval) : NaN;
+
+const INTRADAY_INTERVAL_MS =
+  Number.isFinite(configuredIntradayInterval) &&
+  configuredIntradayInterval >= 0
+    ? configuredIntradayInterval
+    : 60000;
+
 export interface WorkerHealth {
   running: boolean;
   lastCycleAt: number | null;
@@ -133,13 +145,27 @@ function isMonitorDue(
     return true;
   }
 
-  return (
+  if (
     now >=
     getNextCloseTime(
       monitor.last_processed_close_time,
       monitor.interval
     )
-  );
+  ) {
+    return true;
+  }
+
+  if (
+    INTRADAY_INTERVAL_MS > 0 &&
+    monitor.interval !== "1m"
+  ) {
+    return (
+      now - (monitor.last_attempt_at ?? 0) >=
+      INTRADAY_INTERVAL_MS
+    );
+  }
+
+  return false;
 }
 
 async function runWithConcurrency<T>(
@@ -246,6 +272,7 @@ function toSignalRecord(
     direction: draft.direction,
     price: draft.price,
     event_time: draft.eventTime,
+    candle_time: draft.eventTime,
     primary_condition: draft.primaryCondition,
     conditions: JSON.stringify(draft.conditions),
     source: null,
@@ -369,6 +396,7 @@ function stopHitRecord(
     direction: watch.direction,
     price: watch.stop_price,
     event_time: hitKline.closeTime,
+    candle_time: hitKline.closeTime,
     primary_condition: "RISK",
     conditions: JSON.stringify([]),
     source,
@@ -413,6 +441,7 @@ function managementSignalRecord(
     direction: watch.direction,
     price,
     event_time: eventTime,
+    candle_time: eventTime,
     primary_condition: "RISK",
     conditions: JSON.stringify([]),
     source,
@@ -481,7 +510,8 @@ async function runMonitor(
           promise = getMarketKlines(
             monitor.symbol,
             interval,
-            getKlineLimit()
+            getKlineLimit(),
+            { includeUnclosed: INTRADAY_INTERVAL_MS > 0 }
           );
           cache.set(key, promise);
         }
@@ -498,7 +528,29 @@ async function runMonitor(
     );
   }
 
-  const baseKlines = marketByInterval.get(monitor.interval)?.klines ?? [];
+  const now = Date.now();
+  const closedMarketByInterval = new Map<string, MarketKlines>();
+  let partialBase: Kline | null = null;
+
+  for (const [interval, market] of marketByInterval) {
+    const closed = market.klines.filter(
+      (kline) => kline.closeTime <= now
+    );
+    closedMarketByInterval.set(interval, {
+      ...market,
+      klines: closed
+    });
+
+    if (interval === monitor.interval) {
+      partialBase =
+        market.klines
+          .filter((kline) => kline.closeTime > now)
+          .at(-1) ?? null;
+    }
+  }
+
+  const baseKlines =
+    closedMarketByInterval.get(monitor.interval)?.klines ?? [];
 
   if (baseKlines.length === 0) {
     throw new Error("入场周期没有可用 K 线");
@@ -526,7 +578,8 @@ async function runMonitor(
 
     const definition = getConditionDefinition(condition.kind);
     const interval = conditionInterval(condition, monitor);
-    const klines = marketByInterval.get(interval)?.klines ?? [];
+    const klines =
+      closedMarketByInterval.get(interval)?.klines ?? [];
 
     if (klines.length === 0) {
       throw new Error(`条件周期 ${interval} 没有可用 K 线`);
@@ -575,10 +628,12 @@ async function runMonitor(
   }
 
   const latestBase = baseKlines[baseKlines.length - 1];
-  const { source, note } = combineSource(marketByInterval);
+  const { source, note } = combineSource(
+    closedMarketByInterval
+  );
   const referenceKlines = new Map<string, Kline[]>();
 
-  for (const [interval, market] of marketByInterval) {
+  for (const [interval, market] of closedMarketByInterval) {
     referenceKlines.set(interval, market.klines);
   }
 
@@ -592,11 +647,188 @@ async function runMonitor(
       : null;
   const snapshot = buildSnapshot(
     runtimes,
-    marketByInterval,
+    closedMarketByInterval,
     latestBase.close,
     currentReferenceTrends
   );
   const successAt = Date.now();
+
+  async function runIntradayPass(): Promise<void> {
+    const partial = partialBase;
+
+    if (
+      INTRADAY_INTERVAL_MS <= 0 ||
+      monitor.interval === "1m" ||
+      !partial
+    ) {
+      return;
+    }
+
+    try {
+      const baseClosed =
+        closedMarketByInterval.get(monitor.interval)?.klines ??
+        [];
+      const stateByCondition = new Map<
+        number,
+        Record<string, unknown>
+      >();
+
+      for (const update of stateUpdates) {
+        stateByCondition.set(
+          update.condition.id,
+          update.result.state
+        );
+      }
+
+      const intradayRuntimes: ConditionRuntime[] = [];
+
+      for (const condition of conditions) {
+        const closedRuntime = runtimes.find(
+          (runtime) => runtime.id === condition.id
+        );
+
+        if (!closedRuntime) {
+          continue;
+        }
+
+        if (
+          conditionInterval(condition, monitor) !==
+          monitor.interval
+        ) {
+          intradayRuntimes.push(closedRuntime);
+          continue;
+        }
+
+        const state =
+          stateByCondition.get(condition.id) ??
+          parseJsonObject(condition.state);
+        const result = closedRuntime.definition.run({
+          state: { ...state },
+          params: closedRuntime.params,
+          klines: [...baseClosed, partial],
+          newKlines: [partial],
+          warmup: false
+        });
+
+        intradayRuntimes.push({
+          ...closedRuntime,
+          result
+        });
+      }
+
+      const drafts = evaluateMonitorSignals({
+        monitor,
+        runtimes: intradayRuntimes,
+        newBaseKlines: [partial],
+        source
+      }).filter(
+        (draft) => draft.eventTime === partial.closeTime
+      );
+      const detectedAt = Date.now();
+      const insertedIds: number[] = [];
+      const intradaySnapshot = buildSnapshot(
+        intradayRuntimes,
+        closedMarketByInterval,
+        partial.close,
+        currentReferenceTrends
+      );
+
+      const transaction = db.transaction(() => {
+        for (const draft of drafts) {
+          const referenceTrends =
+            referenceIntervals.length > 0
+              ? JSON.stringify(
+                  buildReferenceTrends(
+                    referenceIntervals,
+                    referenceKlines,
+                    draft.eventTime
+                  )
+                )
+              : null;
+          const record = toSignalRecord(
+            monitor,
+            draft,
+            referenceTrends
+          );
+
+          const inserted = insertSignalIgnore({
+            ...record,
+            event_time: detectedAt,
+            candle_time: partial.closeTime,
+            payload: JSON.stringify({
+              ...draft.payload,
+              stopPrice: draft.stopPrice,
+              realtime: true,
+              detected_at: detectedAt,
+              candle_close_time: partial.closeTime
+            }),
+            source
+          });
+
+          if (inserted === null) {
+            continue;
+          }
+
+          insertedIds.push(inserted);
+
+          if (
+            draft.stopPrice !== null &&
+            (draft.eventType === "ENTRY_LONG" ||
+              draft.eventType === "ENTRY_SHORT")
+          ) {
+            cancelStopWatchesForDirection(
+              monitor.id,
+              draft.direction
+            );
+            createStopWatch({
+              signalId: inserted,
+              monitorId: monitor.id,
+              interval: monitor.interval,
+              direction: draft.direction,
+              entryPrice: draft.price,
+              entryTime: partial.closeTime,
+              stopPrice: draft.stopPrice
+            });
+          }
+        }
+
+        updateMonitorSnapshot({
+          id: monitor.id,
+          lastPrice: partial.close,
+          lastPriceTime: detectedAt,
+          source,
+          sourceNote: note,
+          snapshot: intradaySnapshot,
+          successAt: detectedAt
+        });
+      });
+
+      transaction();
+
+      for (const id of insertedIds) {
+        const signal = getSignalById(id);
+
+        if (signal) {
+          await dispatchMonitorNotification(
+            signal,
+            monitor,
+            globalNotifyEnabled
+          );
+        }
+      }
+
+      if (insertedIds.length > 0) {
+        console.log(
+          `[Worker] ${monitor.name} 盘中触发 ${insertedIds.length} 条`
+        );
+      }
+    } catch (error) {
+      console.error(
+        `[Worker] ${monitor.name} 盘中检测失败:`,
+        error
+      );
+    }
+  }
 
   if (warmup) {
     const updateWarmup = () => {
@@ -668,6 +900,7 @@ async function runMonitor(
     const transaction = db.transaction(updateSnapshot);
     transaction();
 
+    await runIntradayPass();
     return;
   }
 
@@ -891,6 +1124,8 @@ async function runMonitor(
       );
     }
   }
+
+  await runIntradayPass();
 }
 
 async function runMonitorCycle(forceIds?: number[]): Promise<void> {
@@ -1041,7 +1276,11 @@ export function startWorker(): void {
   isStopped = false;
 
   console.log(
-    `[Worker] 启动，扫描间隔 ${POLL_INTERVAL_MS}ms，并发 ${MAX_CONCURRENT_MONITORS}`
+    `[Worker] 启动，扫描间隔 ${POLL_INTERVAL_MS}ms，盘中间隔 ${
+      INTRADAY_INTERVAL_MS > 0
+        ? `${INTRADAY_INTERVAL_MS}ms`
+        : "关闭"
+    }，并发 ${MAX_CONCURRENT_MONITORS}`
   );
 
   void runMonitorCycle();

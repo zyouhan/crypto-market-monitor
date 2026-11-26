@@ -100,6 +100,7 @@ const V5_SCHEMA_SQL = `
 
     price REAL NOT NULL,
     event_time INTEGER NOT NULL,
+    candle_time INTEGER,
 
     primary_condition TEXT,
     conditions TEXT,

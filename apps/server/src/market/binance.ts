@@ -134,8 +134,10 @@ type BinanceKlineRow = [
 export async function getKlines(
   symbol: string,
   interval: string,
-  limit = KLINE_LIMIT
+  limit = KLINE_LIMIT,
+  options: { includeUnclosed?: boolean } = {}
 ): Promise<Kline[]> {
+  const includeUnclosed = options.includeUnclosed === true;
   const normalizedSymbol = symbol.trim().toUpperCase();
 
   if (!/^[A-Z0-9]{2,30}$/.test(normalizedSymbol)) {
@@ -177,7 +179,7 @@ export async function getKlines(
         Array.isArray(row) &&
         row.length >= 7 &&
         Number.isFinite(Number(row[6])) &&
-        Number(row[6]) < now
+        (includeUnclosed || Number(row[6]) < now)
       );
     })
     .map((row) => ({

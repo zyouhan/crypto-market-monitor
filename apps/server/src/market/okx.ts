@@ -131,8 +131,10 @@ export function supportsOkxInterval(interval: string): boolean {
 export async function getOkxKlines(
   symbol: string,
   interval: string,
-  limit: number
+  limit: number,
+  options: { includeUnclosed?: boolean } = {}
 ): Promise<Kline[]> {
+  const includeUnclosed = options.includeUnclosed === true;
   const bar = OKX_BAR[interval];
 
   if (!bar) {
@@ -171,7 +173,7 @@ export async function getOkxKlines(
       return (
         Array.isArray(row) &&
         row.length >= 9 &&
-        row[8] === "1" &&
+        (includeUnclosed || row[8] === "1") &&
         Number(row[0]) < now
       );
     })

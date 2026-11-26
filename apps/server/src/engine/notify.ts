@@ -190,16 +190,31 @@ function signalTriggerInterval(
   return signal.interval ?? monitor.interval;
 }
 
+function isRealtimeSignal(
+  signal: MonitorSignalRecord
+): boolean {
+  try {
+    const payload = JSON.parse(signal.payload ?? "{}") as {
+      realtime?: unknown;
+    };
+
+    return payload.realtime === true;
+  } catch {
+    return false;
+  }
+}
+
 export function buildMonitorMessage(
   signal: MonitorSignalRecord,
   monitor: MonitorRecord
 ): { title: string; description: string } {
   const triggerInterval = signalTriggerInterval(signal, monitor);
+  const realtime = isRealtimeSignal(signal);
   const title = `[监控] ${signal.symbol} ${
     triggerInterval
   } ${signal.monitor_name ?? monitor.name} ${displayDirection(
     signal
-  )}`;
+  )}${realtime ? "（盘中）" : ""}`;
 
   const conditions = parseConditions(signal.conditions);
 
@@ -238,6 +253,9 @@ export function buildMonitorMessage(
     `方向：${displayDirection(signal)}`,
     `触发价格：${formatNumber(signal.price)}`,
     `触发时间：${formatTime(signal.event_time)}`,
+    ...(realtime
+      ? ["检测方式：盘中（K 线未收盘）"]
+      : []),
     `数据源：${signal.source ?? monitor.source ?? "--"}`,
     ...(isStopHit
       ? [

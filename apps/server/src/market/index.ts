@@ -14,6 +14,14 @@ export interface MarketKlines {
   warnings: string[];
 }
 
+export interface MarketKlineOptions {
+  /**
+   * 是否保留当前未完成 K 线。
+   * 默认 false，其他调用方仍然只拿已收盘数据。
+   */
+  includeUnclosed?: boolean;
+}
+
 let okxDisabledUntil = 0;
 
 const OKX_COOLDOWN_MS = 60_000;
@@ -25,7 +33,8 @@ function isOkxAvailable(): boolean {
 export async function getMarketKlines(
   symbol: string,
   interval: string,
-  limit = 300
+  limit = 300,
+  options: MarketKlineOptions = {}
 ): Promise<MarketKlines> {
   const warnings: string[] = [];
   let okxError: string | null = null;
@@ -36,7 +45,12 @@ export async function getMarketKlines(
     warnings.push("OKX 处于短时熔断，使用 Binance");
   } else {
     try {
-      const klines = await getOkxKlines(symbol, interval, limit);
+      const klines = await getOkxKlines(
+        symbol,
+        interval,
+        limit,
+        options
+      );
 
       if (klines.length > 0) {
         okxDisabledUntil = 0;
@@ -59,7 +73,8 @@ export async function getMarketKlines(
     const klines = await getBinanceKlines(
       symbol,
       interval,
-      limit
+      limit,
+      options
     );
 
     if (klines.length === 0) {

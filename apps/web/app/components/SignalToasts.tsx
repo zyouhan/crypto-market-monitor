@@ -3,6 +3,7 @@
 import {
   formatPrice,
   formatTime,
+  isRealtimeSignal,
   signalEventLabel,
   signalIntervalLabel
 } from "../lib/format";
@@ -83,6 +84,9 @@ export function SignalToasts({
 
             <div className="toast-time">
               {formatTime(signal.event_time)}
+              {isRealtimeSignal(signal.payload)
+                ? "（盘中）"
+                : ""}
             </div>
           </div>
         );
