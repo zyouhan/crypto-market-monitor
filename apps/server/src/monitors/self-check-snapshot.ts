@@ -1,35 +1,25 @@
-import { calculateKDJ } from "../indicators/kdj";
-import { calculateEMA } from "../indicators/ema";
-import { calculateMACD, DEFAULT_MACD_PARAMS } from "../indicators/macd";
 import { getMarketKlines } from "../market";
+import {
+  analyzeKlines,
+  emptySelfCheckAnalysis,
+  type SelfCheckAnalysis
+} from "./self-check-analysis";
 
 export const SELF_CHECK_INTERVALS = [
-  "1m",
-  "5m",
-  "15m",
+  "1d",
+  "4h",
   "1h",
-  "4h"
+  "15m",
+  "5m"
 ] as const;
 
 export type SelfCheckInterval =
   (typeof SELF_CHECK_INTERVALS)[number];
 
-export type SelfCheckDemand = "上涨需求" | "下跌需求" | null;
-
-export interface SelfCheckIntervalSnapshot {
+export interface SelfCheckIntervalSnapshot
+  extends SelfCheckAnalysis {
   interval: SelfCheckInterval;
-  trend: "up" | "down";
-  strength: "强" | "中" | "弱" | "拐头";
-  strength_pct: number;
-  j: number | null;
-  k: number | null;
-  d: number | null;
-  ema25: number | null;
-  ema60: number | null;
-  ema_arrangement: "bull" | "bear" | "flat";
-  demand: SelfCheckDemand;
   source: string | null;
-  time: number | null;
   error: string | null;
 }
 
@@ -48,18 +38,8 @@ function emptySnapshot(
 ): SelfCheckIntervalSnapshot {
   return {
     interval,
-    trend: "down",
-    strength: "弱",
-    strength_pct: 0,
-    j: null,
-    k: null,
-    d: null,
-    ema25: null,
-    ema60: null,
-    ema_arrangement: "flat",
-    demand: null,
+    ...emptySelfCheckAnalysis(),
     source: null,
-    time: null,
     error
   };
 }
@@ -77,84 +57,10 @@ async function loadInterval(
 
   try {
     const market = await getMarketKlines(symbol, interval, 300);
-    const macd = calculateMACD(market.klines, DEFAULT_MACD_PARAMS);
-    const kdj = calculateKDJ(market.klines, {
-      period: 9,
-      kSmooth: 3,
-      dSmooth: 3
-    });
-    const closes = market.klines.map((kline) => kline.close);
-    const ema25Values = calculateEMA(closes, 25);
-    const ema60Values = calculateEMA(closes, 60);
-    const ema25 = ema25Values[ema25Values.length - 1] ?? null;
-    const ema60 = ema60Values[ema60Values.length - 1] ?? null;
-    const emaArrangement =
-      ema25 === null || ema60 === null
-        ? "flat"
-        : ema25 > ema60
-          ? "bull"
-          : ema25 < ema60
-            ? "bear"
-            : "flat";
-    const lastIndex = macd.length - 1;
-    const last = macd[lastIndex];
-    const previous = macd[lastIndex - 1];
-    const previous2 = macd[lastIndex - 2];
-
-    if (
-      !last ||
-      !previous ||
-      !previous2 ||
-      last.dea === null ||
-      previous.dea === null ||
-      previous2.dea === null
-    ) {
-      throw new Error("DEA 数据不足");
-    }
-
-    const currentDelta = last.dea - previous.dea;
-    const previousDelta = previous.dea - previous2.dea;
-    const sameDirection =
-      currentDelta !== 0 &&
-      previousDelta !== 0 &&
-      Math.sign(currentDelta) === Math.sign(previousDelta);
-    const turning =
-      (previousDelta <= 0 && currentDelta > 0) ||
-      (previousDelta >= 0 && currentDelta < 0);
-    const strength = turning
-      ? "拐头"
-      : sameDirection &&
-          Math.abs(currentDelta) > Math.abs(previousDelta)
-        ? "强"
-        : sameDirection &&
-            Math.abs(currentDelta) < Math.abs(previousDelta)
-          ? "弱"
-          : "中";
-    const lastKdj = kdj[kdj.length - 1];
-    const j = lastKdj?.j ?? null;
-
     const snapshot: SelfCheckIntervalSnapshot = {
       interval,
-      trend: currentDelta >= 0 ? "up" : "down",
-      strength,
-      strength_pct:
-        last.close > 0
-          ? (Math.abs(currentDelta) / last.close) * 100
-          : 0,
-      j,
-      k: lastKdj?.k ?? null,
-      d: lastKdj?.d ?? null,
-      ema25,
-      ema60,
-      ema_arrangement: emaArrangement,
-      demand:
-        j !== null && j < 5
-          ? "上涨需求"
-          : j !== null && j > 80
-            ? "下跌需求"
-            : null,
+      ...analyzeKlines(market.klines),
       source: market.source,
-      time: last.time,
       error: null
     };
 

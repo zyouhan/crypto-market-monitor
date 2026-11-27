@@ -263,6 +263,7 @@ const V5_SCHEMA_SQL = `
     symbol TEXT NOT NULL,
     direction TEXT NOT NULL CHECK (direction IN ('BULL', 'BEAR')),
     target_interval TEXT NOT NULL,
+    scenario TEXT,
     stop_condition TEXT NOT NULL,
     snapshot_json TEXT,
     status TEXT NOT NULL DEFAULT 'active'

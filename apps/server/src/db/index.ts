@@ -8,6 +8,7 @@ import {
   ensureConditionLogicColumn,
   ensureNotesPinnedColumn,
   ensurePresetColumns,
+  ensureSelfCheckScenarioColumn,
   ensureSignalCandleTimeColumn,
   ensureSignalIntervalUniqueIndex,
   ensureStatsColumns,
@@ -126,6 +127,7 @@ function openDatabase(dbFile: string): Database.Database {
   ensureStatsColumns(database);
   ensureSignalIntervalUniqueIndex(database);
   ensureSignalCandleTimeColumn(database);
+  ensureSelfCheckScenarioColumn(database);
 
   seedSettings(database);
   seedDefaultMonitors(database);

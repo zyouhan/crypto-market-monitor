@@ -4,6 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 
 import { api, errorMessage } from "../lib/api";
 import { formatTime } from "../lib/format";
+import {
+  intervalLabel,
+  scenarioLabel
+} from "../lib/self-check";
 import { useConfirm } from "./ConfirmDialog";
 import { Pagination } from "./Pagination";
 import { TruncatedText } from "./TruncatedText";
@@ -24,6 +28,7 @@ interface SelfCheckRecord {
   symbol: string;
   direction: "BULL" | "BEAR";
   target_interval: string;
+  scenario: string | null;
   stop_condition: string;
   snapshot: IntervalSnapshot[] | null;
   status: "active" | "closed";
@@ -200,7 +205,7 @@ export function SelfCheckRecords() {
             <thead>
               <tr>
                 <th>标的</th>
-                <th>方向</th>
+                <th>方向 / 场景</th>
                 <th>目标级别</th>
                 <th>开单时间</th>
                 <th>平仓时间</th>
@@ -224,8 +229,11 @@ export function SelfCheckRecords() {
                       >
                         {item.direction === "BULL" ? "做多" : "做空"}
                       </span>
+                      <div className="self-check-record-scenario">
+                        {scenarioLabel(item.scenario)}
+                      </div>
                     </td>
-                    <td>{item.target_interval}</td>
+                    <td>{intervalLabel(item.target_interval)}</td>
                     <td>{formatTime(item.created_at)}</td>
                     <td>
                       {item.closed_at

@@ -6,6 +6,7 @@ import {
   SELF_CHECK_INTERVALS,
   type SelfCheckIntervalSnapshot
 } from "../../monitors/self-check-snapshot";
+import { findSelfCheckScenario } from "../../monitors/self-check-scenarios";
 import {
   evaluateExecutionResult,
   type TradeQuality
@@ -27,6 +28,7 @@ interface SelfCheckRow {
   symbol: string;
   direction: SelfCheckDirection;
   target_interval: string;
+  scenario: string | null;
   stop_condition: string;
   snapshot_json: string | null;
   status: SelfCheckStatus;
@@ -77,6 +79,7 @@ function readCreateInput(body: unknown): {
   symbol: string;
   direction: SelfCheckDirection;
   targetInterval: string;
+  scenario: string | null;
   stopCondition: string;
   note: string;
 } {
@@ -88,7 +91,7 @@ function readCreateInput(body: unknown): {
     typeof input.symbol === "string"
       ? input.symbol.trim().toUpperCase()
       : "";
-  const direction =
+  const requestedDirection =
     input.direction === "BULL" || input.direction === "BEAR"
       ? input.direction
       : null;
@@ -104,10 +107,27 @@ function readCreateInput(body: unknown): {
     typeof input.note === "string"
       ? input.note.trim()
       : "";
+  const scenarioDefinition = findSelfCheckScenario(input.scenario);
 
   if (!/^[A-Z0-9]{2,30}$/.test(symbol)) {
     throw new Error("标的不正确");
   }
+
+  if (typeof input.scenario === "string" && input.scenario) {
+    if (!scenarioDefinition) {
+      throw new Error("做单场景不正确");
+    }
+
+    if (
+      requestedDirection &&
+      requestedDirection !== scenarioDefinition.direction
+    ) {
+      throw new Error("做单场景与方向不一致");
+    }
+  }
+
+  const direction =
+    scenarioDefinition?.direction ?? requestedDirection;
 
   if (!direction) {
     throw new Error("开单方向不正确");
@@ -133,7 +153,14 @@ function readCreateInput(body: unknown): {
     throw new Error(`备注不能超过 ${MAX_NOTE_LENGTH} 个字符`);
   }
 
-  return { symbol, direction, targetInterval, stopCondition, note };
+  return {
+    symbol,
+    direction,
+    targetInterval,
+    scenario: scenarioDefinition?.value ?? null,
+    stopCondition,
+    note
+  };
 }
 
 function getRow(id: number): SelfCheckRow | null {
@@ -238,6 +265,30 @@ selfChecksRouter.get("/live", async (_req, res) => {
   );
 });
 
+selfChecksRouter.get("/preview", async (req, res) => {
+  const symbol =
+    typeof req.query.symbol === "string"
+      ? req.query.symbol.trim().toUpperCase()
+      : "";
+
+  if (!/^[A-Z0-9]{2,30}$/.test(symbol)) {
+    res.status(400).json(failure("标的不正确"));
+    return;
+  }
+
+  try {
+    const snapshot = await buildSelfCheckSnapshot(symbol);
+
+    res.json(success({ symbol, snapshot }));
+  } catch (error) {
+    res.status(500).json(
+      failure(
+        error instanceof Error ? error.message : "行情分析失败"
+      )
+    );
+  }
+});
+
 selfChecksRouter.get("/records", (req, res) => {
   const page = Math.max(Number(req.query.page) || 1, 1);
   const limit = Math.min(
@@ -337,13 +388,14 @@ selfChecksRouter.post("/", async (req, res) => {
   const now = Date.now();
   const result = db.prepare(`
     INSERT INTO self_checks (
-      symbol, direction, target_interval, stop_condition,
+      symbol, direction, target_interval, scenario, stop_condition,
       close_note, snapshot_json, status, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)
   `).run(
     input.symbol,
     input.direction,
     input.targetInterval,
+    input.scenario,
     input.stopCondition,
     input.note || null,
     JSON.stringify(snapshot),

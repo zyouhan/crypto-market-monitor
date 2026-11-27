@@ -459,3 +459,78 @@ export interface MindsetData {
     cooldown_until: number | null;
   };
 }
+
+export type SelfCheckEmaArrangement = "bull" | "bear" | "flat";
+export type SelfCheckSpreadState =
+  | "expanding"
+  | "contracting"
+  | "flat"
+  | "unknown";
+export type SelfCheckTrendStrength =
+  | "strong"
+  | "weak"
+  | "unclear";
+export type SelfCheckKdjZone =
+  | "overbought"
+  | "oversold"
+  | "neutral"
+  | "unknown";
+export type SelfCheckMacdZone =
+  | "above"
+  | "below"
+  | "mixed"
+  | "unknown";
+export type SelfCheckMacdCross =
+  | "golden"
+  | "death"
+  | "unknown";
+export type SelfCheckMacdHistogramState =
+  | "expanding"
+  | "contracting"
+  | "flat"
+  | "unknown";
+export type SelfCheckVolumeState =
+  | "high"
+  | "normal"
+  | "low"
+  | "unknown";
+
+/**
+ * 开单自查单个级别的快照。
+ *
+ * 新字段是可选的，因为旧记录的 snapshot_json 只有旧字段；
+ * 展示时需要用 lib/self-check.ts 里的兜底函数。
+ */
+export interface SelfCheckIntervalSnapshot {
+  interval: string;
+  ema_arrangement?: SelfCheckEmaArrangement;
+  ema_duration_minutes?: number | null;
+  ema_duration_start?: number | null;
+  ema_spread_state?: SelfCheckSpreadState;
+  ema_spread_change_pct?: number | null;
+  trend_strength?: SelfCheckTrendStrength;
+  j?: number | null;
+  k?: number | null;
+  d?: number | null;
+  kdj_zone?: SelfCheckKdjZone;
+  macd_zone?: SelfCheckMacdZone;
+  macd_cross?: SelfCheckMacdCross;
+  macd_histogram_state?: SelfCheckMacdHistogramState;
+  volume_state?: SelfCheckVolumeState;
+  volume_ratio?: number | null;
+
+  // 旧快照兼容字段
+  trend?: "up" | "down";
+  strength?: "强" | "中" | "弱" | "拐头";
+  demand?: "上涨需求" | "下跌需求" | null;
+  ema25?: number | null;
+  ema60?: number | null;
+  source?: string | null;
+  time?: number | null;
+  error?: string | null;
+}
+
+export interface SelfCheckPreviewResponse {
+  symbol: string;
+  snapshot: SelfCheckIntervalSnapshot[];
+}

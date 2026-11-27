@@ -3,15 +3,29 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { api, errorMessage } from "../lib/api";
-import { formatPrice, formatTime } from "../lib/format";
+import { formatTime } from "../lib/format";
+import {
+  emaArrangementLabel,
+  emaArrangementTone,
+  formatDurationMinutes,
+  intervalLabel,
+  kdjText,
+  macdText,
+  mergeSnapshots,
+  scenarioLabel,
+  spreadLabel,
+  spreadTone,
+  trendStrengthLabel,
+  trendStrengthOf,
+  volumeText
+} from "../lib/self-check";
 import { AutoGrowTextarea } from "./AutoGrowTextarea";
 import {
   notifySelfCheckChanged,
   requestSelfCheckCreate,
   SELF_CHECK_CHANGED_EVENT
 } from "../lib/self-check-events";
-
-const INTERVALS = ["1m", "5m", "15m", "1h", "4h"] as const;
+import type { SelfCheckIntervalSnapshot } from "../types";
 
 type TradeQuality = "excellent" | "good" | "fair" | "poor";
 
@@ -43,62 +57,82 @@ const EMPTY_CLOSE_FORM: CloseForm = {
   note: ""
 };
 
-interface IntervalSnapshot {
-  interval: string;
-  trend: "up" | "down";
-  strength: "强" | "中" | "弱" | "拐头";
-  j: number | null;
-  ema25: number | null;
-  ema60: number | null;
-  ema_arrangement: "bull" | "bear" | "flat";
-  demand: "上涨需求" | "下跌需求" | null;
-  error: string | null;
-}
-
 interface ActiveSelfCheck {
   id: number;
   symbol: string;
   direction: "BULL" | "BEAR";
   target_interval: string;
+  scenario: string | null;
   stop_condition: string;
-  snapshot: IntervalSnapshot[] | null;
-  live?: IntervalSnapshot[] | null;
+  snapshot: SelfCheckIntervalSnapshot[] | null;
+  live?: SelfCheckIntervalSnapshot[] | null;
   close_note: string | null;
   created_at: number;
 }
 
-function formatJ(value: number | null | undefined): string {
-  return typeof value === "number" ? value.toFixed(2) : "--";
-}
-
-function emaLabel(
-  arrangement: "bull" | "bear" | "flat" | undefined
-): string {
-  if (arrangement === "bull") {
-    return "多头排列";
+function LevelStats({
+  snapshot,
+  compact = false
+}: {
+  snapshot: SelfCheckIntervalSnapshot | null | undefined;
+  compact?: boolean;
+}) {
+  if (!snapshot) {
+    return (
+      <div className="self-check-level-neutral">数据不足</div>
+    );
   }
 
-  if (arrangement === "bear") {
-    return "空头排列";
-  }
+  const duration =
+    typeof snapshot.ema_duration_minutes === "number"
+      ? `运行 ${formatDurationMinutes(
+          snapshot.ema_duration_minutes
+        )}`
+      : "时长未知";
 
-  return "EMA 数据不足";
-}
-
-function formatEma(value: number | null | undefined): string {
-  return typeof value === "number" ? formatPrice(value) : "--";
-}
-
-function tagTone(snapshot: IntervalSnapshot): string {
-  if (snapshot.demand === "上涨需求") {
-    return "bull";
-  }
-
-  if (snapshot.demand === "下跌需求") {
-    return "bear";
-  }
-
-  return snapshot.trend === "up" ? "bull-soft" : "bear-soft";
+  return (
+    <>
+      <div
+        className={`self-check-level-tags ${
+          compact ? "compact" : ""
+        }`}
+      >
+        <span
+          className={`self-check-ema-tag ${emaArrangementTone(
+            snapshot
+          )}`}
+        >
+          {emaArrangementLabel(snapshot)}
+        </span>
+        <span className="self-check-duration-tag">
+          {duration}
+        </span>
+        <span
+          className={`self-check-spread-tag ${spreadTone(
+            snapshot
+          )}`}
+        >
+          {spreadLabel(snapshot)}
+        </span>
+        <span
+          className={`self-check-strength-tag ${trendStrengthOf(
+            snapshot
+          )}`}
+        >
+          {trendStrengthLabel(snapshot)}
+        </span>
+      </div>
+      <div className="self-check-level-extra">
+        {kdjText(snapshot)} · {macdText(snapshot)} ·{" "}
+        {volumeText(snapshot)}
+      </div>
+      {snapshot.error && (
+        <div className="self-check-analysis-error">
+          {snapshot.error}
+        </div>
+      )}
+    </>
+  );
 }
 
 export function SelfCheckMonitor() {
@@ -291,10 +325,19 @@ export function SelfCheckMonitor() {
       ) : (
         <div className="self-check-monitor-grid">
           {items.map((item) => {
-            const snapshots = item.live ?? item.snapshot ?? [];
-            const target = snapshots.find(
+            const snapshots = mergeSnapshots(
+              item.snapshot,
+              item.live
+            );
+            const target =
+              snapshots.find(
+                (snapshot) =>
+                  snapshot.interval === item.target_interval
+              ) ?? null;
+            const otherLevels = snapshots.filter(
               (snapshot) =>
-                snapshot.interval === item.target_interval
+                snapshot.interval !== item.target_interval &&
+                snapshot.interval !== "1m"
             );
 
             return (
@@ -320,104 +363,47 @@ export function SelfCheckMonitor() {
                   </span>
                 </div>
 
+                <div className="self-check-scenario-line">
+                  <span
+                    className={`self-check-scenario-tag ${
+                      item.direction === "BULL" ? "bull" : "bear"
+                    }`}
+                  >
+                    {scenarioLabel(item.scenario)}
+                  </span>
+                </div>
+
                 <div className="self-check-target-block">
                   <div className="self-check-target-label">
-                    主目标 · {item.target_interval}
+                    主目标 ·{" "}
+                    {intervalLabel(item.target_interval)}
                   </div>
-                  <div className="self-check-target-value">
-                    <span>J</span>
-                    <strong>{formatJ(target?.j)}</strong>
-                  </div>
-                  {target?.demand ? (
-                    <span
-                      className={`self-check-j-tag ${tagTone(target)}`}
-                    >
-                      {target.trend === "up" ? "向上" : "向下"} ·{" "}
-                      {target.strength} · {target.demand}
-                    </span>
-                  ) : (
-                    <span className="self-check-target-nodemand">
-                      {target
-                        ? `${target.trend === "up" ? "向上" : "向下"} · ${target.strength}`
-                        : "数据不足"}
-                    </span>
-                  )}
-                  <div className="self-check-target-ema">
-                    <span>EMA25 {formatEma(target?.ema25)}</span>
-                    <span>EMA60 {formatEma(target?.ema60)}</span>
-                    <b
-                      className={`self-check-ema-tag ${
-                        target?.ema_arrangement === "bull"
-                          ? "bull"
-                          : target?.ema_arrangement === "bear"
-                            ? "bear"
-                            : "flat"
-                      }`}
-                    >
-                      {emaLabel(target?.ema_arrangement)}
-                    </b>
+                  <div className="self-check-target-summary">
+                    <LevelStats snapshot={target} />
                   </div>
                 </div>
 
-                <div className="self-check-level-grid">
-                  {INTERVALS.filter(
-                    (interval) => interval !== item.target_interval
-                  ).map((interval) => {
-                    const snapshot = snapshots.find(
-                      (entry) => entry.interval === interval
-                    );
-
-                    if (!snapshot) {
-                      return null;
-                    }
-
-                    return (
+                {otherLevels.length > 0 ? (
+                  <div className="self-check-level-grid">
+                    {otherLevels.map((snapshot) => (
                       <div
                         className="self-check-level-card"
-                        key={interval}
+                        key={snapshot.interval}
                       >
                         <div className="self-check-level-top">
-                          <b>{interval}</b>
-                          {snapshot.demand ? (
-                            <span
-                              className={`self-check-demand-mini ${tagTone(
-                                snapshot
-                              )}`}
-                            >
-                              {snapshot.demand}
-                            </span>
-                          ) : (
-                            <span className="self-check-level-neutral">
-                              暂无需求
-                            </span>
-                          )}
-                        </div>
-                        <div className="self-check-level-detail">
-                          {snapshot.error
-                            ? "数据获取失败"
-                            : `${snapshot.trend === "up" ? "向上" : "向下"} · ${
-                                snapshot.strength
-                              } · J ${formatJ(snapshot.j)}`}
-                        </div>
-                        <div className="self-check-level-ema">
-                          <span>EMA25 {formatEma(snapshot.ema25)}</span>
-                          <span>EMA60 {formatEma(snapshot.ema60)}</span>
-                          <b
-                            className={`self-check-ema-tag ${
-                              snapshot.ema_arrangement === "bull"
-                                ? "bull"
-                                : snapshot.ema_arrangement === "bear"
-                                  ? "bear"
-                                  : "flat"
-                            }`}
-                          >
-                            {emaLabel(snapshot.ema_arrangement)}
+                          <b>
+                            {intervalLabel(snapshot.interval)}
                           </b>
                         </div>
+                        <LevelStats snapshot={snapshot} compact />
                       </div>
-                    );
-                  })}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="self-check-level-neutral">
+                    暂无其他级别数据
+                  </div>
+                )}
 
                 <div className="self-check-monitor-stop">
                   止损：{item.stop_condition}

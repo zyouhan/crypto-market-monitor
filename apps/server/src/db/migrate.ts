@@ -622,6 +622,21 @@ export function ensureSignalIntervalUniqueIndex(
   `);
 }
 
+export function ensureSelfCheckScenarioColumn(
+  database: Database.Database
+): void {
+  if (!tableExists(database, "self_checks")) {
+    return;
+  }
+
+  if (!hasColumn(database, "self_checks", "scenario")) {
+    database.exec(`
+      ALTER TABLE self_checks
+      ADD COLUMN scenario TEXT
+    `);
+  }
+}
+
 export function ensureSignalCandleTimeColumn(
   database: Database.Database
 ): void {
